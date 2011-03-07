@@ -36,7 +36,7 @@ Inductive WeakExpr :=
                        (tbranches:CoreType)
                        {n:nat}(tc:TyCon n)
                        (type_params:vec CoreType n)
-                       (alts : Tree ??(AltCon*list WeakVar*WeakExpr)),
+                       (alts : Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)),
                        WeakExpr.
 
 (* calculate the free WeakVar's in a WeakExpr *)
@@ -59,18 +59,13 @@ Fixpoint getWeakExprFreeVars (me:WeakExpr) : list WeakExprVar :=
     (* the messy fixpoints below are required by Coq's termination conditions *)
     | WECase scrutinee tbranches n tc type_params alts =>
       mergeDistinctLists (getWeakExprFreeVars scrutinee) (
-        ((fix getWeakExprFreeVarsAlts (alts:Tree ??(AltCon*list WeakVar*WeakExpr)) {struct alts} : list WeakExprVar :=
+        ((fix getWeakExprFreeVarsAlts (alts:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr))
+          {struct alts} : list WeakExprVar :=
           match alts with
             | T_Leaf  None                                  => nil
-            | T_Leaf (Some (DEFAULT,_,e))                   => getWeakExprFreeVars e
-            | T_Leaf (Some (LitAlt lit,_,e))                => getWeakExprFreeVars e
-            | T_Leaf (Some (DataAlt _ _ _ _ _ dc, vars,e))  => removeFromDistinctList' 
-              (General.filter (map (fun v => match v with
-                               | WExprVar ev => Some ev
-                               | WTypeVar _  => None
-                               | WCoerVar _  => None
-              end) vars))
-              (getWeakExprFreeVars e)
+            | T_Leaf (Some (DEFAULT,_,_,_,e))                   => getWeakExprFreeVars e
+            | T_Leaf (Some (LitAlt lit,_,_,_,e))                => getWeakExprFreeVars e
+            | T_Leaf (Some ((DataAlt _ _ _ _ _ dc), tvars, cvars, evars,e))  => removeFromDistinctList' evars (getWeakExprFreeVars e)
             | T_Branch b1 b2                        => mergeDistinctLists (getWeakExprFreeVarsAlts b1) (getWeakExprFreeVarsAlts b2)
           end) alts))
     | WELetRec mlr e => (fix removeVarsLetRec (mlr:Tree ??(WeakExprVar * WeakExpr))(cvl:list WeakExprVar) :=

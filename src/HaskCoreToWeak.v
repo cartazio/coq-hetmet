@@ -110,16 +110,21 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
       match te' with
         | TyConApp _ tc lt =>
           ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (@CoreExpr CoreVar)))
-                : ???(list (AltCon*list WeakVar*WeakExpr)) :=
+                : ???(list (AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
             match branches with
               | nil => OK nil
               | (mkTriple alt vars e)::rest =>
                   mkBranches rest >>= fun rest' => 
                     coreExprToWeakExpr e >>= fun e' => 
                     match alt with
-                      | DEFAULT                => OK ((DEFAULT,nil,e')::rest')
-                      | LitAlt lit             => OK ((LitAlt lit,nil,e')::rest')
-                      | DataAlt _ _ _ _ tc' dc => OK (((DataAlt _ dc),(map coreVarToWeakVar vars),e')::rest')
+                      | DEFAULT                => OK ((DEFAULT,nil,nil,nil,e')::rest')
+                      | LitAlt lit             => OK ((LitAlt lit,nil,nil,nil,e')::rest')
+                      | DataAlt _ _ _ _ tc' dc => let vars := map coreVarToWeakVar vars in
+                        OK (((DataAlt _ dc),
+                        (General.filter (map (fun x => match x with WTypeVar v => Some v | _ => None end) vars)),
+                        (General.filter (map (fun x => match x with WCoerVar v => Some v | _ => None end) vars)),
+                        (General.filter (map (fun x => match x with WExprVar v => Some v | _ => None end) vars)),
+                        e')::rest')
                     end
             end) alts)
           >>= fun branches => coreExprToWeakExpr e

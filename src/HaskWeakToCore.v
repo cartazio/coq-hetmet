@@ -38,6 +38,7 @@ match wv with
 | WTypeVar (weakTypeVar v _   ) => v
 | WCoerVar (weakCoerVar v _ _ ) => v
 end.
+Coercion weakVarToCoreVar : WeakVar >-> CoreVar.
 
 Section HaskWeakToCore.
 
@@ -66,12 +67,18 @@ Section HaskWeakToCore.
   | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr ve))  (weakExprToCoreExpr e)
   | WECase  e tbranches n tc types alts  => CoreECase (weakExprToCoreExpr e) dummyVariable tbranches
                                               (sortAlts ((
-                                                fix mkCaseBranches (alts:Tree ??(AltCon*list WeakVar*WeakExpr)) :=
+                                                fix mkCaseBranches (alts:Tree 
+                                                  ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
                                                 match alts with
                                                   | T_Leaf None              => nil
                                                   | T_Branch b1 b2           => app (mkCaseBranches b1) (mkCaseBranches b2)
-                                                  | T_Leaf (Some (ac,lwv,e)) =>
-                                                    (mkTriple ac (map weakVarToCoreVar lwv) (weakExprToCoreExpr e))::nil
+                                                  | T_Leaf (Some (ac,tvars,cvars,evars,e)) =>
+                                                    (mkTriple ac
+                                                      (app (app 
+                                                        (map (fun v:WeakTypeVar => weakVarToCoreVar v) tvars)
+                                                        (map (fun v:WeakCoerVar => weakVarToCoreVar v) cvars))
+                                                      (map (fun v:WeakExprVar => weakVarToCoreVar v) evars))
+                                                      (weakExprToCoreExpr e))::nil
                                                 end
                                               ) alts))
   | WELetRec mlr e                       => CoreELet (CoreRec

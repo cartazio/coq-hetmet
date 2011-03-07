@@ -24,13 +24,18 @@ Inductive WeakVar : Type :=
 | WExprVar : WeakExprVar -> WeakVar
 | WTypeVar : WeakTypeVar -> WeakVar
 | WCoerVar : WeakCoerVar -> WeakVar.
+Coercion WExprVar : WeakExprVar >-> WeakVar.
+Coercion WTypeVar : WeakTypeVar >-> WeakVar.
+Coercion WCoerVar : WeakCoerVar >-> WeakVar.
+
 
 Definition haskLiteralToCoreType lit : CoreType :=
   TyConApp (haskLiteralToTyCon lit) nil.
 
 Definition weakTypeToCoreType (wt:CoreType) : CoreType := wt.
 
-Definition weakTypeToString : CoreType -> string := coreTypeToString ○ weakTypeToCoreType.
+Definition weakTypeToString : CoreType -> string :=
+  coreTypeToString ○ weakTypeToCoreType.
 
 (* EqDecidable instances for all of the above *)
 Instance CoreTypeVarEqDecidable : EqDecidable WeakTypeVar.
