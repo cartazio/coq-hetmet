@@ -91,13 +91,16 @@ Section core2proof.
     "\usepackage{proof}"+++eol+++
     "\usepackage{mathpartir}"+++eol+++
     "\usepackage{trfrac}"+++eol+++
-    "\pdfpagewidth 50in"+++eol+++
-    "\pdfpageheight 10in"+++eol+++
     "\def\code#1#2{\Box_{#1} #2}"+++eol+++
-    "\begin{document}"+++eol.
+    "\usepackage[paperwidth=20in,centering]{geometry}"+++eol+++
+    "\usepackage[displaymath,tightpage,active]{preview}"+++eol+++
+    "\begin{document}"+++eol+++
+    "\begin{preview}"+++eol.
 
   Definition footer : string :=
-    eol+++"\end{document}"+++eol.
+    eol+++"\end{preview}"+++
+    eol+++"\end{document}"+++
+    eol.
 
   Definition handleExpr (ce:@CoreExpr CoreVar) : string :=
     match coreExprToWeakExpr ce with
@@ -107,7 +110,10 @@ Section core2proof.
           | Indexed_Error  s  => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
           | Indexed_OK    τ e => match e with
                                    | Error s => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
-                                   | OK e'   => header +++ (nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')) +++ footer
+                                   | OK e'   =>
+                                     eol+++"$$"+++
+                                     nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')+++
+                                     "$$"+++eol
                                  end
         end
     end.
@@ -119,7 +125,9 @@ Section core2proof.
     end.
 
   Definition coqPassCoreToString (lbinds:list (@CoreBind CoreVar)) : string :=
-    fold_left (fun x y => x+++eol+++eol+++y) (map handleBind lbinds) "".
+    header +++
+    (fold_left (fun x y => x+++eol+++eol+++y) (map handleBind lbinds) "")
+    +++ footer.
 
   Definition coqPassCoreToCore (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
     lbinds.
