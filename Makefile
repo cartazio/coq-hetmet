@@ -22,3 +22,31 @@ build/Makefile.coq: $(coqfiles)
 
 clean:
 	rm -rf build
+
+
+
+# this is for Adam's use only!
+publish:
+	rm -rf .temp
+	mkdir .temp
+	cd .temp; ln -s ../src/*.v .
+	cd .temp; for A in *.v; do \
+	  echo Latexing $$A ... ;\
+	  echo '\\documentclass[9pt,landscape]{article}' > $$A.tex; \
+	  echo '\\usepackage[landscape]{geometry}'       >> $$A.tex; \
+	  echo '\\usepackage[cm]{fullpage}'       >> $$A.tex; \
+	  echo '\\usepackage{amsmath}'        >> $$A.tex; \
+	  echo '\\usepackage{amssymb}'        >> $$A.tex; \
+	  echo '\\usepackage{stmaryrd}'       >> $$A.tex; \
+	  echo '\\usepackage{upgreek}'        >> $$A.tex; \
+	  echo '\\usepackage{parskip}'        >> $$A.tex; \
+	  echo '\\begin{document}'            >> $$A.tex; \
+	  echo '{{\\tt{'           >> $$A.tex; \
+	  echo ''           >> $$A.tex; \
+	  java -jar ~/bin/unicode2tex.jar < ../src/$$A >> $$A.tex;\
+	  echo '}}}'                           >> $$A.tex; \
+	  echo '\\end{document}'              >> $$A.tex; \
+	  pdflatex $$A.tex < /dev/null; done
+	ssh login.eecs.berkeley.edu -- 'rm public_html/coq-in-ghc/pdfs/*.pdf' ; true
+	scp .temp/*.pdf login.eecs.berkeley.edu:public_html/coq-in-ghc/pdfs/
+	rm -rf .temp
