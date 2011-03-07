@@ -27,7 +27,7 @@ Require Import HaskWeakToStrong.
 Require Import HaskStrongToProof.
 (*Require Import HaskProofToStrong.*)
 Require Import HaskProofToLatex.
-(*Require Import HaskStrongToWeak.*)
+Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
 
 Open Scope string_scope.
