@@ -23,6 +23,14 @@ clean:
 
 
 # this is for Adam's use only!
+push: build/CoqPass.hs
+	git push http://git.megacz.com/coq-garrows.git master
+	git add -f build/CoqPass.hs; \
+	  git commit -m 'update baked-in CoqPass.hs' && \
+	  (git push -f http://git.megacz.com/coq-garrows.git master:coq-extraction-baked-in; \
+	   git reset HEAD^)
+	make publish
+
 publish:
 	rm -rf .temp
 	mkdir .temp
@@ -47,10 +55,3 @@ publish:
 	ssh login.eecs.berkeley.edu -- 'rm public_html/coq-in-ghc/pdfs/*.pdf' ; true
 	scp .temp/*.pdf login.eecs.berkeley.edu:public_html/coq-in-ghc/pdfs/
 	rm -rf .temp
-
-push: build/CoqPass.hs
-	git push http://git.megacz.com/coq-garrows.git master
-	git add -f build/CoqPass.hs
-	git commit -m 'update baked-in CoqPass.hs'
-	git push http://git.megacz.com/coq-garrows.git master:coq-extraction-baked-in
-	git reset HEAD^
