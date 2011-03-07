@@ -48,14 +48,14 @@ Section HaskStrong.
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars, let ξ' := update_ξ ξ (map (fun x => ((fst x),(snd x @@ l))) (leaves vars)) in
-    ELetRecBindings Γ Δ ξ'     l (mapOptionTree (@snd _ _) vars) ->
+    ELetRecBindings Γ Δ ξ'     l vars ->
     Expr            Γ Δ ξ' (τ@@l) ->
     Expr            Γ Δ ξ  (τ@@l)
 
   (* can't avoid having an additional inductive: it is a tree of Expr's, each of whose ξ depends on the type of the entire tree *)
-  with ELetRecBindings : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ) -> HaskLevel Γ -> Tree ??(HaskType Γ) -> Type :=
+  with ELetRecBindings : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ) -> HaskLevel Γ -> Tree ??(VV*HaskType Γ) -> Type :=
   | ELR_nil    : ∀ Γ Δ ξ l  ,                                                                 ELetRecBindings Γ Δ ξ l []
-  | ELR_leaf   : ∀ Γ Δ ξ t l,                                          Expr Γ Δ ξ (t @@ l) -> ELetRecBindings Γ Δ ξ l [t]
+  | ELR_leaf   : ∀ Γ Δ ξ t l v,                                        Expr Γ Δ ξ (t @@ l) -> ELetRecBindings Γ Δ ξ l [(v,t)]
   | ELR_branch : ∀ Γ Δ ξ l t1 t2, ELetRecBindings Γ Δ ξ l t1 -> ELetRecBindings Γ Δ ξ l t2 -> ELetRecBindings Γ Δ ξ l (t1,,t2)
   .
 
