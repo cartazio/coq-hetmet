@@ -1,17 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds  #-}
-module Extraction ( coqCoreToStringPass )
+module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
---import HsSyn
---import TcType
---import CoreFVs
---import CoreUtils
---import Var
---import BasicTypes
---import Bag
---import VarSet
---import SrcLoc
---import Data.List
-
 import qualified MkCore
 import qualified TysWiredIn
 import qualified TysPrim
@@ -32,11 +21,23 @@ import qualified DataCon
 import qualified CoreSyn
 import qualified Class
 import qualified Data.Char 
-
 import Data.Bits ((.&.), shiftL, (.|.))
 import Prelude ( (++), (+), (==), Show, show, Char )
+import qualified Prelude
+import qualified GHC.Base
 
-dataConEqTheta' dc = map (\p -> {-FIXME-}) (DataCon.dataConEqTheta dc)
+-- crude way of casting Coq "error monad" into Haskell exceptions
+errOrFail :: OrError a -> a
+errOrFail (OK x)    = x
+errOrFail (Error s) = Prelude.error s
+
+-- to do: this could be moved into Coq
+coreVarToWeakVar :: Var.Var -> WeakVar
+coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
+coreVarToWeakVar v | Var.isTyVar v = WTypeVar (WeakTypeVar v (coreKindToKind (Var.varType v)))
+coreVarToWeakVar v | Var.isCoVar v = Prelude.error "FIXME coerVarSort not fully implemented"
+coreVarToWeakVar _                 =
+   Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
 
 nat2int :: Nat -> Prelude.Int
 nat2int O     = 0
@@ -67,12 +68,28 @@ coreKindToKind k =
                  else if (Coercion.isCoSuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-coercions"
                  else                                         Prelude.error ((Prelude.++) "coreKindToKind got an unknown kind: "
                                                                                (Outputable.showSDoc (Outputable.ppr k)))
-coreVarSort :: Var.Var -> CoreVarSort
-coreVarSort v | Id.isId     v = CoreExprVar (Var.varType{-AsType-} v)
-coreVarSort v | Var.isTyVar v = CoreTypeVar (coreKindToKind (Var.varType v))
-coreVarSort v | Var.isCoVar v = CoreCoerVar (Coercion.coercionKind v)
-coreVarSort v | otherwise     = Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
-
-outputableToString :: Outputable -> String
+outputableToString :: Outputable.Outputable a => a -> Prelude.String
 outputableToString = (\x -> Outputable.showSDoc (Outputable.ppr x))
 
+checkTypeEquality :: Type.Type -> Type.Type -> Prelude.Bool
+-- checkTypeEquality t1 t2 = Type.coreEqType (coreViewDeep t1) (coreViewDeep t2)
+-- checkTypeEquality t1 t2 = Type.tcEqType (coreViewDeep t1) (coreViewDeep t2)
+checkTypeEquality t1 t2 = Type.tcEqType (Type.expandTypeSynonyms t1) (Type.expandTypeSynonyms t2)
+
+--showType t = outputableToString (Type.expandTypeSynonyms t)
+showType t = outputableToString (coreViewDeep t)
+
+coreViewDeep :: Type.Type -> Type.Type
+coreViewDeep t =
+    case t of
+      TypeRep.TyVarTy tv       -> TypeRep.TyVarTy tv
+      TypeRep.FunTy arg res    -> TypeRep.FunTy (coreViewDeep arg) (coreViewDeep res)
+      TypeRep.AppTy fun arg    -> TypeRep.AppTy (coreViewDeep fun) (coreViewDeep arg)
+      TypeRep.ForAllTy fun arg -> TypeRep.ForAllTy fun (coreViewDeep arg)
+      TypeRep.TyConApp tc tys  -> let t' = TypeRep.TyConApp tc (Prelude.map coreViewDeep tys)
+                        in case Type.coreView t' of
+                               Prelude.Nothing     -> t'
+                               Prelude.Just    t'' -> t''
+      TypeRep.PredTy p         -> case Type.coreView t of
+                               Prelude.Nothing     -> TypeRep.PredTy p
+                               Prelude.Just    t'  -> t'
