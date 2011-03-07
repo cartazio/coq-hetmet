@@ -14,7 +14,10 @@ Require Import HaskWeak.
 Require Import HaskCoreToWeak.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
-(*Require Import HaskStrongToProof.*)
 Require Import HaskProof.
+(*Require Import HaskProofToStrong.*)
+(*Require Import HaskStrongToProof.*)
+(*Require Import HaskStrongToWeak.*)
 (*Require Import HaskWeakToStrong.*)
+Require Import HaskWeakToCore.
 Require Import HaskProofToLatex.
