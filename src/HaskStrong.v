@@ -16,14 +16,14 @@ Section HaskStrong.
   (* any type with decidable equality may be used to represent value variables *)
   Context `{EQD_VV:EqDecidable VV}.
 
-  (* a ExprCaseBranch contains all the data found in a case branch except the expression itself *)
-  Record ExprCaseBranch {n}{tc:TyCon n}{Γ}{atypes:vec (HaskType Γ) n} :=
-  { cbi_sacic     :  @StrongAltConInContext n tc Γ atypes
-  ; cbi_vars      :  vec VV (tagNumValVars (cbi_tag cbi_sacic))
-  ; cbi_varstypes := vec2list (vec_zip cbi_vars (cbi_types cbi_sacic))
+  (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
+  Record StrongCaseBranchWithVVs {n}{tc:TyCon n}{Γ}{atypes:vec (HaskType Γ) n} :=
+  { scbwv_scb       :  @StrongCaseBranch n tc Γ atypes
+  ; scbwv_exprvars  :  vec VV (saci_numExprVars scbwv_scb)
+  ; scbwv_varstypes := vec2list (vec_zip scbwv_exprvars (scb_types scbwv_scb))
   }.
-  Implicit Arguments ExprCaseBranch [[n][Γ]].
-  Coercion cbi_sacic : ExprCaseBranch >-> StrongAltConInContext.
+  Implicit Arguments StrongCaseBranchWithVVs [[n][Γ]].
+  Coercion scbwv_scb : StrongCaseBranchWithVVs >-> StrongCaseBranch.
 
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ) -> LeveledHaskType Γ -> Type :=
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
@@ -43,8 +43,8 @@ Section HaskStrong.
 
   | ECase    : forall Γ Δ ξ l n (tc:TyCon n) atypes tbranches,
                Expr Γ Δ ξ (caseType tc atypes @@ l) ->
-               Tree ??{ scb : ExprCaseBranch tc atypes
-                            & Expr (cbi_Γ scb) (cbi_Δ scb) (update_ξ (weakLT'○ξ) (cbi_varstypes scb)) (weakLT' (tbranches@@l)) } ->
+               Tree ??{ scb : StrongCaseBranchWithVVs tc atypes
+                            & Expr (scb_Γ scb) (scb_Δ scb) (update_ξ (weakLT'○ξ) (scbwv_varstypes scb)) (weakLT' (tbranches@@l)) } ->
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars, let ξ' := update_ξ ξ (map (fun x => ((fst x),(snd x @@ l))) (leaves vars)) in
@@ -60,3 +60,4 @@ Section HaskStrong.
   .
 
 End HaskStrong.
+Implicit Arguments StrongCaseBranchWithVVs [[n][Γ]].

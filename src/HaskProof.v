@@ -49,12 +49,13 @@ Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
 
 (* information needed to define a case branch in a HaskProof *)
 Record ProofCaseBranch {n}{tc:TyCon n}{Γ}{lev}{branchtype : HaskType Γ}{avars} :=
-{ cbi_cbi              :  @StrongAltConInContext n tc Γ avars
-; cbri_freevars        :  Tree ??(LeveledHaskType Γ)
-; cbri_judg            := cbi_Γ cbi_cbi > cbi_Δ  cbi_cbi
-                          > (mapOptionTree weakLT' cbri_freevars),,(unleaves (vec2list (cbi_types cbi_cbi)))
+{ pcb_scb            :  @StrongCaseBranch n tc Γ avars
+; pcb_freevars        :  Tree ??(LeveledHaskType Γ)
+; pcb_judg            := scb_Γ pcb_scb > scb_Δ  pcb_scb
+                          > (mapOptionTree weakLT' pcb_freevars),,(unleaves (vec2list (scb_types pcb_scb)))
                           |- [weakLT' (branchtype @@ lev)]
 }.
+Coercion pcb_scb : ProofCaseBranch >-> StrongCaseBranch.
 Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
@@ -108,9 +109,9 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RCase          : forall Γ Δ lev n tc Σ avars tbranches
   (alts:Tree ??(@ProofCaseBranch n tc Γ lev tbranches avars)),
                    Rule
-                       ((mapOptionTree cbri_judg alts),,
+                       ((mapOptionTree pcb_judg alts),,
                         [Γ > Δ >                                               Σ |- [ caseType tc avars @@ lev ] ])
-                        [Γ > Δ > (mapOptionTreeAndFlatten cbri_freevars alts),,Σ |- [ tbranches         @@ lev ] ]
+                        [Γ > Δ > (mapOptionTreeAndFlatten pcb_freevars alts),,Σ |- [ tbranches         @@ lev ] ]
 .
 Coercion RURule : URule >-> Rule.
 

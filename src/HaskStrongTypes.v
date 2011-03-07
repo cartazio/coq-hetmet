@@ -125,48 +125,22 @@ Notation "'<[' a '|-' t ']>'" := (@HaskBrak _ a t).
 
 
 
-
-(* A "tag" is something that distinguishes one case branch from another; it's a lot like Core's AltCon *)
-Inductive Tag {n:nat}(tc:TyCon n) : Type :=
-| TagDefault :                                   Tag tc
-| TagLiteral : forall lit:HaskLiteral ,          Tag tc (* FIXME: solution is a new StrongLiteral indexed by a tycon *)
-| TagDataCon : forall m q z, DataCon tc m q z -> Tag tc.
-
-(* the number of value variables bound in branches with the given tag *)
-Definition tagNumValVars {n}{tc:TyCon n}(tag:Tag tc) : nat :=
-  match tag with
-    | TagDefault          => 0
-    | TagLiteral  lit     => 0
-    | TagDataCon m q z dc => z
-  end.
-
-(* the number of existential type variables bound in branches with the given tag *)
-Definition tagNumExVars {n}{tc:TyCon n}(tag:Tag tc) : nat :=
-  match tag with
-    | TagDefault          => 0
-    | TagLiteral  lit     => 0
-    | TagDataCon m q z dc => m
-  end.
-
-(* the number of coercion variables bound in branches with the given tag *)
-Definition tagNumCoVars {n}{tc:TyCon n}(tag:Tag tc) : nat :=
-  match tag with
-    | TagDefault          => 0
-    | TagLiteral  lit     => 0
-    | TagDataCon m q z dc => q
-  end.
+(* like a GHC DataCon, but using PHOAS representation for types and coercions *)
+Record StrongAltConInfo {n}{tc:TyCon n} :=
+{ saci_numExTyVars :  nat
+; saci_numCoerVars :  nat
+; saci_numExprVars :  nat
+; saci_akinds      :  vec Kind n
+; saci_ekinds      :  vec Kind saci_numExTyVars
+; saci_kinds       := app (vec2list saci_akinds) (vec2list saci_ekinds)
+; saci_coercions   :  vec (HaskType saci_kinds * HaskType saci_kinds) saci_numCoerVars
+; saci_types       :  vec (HaskType saci_kinds) saci_numExprVars
+}.
+Implicit Arguments StrongAltConInfo [[n]].
 
 Definition caseType {Γ:TypeEnv}{n}(tc:TyCon n)(atypes:vec (HaskType Γ) n) :=
   fold_left HaskAppT (vec2list atypes) (HaskTCon(Γ:=Γ) tc).
 
-Record StrongAltCon {n}{tc:TyCon n}{alt:Tag tc} :=
-{ cb_akinds    :  vec Kind n
-; cb_ekinds    :  vec Kind (tagNumExVars alt)
-; cb_kinds     := app (vec2list cb_akinds) (vec2list cb_ekinds)
-; cb_coercions :  vec (HaskType cb_kinds * HaskType cb_kinds) (tagNumCoVars alt)
-; cb_types     :  vec (HaskType cb_kinds) (tagNumValVars alt)
-}.
-Implicit Arguments StrongAltCon [[n][tc]].
 
 
 
@@ -300,7 +274,7 @@ with ListWellKinded_RawHaskType (TV:Type)
 Fixpoint kindOfRawHaskType {TV}(rht:RawHaskType Kind) : Kind :=
 match rht with
   | TVar   k    => k
-  | TCon   n tc => ̱★ (* FIXME: use the StrongAltCon *)
+  | TCon   n tc => ̱★ (* FIXME: use the StrongAltConInfo *)
   | TCoerc k    => k ⇛ (k ⇛ (★ ⇛ ★ ))
   | TApp   ht1 ht2        : RawHaskType                  ->     RawHaskType        -> RawHaskType   (* φ φ      *)
   | TFCApp         : ∀n, TyFunConst n             -> vec RawHaskType n      -> RawHaskType   (* S_n      *)
@@ -411,12 +385,12 @@ Fixpoint update_ξ
 
 
 (* just like GHC's AltCon, but using PHOAS types and coercions *)
-Record StrongAltConInContext {n}{tc:TyCon n}{Γ}{atypes:vec (HaskType Γ) n} :=
-{ cbi_tag       :  Tag tc
-; cbi_cb        :  StrongAltCon cbi_tag
-; cbi_Γ         :  TypeEnv := app (vec2list (cb_ekinds cbi_cb)) Γ
-; cbi_Δ         :  CoercionEnv cbi_Γ
-; cbi_types     :  vec (LeveledHaskType (app (vec2list (cb_ekinds cbi_cb)) Γ)) (tagNumValVars cbi_tag)
+Record StrongCaseBranch {n}{tc:TyCon n}{Γ}{atypes:vec (HaskType Γ) n} :=
+{ scb_saci      :  @StrongAltConInfo _ tc
+; scb_Γ         :  TypeEnv := app (vec2list (saci_ekinds scb_saci)) Γ
+; scb_Δ         :  CoercionEnv scb_Γ
+; scb_types     :  vec (LeveledHaskType (app (vec2list (saci_ekinds scb_saci)) Γ)) (saci_numExprVars scb_saci)
 }.
-Implicit Arguments StrongAltConInContext [[n][Γ]].
+Coercion scb_saci : StrongCaseBranch >-> StrongAltConInfo.
+Implicit Arguments StrongCaseBranch [[n][Γ]].
 
