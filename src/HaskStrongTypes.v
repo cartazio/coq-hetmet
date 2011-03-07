@@ -405,40 +405,6 @@ Fixpoint update_ξ
 
 
 
-(*
-Definition literalType (lit:Literal) : ∀ Γ, HaskType Γ := fun Γ TV ite => (TCon (literalTyCon lit)).
-Definition unlev {Γ:TypeEnv}(lht:LeveledHaskType Γ) : HaskType Γ   := match lht with t @@ l => t end.
-Definition getlev {Γ:TypeEnv}(lht:LeveledHaskType Γ) : HaskLevel Γ := match lht with t @@ l => l end.
-(* the type of the scrutinee in a case branch *)
-Require Import Coq.Arith.EqNat.
-Definition bump (n:nat) : {z:nat & lt z n} -> {z:nat & lt z (S n)}.
-  intros.
-  destruct H.
-  exists x; omega.
-  Defined.
-Definition vecOfNats (n:nat) : vec {z:nat & lt z n} n.
-  induction n.
-  apply vec_nil.
-  apply vec_cons.
-    exists n; omega.
-    apply (vec_map (bump _)); auto.
-    Defined.
-Definition var_eq_dec {Γ:TypeEnv}(hv1 hv2:HaskTyVar Γ) : sumbool (eq hv1 hv2) (not (eq hv1 hv2)).
-  set (hv1 _ (vecOfNats _)) as hv1'.
-  set (hv2 _ (vecOfNats _)) as hv2'.
-  destruct hv1' as [hv1_n hv1_pf].
-  destruct hv2' as [hv2_n hv2_pf].
-  clear hv1_pf.
-  clear hv2_pf.
-  set (eq_nat_decide hv1_n hv2_n) as dec.
-  destruct dec.
-    left.  admit.
-    right. intro. apply n. assert (hv1_n=hv2_n). admit. rewrite H0. apply eq_nat_refl.
-  Defined.
-(* equality on levels is decidable *)
-Definition lev_eq_dec {Γ:TypeEnv}(l1 l2:HaskLevel Γ) : sumbool (eq l1 l2) (not (eq l1 l2))
-  := @list_eq_dec (HaskTyVar Γ) (@var_eq_dec Γ) l1 l2.
-*)
 
 
 

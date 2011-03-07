@@ -17,7 +17,6 @@ Require Import Omega.
 Class EqDecidable (T:Type) :=
 { eqd_type           := T
 ; eqd_dec            :  forall v1 v2:T, sumbool (v1=v2) (not (v1=v2))
-; eqd_dec_reflexive  :  forall v, (eqd_dec v v) = (left _ (refl_equal _))
 }.
 Coercion eqd_type : EqDecidable >-> Sortclass.
 

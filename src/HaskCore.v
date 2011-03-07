@@ -42,9 +42,6 @@ Extract Inductive CoreBind =>
 (* extracts the Name from a CoreVar *)
 Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
 
-Variable coretype_eq_dec : forall (c1 c2:CoreType), sumbool (eq c1 c2) (not (eq c1 c2)).
-  Extract Inlined Constant coretype_eq_dec => "Type.coreEqType".
-
 Extract Constant ArrowTyCon           => "Type.funTyCon".     (* Figure 7, (->) *)
 Extract Constant CoFunConst           => "TyCon.TyCon".                        Extraction Implicit CoFunConst [ 1 ].
 Extract Constant TyFunConst           => "TyCon.TyCon".                        Extraction Implicit TyFunConst [ 1 ].
@@ -58,19 +55,5 @@ Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant he
 
 (* the magic wired-in name for the modal type elimination form *)
 Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
-
-(* detects our crude Core-encoding of modal type introduction/elimination forms *)
-Definition isBrak (ce:CoreExpr CoreVar) : ??CoreVar :=
-match ce with
-  | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
-    => if coreName_eq hetmet_brak_name (coreVarCoreName v) then Some ec else None
-  | _ => None
-end.
-Definition isEsc (ce:CoreExpr CoreVar) : ??CoreVar :=
-match ce with
-  | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
-    => if coreName_eq hetmet_esc_name (coreVarCoreName v) then Some ec else None
-  | _ => None
-end.
 
 

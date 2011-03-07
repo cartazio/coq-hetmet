@@ -15,7 +15,6 @@ Variable coreName_eq        : forall (a b:CoreName),   sumbool (a=b) (not (a=b))
 Axiom    coreName_eq_refl   : ∀ v, (coreName_eq v v)=(left _ (refl_equal v)).
 Instance CoreNameEqDecidable : EqDecidable CoreName :=
 { eqd_dec            := coreName_eq
-; eqd_dec_reflexive  := coreName_eq_refl
 }.
 
 Inductive CoreIPName        : Type -> Type := .                               Extract Inductive CoreIPName => "CoreSyn.IPName" [ ].
@@ -37,18 +36,6 @@ Extract Inductive CoreType =>
 Extract Inductive PredType =>
    "TypeRep.PredType" [ "TypeRep.ClassP" "TypeRep.IParam" "TypeRep.EqPred" ].
 
-Variable kindOfCoreType : CoreType -> Kind.        Extract Inlined Constant kindOfCoreType => "(coreKindToKind . Coercion.typeKind)".
-
-Definition haskLiteralToCoreType lit : CoreType :=
-  TyConApp (haskLiteralToTyCon lit) nil.
-
-Inductive CoreVarSort : Type :=
-| CoreExprVar : CoreType            -> CoreVarSort
-| CoreTypeVar : Kind                -> CoreVarSort
-| CoreCoerVar : CoreType * CoreType -> CoreVarSort.
-
-Variable coreVarSort           : CoreVar  -> CoreVarSort.   Extract Inlined Constant coreVarSort    => "coreVarSort".
-
 Variable coreTypeToString      : CoreType     -> string.    Extract Inlined Constant coreTypeToString       => "outputableToString".
 Variable coreNameToString      : CoreName     -> string.    Extract Inlined Constant coreNameToString       => "outputableToString".
 
@@ -56,3 +43,12 @@ Variable CoreCoercion          : Type.                      Extract Inlined Cons
 Variable coreCoercionToString  : CoreCoercion -> string.    Extract Inlined Constant coreCoercionToString   => "outputableToString".
 Variable coreCoercionKind      : CoreCoercion -> CoreType*CoreType.
  Extract Inlined Constant coreCoercionKind => "Coercion.coercionKind".
+
+Variable coretype_eq_dec : forall (c1 c2:CoreType), sumbool (eq c1 c2) (not (eq c1 c2)).
+  Extract Inlined Constant coretype_eq_dec => "Type.coreEqType".
+  Instance CoreTypeEqDecidable : EqDecidable CoreType.
+    apply Build_EqDecidable.
+    apply coretype_eq_dec.
+    Defined.
+
+Variable kindOfCoreType : CoreType -> Kind.      Extract Inlined Constant kindOfCoreType => "(coreKindToKind . Coercion.typeKind)".

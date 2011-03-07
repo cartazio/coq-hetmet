@@ -36,7 +36,8 @@ import qualified Data.Char
 import Data.Bits ((.&.), shiftL, (.|.))
 import Prelude ( (++), (+), (==), Show, show, Char )
 
-{-
+dataConEqTheta' dc = map (\p -> {-FIXME-}) (DataCon.dataConEqTheta dc)
+
 nat2int :: Nat -> Prelude.Int
 nat2int O     = 0
 nat2int (S x) = 1 + (nat2int x)
@@ -74,4 +75,4 @@ coreVarSort v | otherwise     = Prelude.error "Var.Var that is neither an expres
 
 outputableToString :: Outputable -> String
 outputableToString = (\x -> Outputable.showSDoc (Outputable.ppr x))
--}
+

@@ -5,24 +5,57 @@
 Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
+Require Import Coq.Lists.List.
 Require Import HaskGeneral.
 Require Import HaskLiterals.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCore.
+Require Import HaskWeakVars.
 Require Import HaskWeak.
+
+Variable coreVarToWeakVar      : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
+
+(* detects our crude Core-encoding of modal type introduction/elimination forms *)
+Definition isBrak (ce:CoreExpr CoreVar) : ??WeakTypeVar :=
+match ce with
+  | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
+    => if coreName_eq hetmet_brak_name (coreVarCoreName v) then
+      match coreVarToWeakVar v with
+        | WExprVar _  => None
+        | WTypeVar tv => Some tv
+        | WCoerVar _  => None
+      end else None
+  | _ => None
+end.
+Definition isEsc (ce:CoreExpr CoreVar) : ??WeakTypeVar :=
+match ce with
+  | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
+    => if coreName_eq hetmet_esc_name (coreVarCoreName v) then
+      match coreVarToWeakVar v with
+        | WExprVar _  => None
+        | WTypeVar tv => Some tv
+        | WCoerVar _  => None
+      end else None
+  | _ => None
+end.
+
+Definition coreCoercionToWeakCoercion (cc:CoreCoercion) : WeakCoercion :=
+  let (t1,t2) := coreCoercionKind cc
+  in  weakCoercion t1 t2 cc.
 
 Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
   match ce with
     | CoreELit   lit   => OK (WELit lit)
     | CoreENote  n e   => coreExprToWeakExpr e >>= fun e' => OK (WENote n e')
     | CoreEType  t     => Error "encountered CoreEType in a position where an Expr should have been"
-    | CoreECast  e co  => coreExprToWeakExpr e >>= fun e' => OK (WECast e' co)
+    | CoreECast  e co  => coreExprToWeakExpr e >>= fun e' =>
+                            OK (WECast e' (coreCoercionToWeakCoercion co))
 
-    | CoreEVar   v     => match coreVarSort v with
-                            | CoreExprVar _ => OK (WEVar v)
-                            | CoreTypeVar _ => Error "found a type variable inside an EVar!"
-                            | CoreCoerVar _ => Error "found a coercion variable inside an EVar!"
+    | CoreEVar   v     => match coreVarToWeakVar v with
+                            | WExprVar ev => OK (WEVar ev)
+                            | WTypeVar _  => Error "found a type variable inside an EVar!"
+                            | WCoerVar _  => Error "found a coercion variable inside an EVar!"
                           end
 
     | CoreEApp   e1 e2 => match isBrak e1 with
@@ -37,60 +70,64 @@ Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
                                          end
                           end
 
-    | CoreELam   v e => match coreVarSort v with
-                         | CoreExprVar _ => coreExprToWeakExpr e >>= fun e' => OK (WELam   v e')
-                         | CoreTypeVar _ => coreExprToWeakExpr e >>= fun e' => OK (WETyLam v e')
-                         | CoreCoerVar _ => coreExprToWeakExpr e >>= fun e' => OK (WECoLam v e')
+    | CoreELam   v e => match coreVarToWeakVar v with
+                         | WExprVar ev => coreExprToWeakExpr e >>= fun e' => OK (WELam   ev e')
+                         | WTypeVar tv => coreExprToWeakExpr e >>= fun e' => OK (WETyLam tv e')
+                         | WCoerVar cv => coreExprToWeakExpr e >>= fun e' => OK (WECoLam cv e')
                        end
 
-    | CoreELet   (CoreNonRec v ve) e => match coreVarSort v with
-                         | CoreExprVar _ => coreExprToWeakExpr ve >>= fun ve' =>
-                                            coreExprToWeakExpr e  >>= fun e'  => OK (WELet v ve' e')
-                         | CoreTypeVar _ => match e with
+    | CoreELet   (CoreNonRec v ve) e => match coreVarToWeakVar v with
+                         | WExprVar ev => coreExprToWeakExpr ve >>= fun ve' =>
+                                            coreExprToWeakExpr e  >>= fun e'  => OK (WELet ev ve' e')
+                         | WTypeVar _ => match e with
                                               | CoreEType t => Error "saw a type-let"
                                               | _           => Error "saw (ELet <tyvar> e) where e!=EType"
                                             end
-                         | CoreCoerVar _ => Error "saw an (ELet <coercionVar>)"
+                         | WCoerVar _ => Error "saw an (ELet <coercionVar>)"
                        end
 
     | CoreELet   (CoreRec rb)      e =>
-      ((fix coreExprToWeakExprList (cel:list (CoreVar * (CoreExpr CoreVar))) : ???(list (CoreVar * WeakExpr)) :=
+      ((fix coreExprToWeakExprList (cel:list (CoreVar * (CoreExpr CoreVar))) : ???(list (WeakExprVar * WeakExpr)) :=
         match cel with
           | nil => OK nil
           | (v',e')::t => coreExprToWeakExprList t >>= fun t' =>
-            match coreVarSort v' with
-              | CoreExprVar _ => coreExprToWeakExpr e' >>= fun e' => OK ((v',e')::t')
-              | CoreTypeVar _ => Error "found a type variable in a recursive let"
-              | CoreCoerVar _ => Error "found a coercion variable in a recursive let"
+            match coreVarToWeakVar v' with
+              | WExprVar ev => coreExprToWeakExpr e' >>= fun e' => OK ((ev,e')::t')
+              | WTypeVar _  => Error "found a type variable in a recursive let"
+              | WCoerVar _  => Error "found a coercion variable in a recursive let"
             end
         end) rb) >>= fun rb' =>
       coreExprToWeakExpr e >>= fun e' =>
       OK (WELetRec (unleaves' rb') e')
 
     | CoreECase  e v tbranches alts => 
+      match coreVarToWeakVar v with
+        | WTypeVar _  => Error "found a type variable in a case"
+        | WCoerVar _  => Error "found a coercion variable in a case"
+        | WExprVar ev => 
       coreExprToWeakExpr e
       >>= fun e' => coreTypeOfWeakExpr e' >>= fun te' =>
       match te' with
         | TyConApp _ tc lt =>
           ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (CoreExpr CoreVar)))
-                : ???(list (AltCon*list CoreVar*WeakExpr)) :=
+                : ???(list (AltCon*list WeakVar*WeakExpr)) :=
             match branches with
               | nil => OK nil
               | (mkTriple alt vars e)::rest =>
-                  mkBranches rest
-                  >>= fun rest' => 
+                  mkBranches rest >>= fun rest' => 
                     coreExprToWeakExpr e >>= fun e' => 
                     match alt with
                       | DEFAULT                => OK ((DEFAULT,nil,e')::rest')
                       | LitAlt lit             => OK ((LitAlt lit,nil,e')::rest')
-                      | DataAlt _ _ _ _ tc' dc => OK (((DataAlt _ dc),vars,e')::rest')
+                      | DataAlt _ _ _ _ tc' dc => OK (((DataAlt _ dc),(map coreVarToWeakVar vars),e')::rest')
                     end
             end) alts)
           >>= fun branches => coreExprToWeakExpr e
             >>= fun scrutinee =>
               list2vecOrError lt _ >>= fun lt' => 
-                OK (WELet v scrutinee (WECase (WEVar v) tbranches tc lt' (unleaves branches)))
+                  OK (WELet ev scrutinee (WECase (WEVar ev) tbranches tc lt' (unleaves branches)))
         | _ => Error "found a case whose scrutinee's type wasn't a TyConApp"
+      end
       end
   end.
 

@@ -44,6 +44,19 @@ Inductive Kind : Type :=
 Notation "'★'"   := KindType.
 Notation "a ⇛ b" := (KindTypeFunction a b).
 
+Instance KindEqDecidable : EqDecidable Kind.
+  apply Build_EqDecidable.
+  induction v1.
+    destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
+    destruct v2; try (right; intro q; inversion q; fail) ; auto.
+      destruct (IHv1_1 v2_1); destruct (IHv1_2 v2_2); subst; auto;
+      right; intro; subst; inversion H; subst; apply n; auto.
+    destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
+    destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
+    destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
+    destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
+  Defined.
+
 Variable tyConToString       : forall n, TyCon n -> string.  Extract Inlined Constant tyConToString         => "outputableToString".
 Variable tyFunToString       : ∀ n, TyFunConst n -> string.  Extract Inlined Constant tyFunToString         => "outputableToString".
 Variable coFunToString       : ∀ n, CoFunConst n -> string.  Extract Inlined Constant coFunToString         => "outputableToString".
@@ -56,15 +69,5 @@ Variable tyCon_eq   : forall {k}(n1 n2:TyCon k),  sumbool (n1=n2) (not (n1=n2)).
     Extract Inlined Constant tyCon_eq   => "(==)".
 Variable dataCon_eq : forall {n}{tc:TyCon n}{q}{r}{s}(n1 n2:DataCon tc q r s),  sumbool (n1=n2) (not (n1=n2)).
     Extract Inlined Constant dataCon_eq => "(==)".
-Axiom    tyCon_eq_reflexive    : forall `(tc:TyCon n),   (tyCon_eq tc tc) = (left _ (refl_equal tc)).
-Axiom    dataCon_eq_reflexive  : forall `(tc:@DataCon y z q r p) , (dataCon_eq tc tc) = (left _ (refl_equal tc)).
-
-Instance TyConEqDecidable {n} : EqDecidable (TyCon n) :=
-{ eqd_dec            := tyCon_eq
-; eqd_dec_reflexive  := tyCon_eq_reflexive
-}.
-
-Instance DataConEqDecidable {n}{tc:TyCon n}{a}{b}{c} : EqDecidable (@DataCon _ tc a b c) :=
-{ eqd_dec            := dataCon_eq
-; eqd_dec_reflexive  := dataCon_eq_reflexive
-}.
+Instance TyConEqDecidable {n} : EqDecidable (TyCon n) := { eqd_dec            := tyCon_eq }.
+Instance DataConEqDecidable {n}{tc:TyCon n}{a}{b}{c} : EqDecidable (@DataCon _ tc a b c) := { eqd_dec            := dataCon_eq }.

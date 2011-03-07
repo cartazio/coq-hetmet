@@ -9,6 +9,7 @@ Require Import HaskLiterals.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCore.
+Require Import HaskWeakVars.
 Require Import HaskWeak.
 Require Import HaskCoreToWeak.
 Require Import HaskStrongTypes.

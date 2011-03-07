@@ -13,6 +13,6 @@ Variable coreVar_eq       : forall (a b:CoreVar), sumbool (a=b) (not (a=b)).    
 Axiom    coreVar_eq_refl  : forall v, (coreVar_eq v v) = (left _ (refl_equal v)).
 Instance CoreVarEqDecidable : EqDecidable CoreVar :=
 { eqd_dec            := coreVar_eq
-; eqd_dec_reflexive  := coreVar_eq_refl
+(*; eqd_dec_reflexive  := coreVar_eq_refl*)
 }.
 
