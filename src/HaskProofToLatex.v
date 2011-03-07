@@ -206,8 +206,6 @@ Section ToLatex.
     end.
 End ToLatex.
 
-Axiom systemfc_all_rules_one_conclusion : forall h c1 c2 (r:Rule h (c1,,c2)), False.
-
 Definition nd_ml_toLatex {c}(pf:@ND _ Rule [] c) :=
   @SCND_toLatex _ _
       judgment2latex

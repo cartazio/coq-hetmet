@@ -135,4 +135,85 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 Definition UND_to_ND Γ Δ h c : ND (@URule Γ Δ) h c -> ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)
   := @nd_map' _ (@URule Γ Δ ) _ Rule (@UJudg2judg Γ Δ ) (fun h c r => nd_rule (RURule _ _ h c r)) h c.
 
+Lemma no_urules_with_empty_conclusion : forall Γ Δ c h, @URule Γ Δ c h -> h=[] -> False.
+  intro.
+  intro.
+  induction 1; intros; inversion H.
+  simpl in *;  destruct c; try destruct o;  simpl in *; try destruct u;  inversion H;  simpl in *;  apply IHX;  auto;  inversion H1.
+  simpl in *;  destruct c; try destruct o;  simpl in *; try destruct u;  inversion H;  simpl in *;  apply IHX;  auto;  inversion H1.
+  Qed.
+
+Lemma no_rules_with_empty_conclusion : forall c h, @Rule c h -> h=[] -> False.
+  intros.
+  destruct X; try destruct c; try destruct o; simpl in *; try inversion H.
+  apply no_urules_with_empty_conclusion in u.
+  apply u.
+  auto.
+  Qed.
+
+Lemma no_urules_with_multiple_conclusions : forall Γ Δ c h,
+  @URule Γ Δ c h -> { h1:Tree ??(UJudg Γ Δ) & { h2:Tree ??(UJudg Γ Δ) & h=(h1,,h2) }} -> False.
+  intro.
+  intro.
+  induction 1; intros.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+
+  apply IHX.
+  destruct X0. destruct s. destruct c; try destruct o; try destruct u; simpl in *.
+    inversion e.
+    inversion e.
+    exists c1. exists c2. auto.
+
+  apply IHX.
+  destruct X0. destruct s. destruct c; try destruct o; try destruct u; simpl in *.
+    inversion e.
+    inversion e.
+    exists c1. exists c2. auto.
+
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  Qed.
+
+Lemma no_rules_with_multiple_conclusions : forall c h,
+  Rule c h -> { h1:Tree ??Judg & { h2:Tree ??Judg & h=(h1,,h2) }} -> False.
+  intros.
+  destruct X; try destruct c; try destruct o; simpl in *; try inversion H;
+    try apply no_urules_with_empty_conclusion in u; try apply u.
+    destruct X0; destruct s; inversion e.
+    auto.
+    apply (no_urules_with_multiple_conclusions _ _ h (c1,,c2)) in u. inversion u. exists c1. exists c2. auto.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    Qed.
+
+Lemma systemfc_all_rules_one_conclusion : forall h c1 c2 (r:Rule h (c1,,c2)), False.
+  intros.
+  eapply no_rules_with_multiple_conclusions.
+  apply r.
+  exists c1.
+  exists c2.
+  auto.
+  Qed.
+
 
