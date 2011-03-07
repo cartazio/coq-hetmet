@@ -57,6 +57,8 @@ Section ToLatex.
 
   (* invariant: each proof shall emit its hypotheses visibly, except nd_id0 *)
   Section SCND_toLatex.
+
+    (* indicates which rules should be hidden (omitted) from the rendered proof; useful for structural operations *)
     Context (hideRule : forall h c (r:Rule h c), bool).
 
     Fixpoint SCND_toLatex {h}{c}(pns:SCND h c) : string :=
@@ -64,7 +66,6 @@ Section ToLatex.
         | scnd_leaf   ht c pn            => SCND_toLatex pn
         | scnd_branch ht c1 c2 pns1 pns2 => SCND_toLatex pns1 +++ " \hspace{1cm} " +++ SCND_toLatex pns2
         | scnd_weak     c                => ""
-        | scnd_axiom c               => judgment2latex c +++ eol
         | scnd_comp ht ct c pns rule => if hideRule _ _ rule
                                       then SCND_toLatex pns
                                       else "\trfrac["+++rule2latex _ _ rule +++ "]{" +++ eol +++
@@ -73,7 +74,7 @@ Section ToLatex.
       end.
   End SCND_toLatex.
 
-  (* FIXME: this doesn't actually work properly (but SCND_toLatex does!) *)
+  (* this is a work-in-progress; please use SCND_toLatex for now *)
   Fixpoint nd_toLatex {h}{c}(nd:@ND _ Rule h c)(indent:string) :=
     match nd with
       | nd_id0                      => indent +++ "% nd_id0 " +++ eol

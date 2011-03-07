@@ -218,21 +218,12 @@ Section Natural_Deduction.
    * emit as LaTeX code.
    *)
   Inductive SCND : Tree ??Judgment -> Tree ??Judgment -> Type :=
-  | scnd_axiom  : forall c       , SCND [] [c]
   | scnd_comp   : forall ht ct c , SCND ht ct -> Rule ct [c] -> SCND ht [c]
   | scnd_weak   : forall c       , SCND c  []
   | scnd_leaf   : forall ht c    , SCND ht [c]  -> SCND ht [c]
   | scnd_branch : forall ht c1 c2, SCND ht c1 -> SCND ht c2 -> SCND ht (c1,,c2)
   .
   Hint Constructors SCND.
-
-  Definition mkSCNDAxioms (h:Tree ??Judgment) : SCND [] h.
-    induction h.
-      destruct a.
-      apply scnd_leaf.  apply scnd_axiom.
-      apply scnd_weak.
-      apply scnd_branch; auto.
-      Defined.
 
   (* Any ND whose primitive Rules have at most one conclusion (note that nd_prod is allowed!) can be turned into an SCND. *)
   Definition mkSCND (all_rules_one_conclusion : forall h c1 c2, Rule h (c1,,c2) -> False)
@@ -265,28 +256,22 @@ Section Natural_Deduction.
   (* a "ClosedND" is a proof with no open hypotheses and no multi-conclusion rules *)
   Inductive ClosedND : Tree ??Judgment -> Type :=
   | cnd_weak   : ClosedND []
-  | cnd_rule   : forall h c    , ClosedND h -> Rule h  c -> ClosedND c
+  | cnd_rule   : forall h c    , ClosedND h  -> Rule h c    -> ClosedND c
   | cnd_branch : forall   c1 c2, ClosedND c1 -> ClosedND c2 -> ClosedND (c1,,c2)
   .
 
-  (*
   (* we can turn an SCND without hypotheses into a ClosedND *)
   Definition closedFromSCND h c (pn2:SCND h c)(cnd:ClosedND h) : ClosedND c.
   refine ((fix closedFromPnodes h c (pn2:SCND h c)(cnd:ClosedND h) {struct pn2} := 
     (match pn2 in SCND H C return H=h -> C=c -> _  with
       | scnd_weak   c                 => let case_weak := tt in _
       | scnd_leaf   ht z pn'          => let case_leaf := tt in let qq := closedFromPnodes _ _ pn' in _
-      | scnd_axiom c                  => let case_axiom := tt in _
       | scnd_comp  ht ct c pn' rule   => let case_comp := tt in let qq := closedFromPnodes _ _ pn' in _
       | scnd_branch ht c1 c2 pn' pn'' => let case_branch := tt in
                                         let q1 := closedFromPnodes _ _ pn' in 
                                         let q2 := closedFromPnodes _ _ pn'' in _
 
     end (refl_equal _) (refl_equal _))) h c pn2 cnd).
-
-  destruct case_axiom.
-    intros; subst.
-    (* FIXME *)
 
   destruct case_comp.
     intros.
@@ -313,7 +298,6 @@ Section Natural_Deduction.
     apply q1. subst. apply cnd0.
     apply q2. subst. apply cnd0.
     Defined.
-    *)
 
   Close Scope nd_scope.
   Open Scope pf_scope.
