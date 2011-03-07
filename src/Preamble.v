@@ -91,7 +91,7 @@ Reserved Notation "a '⊢ᴛy'  b : c"              (at level 20, b at level 99,
 Reserved Notation "a '⊢ᴄᴏ'  b : c ∼ d"          (at level 20, b at level 99).
 Reserved Notation "Γ '+'    x : c"              (at level 50, x at level 99).
 Reserved Notation "Γ '++'   x : a ∼ b"          (at level 50, x at level 99).
-Reserved Notation "φ₁ ∼∼ φ₂ : κ ⇒ φ₃"           (at level 11, φ₂ at level 99, right associativity).
+Reserved Notation "φ₁ ∼∼ φ₂ ⇒ φ₃"               (at level 11, φ₂ at level 99, right associativity).
 
 Reserved Notation "Γ > past : present '⊢ᴇ' succedent"
    (at level 52, past at level 99, present at level 50, succedent at level 50).

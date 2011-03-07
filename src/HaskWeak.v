@@ -6,12 +6,13 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import Coq.Lists.List.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreLiterals.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCoreTypes.
 Require Import HaskWeakVars.
+Require Import HaskWeakTypes.
 
 Inductive WeakExpr :=
 | WEVar       : WeakExprVar                                                  -> WeakExpr
@@ -21,21 +22,23 @@ Inductive WeakExpr :=
 | WECast      : WeakExpr                        -> WeakCoercion              -> WeakExpr
 | WENote      : Note                            -> WeakExpr                  -> WeakExpr
 | WEApp       : WeakExpr                        -> WeakExpr                  -> WeakExpr
-| WETyApp     : WeakExpr                        -> CoreType                  -> WeakExpr
+| WETyApp     : WeakExpr                        -> WeakType                  -> WeakExpr
 | WECoApp     : WeakExpr                        -> WeakCoercion              -> WeakExpr
 | WELam       : WeakExprVar                     -> WeakExpr                  -> WeakExpr
 | WETyLam     : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
 | WECoLam     : WeakCoerVar                     -> WeakExpr                  -> WeakExpr
 
-(* the CoreType argument is used only when going back from Weak to Core; it lets us dodge a possibly-failing type calculation *)
-| WEBrak      : WeakTypeVar                     -> WeakExpr  -> CoreType     -> WeakExpr
-| WEEsc       : WeakTypeVar                     -> WeakExpr  -> CoreType     -> WeakExpr
+(* the WeakType argument in WEBrak/WEEsc is used only when going back    *)
+(* from Weak to Core; it lets us dodge a possibly-failing type           *)
+(* calculation                                                           *)
+| WEBrak      : WeakTypeVar                     -> WeakExpr  -> WeakType     -> WeakExpr
+| WEEsc       : WeakTypeVar                     -> WeakExpr  -> WeakType     -> WeakExpr
 
 (* note that HaskWeak "Case" does not bind a variable; coreExprToWeakExpr adds a let-binder *)
 | WECase      : forall (scrutinee:WeakExpr)
-                       (tbranches:CoreType)
-                       {n:nat}(tc:TyCon n)
-                       (type_params:vec CoreType n)
+                       (tbranches:WeakType)
+                       (tc:TyCon)
+                       (type_params:list WeakType)
                        (alts : Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)),
                        WeakExpr.
 
@@ -56,8 +59,8 @@ Fixpoint getWeakExprFreeVars (me:WeakExpr) : list WeakExprVar :=
     | WETyLam  cv e     => getWeakExprFreeVars e
     | WECoLam  cv e     => getWeakExprFreeVars e
 
-    (* the messy fixpoints below are required by Coq's termination conditions *)
-    | WECase scrutinee tbranches n tc type_params alts =>
+    (* the messy fixpoints below are required by Coq's termination conditions; trust me, I tried to get rid of them *)
+    | WECase scrutinee tbranches tc type_params alts =>
       mergeDistinctLists (getWeakExprFreeVars scrutinee) (
         ((fix getWeakExprFreeVarsAlts (alts:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr))
           {struct alts} : list WeakExprVar :=
@@ -65,7 +68,7 @@ Fixpoint getWeakExprFreeVars (me:WeakExpr) : list WeakExprVar :=
             | T_Leaf  None                                  => nil
             | T_Leaf (Some (DEFAULT,_,_,_,e))                   => getWeakExprFreeVars e
             | T_Leaf (Some (LitAlt lit,_,_,_,e))                => getWeakExprFreeVars e
-            | T_Leaf (Some ((DataAlt _ _ _ _ _ dc), tvars, cvars, evars,e))  => removeFromDistinctList' evars (getWeakExprFreeVars e)
+            | T_Leaf (Some ((DataAlt dc), tvars, cvars, evars,e))  => removeFromDistinctList' evars (getWeakExprFreeVars e)
             | T_Branch b1 b2                        => mergeDistinctLists (getWeakExprFreeVarsAlts b1) (getWeakExprFreeVarsAlts b2)
           end) alts))
     | WELetRec mlr e => (fix removeVarsLetRec (mlr:Tree ??(WeakExprVar * WeakExpr))(cvl:list WeakExprVar) :=
@@ -90,74 +93,46 @@ Definition makeClosedExpression : WeakExpr -> WeakExpr :=
     | cv::cvl' => WELam cv (closeExpression me cvl')
   end) me (getWeakExprFreeVars me).
 
-(* messy first-order capture-avoiding substitution on CoreType's *)
-Fixpoint replaceCoreVar (te:CoreType)(tv:CoreVar)(tsubst:CoreType) : CoreType :=
-  match te with
-    | TyVarTy  tv'            => if eqd_dec tv tv' then tsubst else te
-    | AppTy  t1 t2            => AppTy (replaceCoreVar t1 tv tsubst) (replaceCoreVar t2 tv tsubst)
-    | FunTy    t1 t2          => FunTy (replaceCoreVar t1 tv tsubst) (replaceCoreVar t2 tv tsubst)
-    | ForAllTy  tv' t         => if eqd_dec tv tv' then te else ForAllTy tv' (replaceCoreVar t tv tsubst)
-    | PredTy (EqPred t1 t2)   => PredTy (EqPred (replaceCoreVar t1 tv tsubst) (replaceCoreVar t2 tv tsubst))
-    | PredTy (IParam ip ty)   => PredTy (IParam ip (replaceCoreVar ty tv tsubst))
-    | PredTy (ClassP _ c lt)  => PredTy (ClassP c ((fix replaceCoreDistinctList (lt:list CoreType) :=
-      match lt with
-        | nil => nil
-        | h::t => (replaceCoreVar h tv tsubst)::(replaceCoreDistinctList t)
-      end) lt))
-    | TyConApp _ tc lt => TyConApp tc ((fix replaceCoreDistinctList (lt:list CoreType) :=
-      match lt with
-        | nil => nil
-        | h::t => (replaceCoreVar h tv tsubst)::(replaceCoreDistinctList t)
-      end) lt)
-  end.
+Definition weakTypeOfLiteral (lit:HaskLiteral) : WeakType :=
+  (WTyCon (haskLiteralToTyCon lit)).
 
 (* calculate the CoreType of a WeakExpr *)
-Fixpoint coreTypeOfWeakExpr (ce:WeakExpr) : ???CoreType :=
+Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
   match ce with
     | WEVar   (weakExprVar v t) => OK t
-    | WELit   lit   => OK (haskLiteralToCoreType lit)
-    | WEApp   e1 e2 => coreTypeOfWeakExpr e1 >>= fun t' =>
+    | WELit   lit   => OK (weakTypeOfLiteral lit)
+    | WEApp   e1 e2 => weakTypeOfWeakExpr e1 >>= fun t' =>
                        match t' with
-                         | (TyConApp 2 tc (t1::t2::nil)) =>
-                           if (tyCon_eq tc ArrowTyCon)
-                             then OK t2
-                             else Error ("found non-function type "+++(weakTypeToString t')+++" in EApp")
+                         | (WAppTy (WAppTy WFunTyCon t1) t2) => OK t2
                          | _ => Error ("found non-function type "+++(weakTypeToString t')+++" in EApp")
                        end
-    | WETyApp e t    => coreTypeOfWeakExpr e >>= fun te =>
+    | WETyApp e t    => weakTypeOfWeakExpr e >>= fun te =>
                         match te with
-                          | ForAllTy v ct => OK (replaceCoreVar ct v t)
+                          | WForAllTy v ct => OK (replaceWeakTypeVar ct v t)
                           | _ => Error ("found non-forall type "+++(weakTypeToString te)+++" in ETyApp")
                         end
-    | WECoApp e co   => coreTypeOfWeakExpr e >>= fun te =>
+    | WECoApp e co   => weakTypeOfWeakExpr e >>= fun te =>
                         match te with
-                          | TyConApp 2 tc ((PredTy (EqPred t1 t2))::t3::nil) =>
-                            if (tyCon_eq tc ArrowTyCon)
-                              then OK t3
-                              else Error ("found non-coercion type "+++(weakTypeToString te)+++" in ETyApp")
+                          | WCoFunTy t1 t2 t => OK t
                           | _ => Error ("found non-coercion type "+++(weakTypeToString te)+++" in ETyApp")
                         end
-    | WELam   (weakExprVar ev vt) e => coreTypeOfWeakExpr e >>= fun t' => OK (TyConApp ArrowTyCon (vt::t'::nil))
-    | WETyLam tv e => coreTypeOfWeakExpr e >>= fun t' => match tv with weakTypeVar tvc _ => OK (ForAllTy tvc t') end
-    | WECoLam (weakCoerVar cv φ₁ φ₂) e =>
-      coreTypeOfWeakExpr e >>= fun t' => OK (TyConApp ArrowTyCon ((PredTy (EqPred φ₁ φ₂))::t'::nil))
-    | WELet   ev ve e            => coreTypeOfWeakExpr e
-    | WELetRec rb e              => coreTypeOfWeakExpr e
-    | WENote  n e                => coreTypeOfWeakExpr e
+    | WELam   (weakExprVar ev vt) e => weakTypeOfWeakExpr e >>= fun t' => OK (WAppTy (WAppTy WFunTyCon vt) t')
+    | WETyLam tv e => weakTypeOfWeakExpr e >>= fun t' => OK (WForAllTy tv t')
+    | WECoLam (weakCoerVar cv φ₁ φ₂) e => weakTypeOfWeakExpr e >>= fun t' => OK (WCoFunTy φ₁ φ₂ t')
+    | WELet   ev ve e            => weakTypeOfWeakExpr e
+    | WELetRec rb e              => weakTypeOfWeakExpr e
+    | WENote  n e                => weakTypeOfWeakExpr e
     | WECast  e (weakCoercion t1 t2 _) => OK t2
-    | WECase  scrutinee tbranches n tc type_params alts => OK tbranches
+    | WECase  scrutinee tbranches tc type_params alts => OK tbranches
 
     (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)
-    | WEBrak  ec e _ => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
-                                                           OK (TyConApp hetMetCodeTypeTyCon ((TyVarTy ecc)::t'::nil)) end
-    | WEEsc   ec e _ => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
+    | WEBrak  ec e _ => weakTypeOfWeakExpr e >>= fun t' => OK (WCodeTy ec t')
+    | WEEsc   ec e _ => weakTypeOfWeakExpr e >>= fun t' =>
       match t' with
-        | (TyConApp 2 tc ((TyVarTy ec')::t''::nil)) =>
-          if (tyCon_eq tc hetMetCodeTypeTyCon)
-          then if eqd_dec ecc ec' then OK t''
+        | (WAppTy (WAppTy WCodeTyCon (WTyVarTy ec')) t'') =>
+          if eqd_dec ec ec' then OK t''
             else Error "level mismatch in escapification"
-          else Error "ill-typed escapification"
         | _ => Error "ill-typed escapification"
-      end end
+      end
   end.
 

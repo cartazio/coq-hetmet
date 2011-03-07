@@ -6,8 +6,8 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreLiterals.
 Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 
@@ -41,14 +41,6 @@ Extract Inductive CoreBind =>
 
 (* extracts the Name from a CoreVar *)
 Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
-
-Extract Constant ArrowTyCon           => "Type.funTyCon".     (* Figure 7, (->) *)
-Extract Constant CoFunConst           => "TyCon.TyCon".                        Extraction Implicit CoFunConst [ 1 ].
-Extract Constant TyFunConst           => "TyCon.TyCon".                        Extraction Implicit TyFunConst [ 1 ].
-
-(*Extract Inlined Constant getDataCons => "TyCon.tyConDataCons".*)
-Variable mkTyConApp : forall n, TyCon n -> list CoreType -> CoreType.
-  Extract Inlined Constant mkTyConApp => "Type.mkTyConApp".
 
 (* the magic wired-in name for the modal type introduction form *)
 Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant hetmet_brak_name => "PrelNames.hetmet_brak_name".

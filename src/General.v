@@ -13,7 +13,7 @@ Require Import Preamble.
 Generalizable All Variables.
 Require Import Omega.
 
-
+Definition EqDecider T := forall (n1 n2:T),  sumbool (n1=n2) (not (n1=n2)).
 Class EqDecidable (T:Type) :=
 { eqd_type           := T
 ; eqd_dec            :  forall v1 v2:T, sumbool (v1=v2) (not (v1=v2))
@@ -113,6 +113,17 @@ Lemma tree_dec_eq :
   inversion H; auto.
   Defined.
 
+Lemma mapOptionTree_compose : forall A B C (f:A->B)(g:B->C)(l:Tree ??A),
+  (mapOptionTree (g ○ f) l) = (mapOptionTree g (mapOptionTree f l)).
+  induction l.
+    destruct a.
+    reflexivity.
+    reflexivity.
+    simpl.
+    rewrite IHl1.
+    rewrite IHl2.
+    reflexivity.
+    Qed.
 
 
 
@@ -322,8 +333,12 @@ Definition list_eq_dec : forall {T:Type}(l1 l2:list T)(dec:forall t1 t2:T, sumbo
       auto.
       Defined.
 
-
-
+Instance EqDecidableList {T:Type}(eqd:EqDecidable T) : EqDecidable (list T).
+  apply Build_EqDecidable.
+  intros.
+  apply list_eq_dec.
+  apply eqd_dec.
+  Defined.
 
 (*******************************************************************************)
 (* Length-Indexed Lists                                                        *)
@@ -413,6 +428,28 @@ Lemma vec_chop' {T}{l1 l2:list T}{Q}(v:vec Q (length (app l1 l2))) : vec Q (leng
   apply IHl1; clear IHl1.
   inversion v; subst; auto.
   Defined.
+
+Lemma vec2list_len {T}{n}(v:vec T n) : length (vec2list v) = n.
+  induction v; auto.
+  simpl.
+  omega.
+  Qed.
+
+Lemma vec2list_map_list2vec {A B}{n}(f:A->B)(v:vec A n) : map f (vec2list v) = vec2list (vec_map f v).
+  induction v; auto.
+  simpl. rewrite IHv.
+  reflexivity.
+  Qed.
+
+Lemma vec2list_list2vec {A}(v:list A) : vec2list (list2vec v) = v.
+  induction v; auto.
+  set (vec2list (list2vec (a :: v))) as q.
+  rewrite <- IHv.
+  unfold q.
+  clear q.
+  simpl.
+  reflexivity.
+  Qed.
 
 Notation "a ::: b" := (@vec_cons _ _ a b) (at level 20).
 
@@ -530,6 +567,7 @@ Lemma extensionality_composes : forall t1 t2 t3 (f f':t1->t2) (g g':t2->t3),
 
 
 
+Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 
 
 
@@ -548,28 +586,18 @@ Definition orErrorBind {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrError Q) :=
   end.
 Notation "a >>= b" := (@orErrorBind _ a _ b) (at level 20).
 
-Fixpoint list2vecOrError {T}(l:list T)(n:nat) : ???(vec T n) :=
-  match n as N return ???(vec _ N) with
-    | O => match l with
-             | nil => OK vec_nil
-             | _   => Error "list2vecOrError: list was too long"
-           end
-    | S n' => match l with
-                | nil   => Error "list2vecOrError: list was too short"
-                | t::l' => list2vecOrError l' n' >>= fun l'' => OK (vec_cons t l'')
-              end
-  end.
-
 Inductive Indexed {T:Type}(f:T -> Type) : ???T -> Type :=
 | Indexed_Error : forall error_message:string, Indexed f (Error error_message)
 | Indexed_OK    : forall t, f t -> Indexed f (OK t)
 .
-Ltac xauto := try apply Indexed_Error; try apply Indexed_OK.
 
 
-
-
-
+Require Import Coq.Arith.EqNat.
+Instance EqDecidableNat : EqDecidable nat.
+  apply Build_EqDecidable.
+  intros.
+  apply eq_nat_dec.
+  Defined.
 
 (* for a type with decidable equality, we can maintain lists of distinct elements *)
 Section DistinctList.
@@ -599,3 +627,10 @@ Section DistinctList.
   | cv'::cvl' => mergeDistinctLists cvl' (addToDistinctList cv' cvl2)
   end.
 End DistinctList.
+
+Lemma list2vecOrFail {T}(l:list T)(n:nat)(error_message:nat->nat->string) : ???(vec T n).
+  set (list2vec l) as v.
+  destruct (eqd_dec (length l) n).
+    rewrite e in v; apply OK; apply v.
+    apply (Error (error_message (length l) n)).
+    Defined.

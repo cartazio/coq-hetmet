@@ -9,15 +9,15 @@ Require Import NaturalDeduction.
 Require Import NaturalDeductionToLatex.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreLiterals.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskProof.
+Require Import HaskCoreTypes.
 
 (* escapifies any characters which might cause trouble for LaTeX *)
 Variable sanitizeForLatex    : string      -> string.        Extract Inlined Constant sanitizeForLatex      => "sanitizeForLatex".
-Variable nat2string          : nat         -> string.        Extract Inlined Constant nat2string            => "nat2string".
 
 Open Scope string_scope.
 Section ToLatex.
@@ -71,24 +71,20 @@ Section ToLatex.
   Fixpoint type2latex (needparens:bool)(n:nat)(t:RawHaskType nat) {struct t} : string :=
     match t with
     | TVar   v                                => tyvar2greek v
-    | TCon _  tc                              => "\text{\tt{"+++sanitizeForLatex (tyConToString _ tc) +++"}}"
-    | TCoerc κ                                => "{\text{\tt{(+>)}}}_{"+++ kind2latex κ +++"}"
+    | TCon    tc                              => "\text{\tt{"+++sanitizeForLatex (tyConToString tc) +++"}}"
+    | TCoerc t1 t2   t                        => "{("+++type2latex false n t1+++"{\sim}"
+                                                     +++type2latex false n t2+++")}\Rightarrow{"
+                                                     +++type2latex needparens n t+++"}"
+    | (TApp (TApp TArrow t1) t2)              =>
+      (if needparens
+                            then "("+++(type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)+++")"
+                            else (type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2))
+    | TArrow => "\text{\tt{(->)}}"
     | TApp   t1 t2                            =>
-      match (match t1 with
-        | TApp (TCon 2 tc) t1' => 
-          if (tyCon_eq tc ArrowTyCon)
-            then inl _ (if needparens
-                            then "("+++(type2latex true n t1')+++"{\rightarrow}"+++(type2latex true n t2)+++")"
-                            else (type2latex true n t1')+++"{\rightarrow}"+++(type2latex true n t2))
-            else inr _ tt
-        | _ => inr _ tt
-      end) with
-      | inl  x    => x
-      | _         => if needparens
+                     if needparens
                      then "("+++(type2latex true n t1)+++" "+++(type2latex false n t2)+++")"
                      else (type2latex true n t1)+++" "+++(type2latex false n t2)
-      end
-    | TFCApp n tfc lt                         => "{\text{\tt{"+++sanitizeForLatex (tyFunToString _ tfc) +++"}}}"+++
+    | TFCApp   tfc lt                         => "{\text{\tt{"+++sanitizeForLatex (tyConToString tfc) +++"}}}"+++
                                                  "_{"+++(nat2string n)+++"}"+++
                                                  fold_left (fun x y => " \  "+++x+++y)
                                                  ((fix type2latex_vec (needparens:bool)(n:nat){m}(lt:vec (RawHaskType nat) m)
@@ -169,14 +165,14 @@ Section ToLatex.
       | RCast   Γ _ Σ σ τ γ   p x => "Cast"
       | RAbsT   Γ  Σ κ σ a   p    => "AbsT"
       | RAppT   Γ _  Σ κ σ τ   p y => "AppT"
-      | RAppCo  Γ _ Σ κ _ σ₁ σ₂ σ γ p  => "AppCo"
+      | RAppCo  Γ _ Σ  _ σ₁ σ₂ σ γ p  => "AppCo"
       | RAbsCo  Γ  Σ κ σ cc σ₁ σ₂ p y q  => "AbsCo"
       | RApp    Γ _ Σ₁ Σ₂ tx te p => "App"
       | RLet    Γ _ Σ₁ Σ₂ σ₁ σ₂ p => "Let"
       | REmptyGroup _ a => "REmptyGroup"
       | RBindingGroup _ a b c d e => "RBindingGroup"
       | RLetRec Γ _ p lri q  => "LetRec"
-      | RCase   Σ Γ T κlen κ  ldcd τ  _ _ => "Case"
+      | RCase   Σ Γ T κlen κ  ldcd τ  _  => "Case"
       | RBrak   Σ _ a b c _ => "Brak"
       | REsc   Σ _ a b c _ => "Esc"
   end.

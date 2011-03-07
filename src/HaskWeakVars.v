@@ -7,49 +7,47 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreLiterals.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
+Require Import HaskWeakTypes.
 
-Inductive WeakTypeVar := weakTypeVar : CoreVar -> Kind     -> WeakTypeVar.
+(* TO DO: finish this *)
+Inductive WeakCoercion : Type := weakCoercion : WeakType -> WeakType -> CoreCoercion -> WeakCoercion.
 
-Inductive WeakCoercion : Type := weakCoercion : CoreType -> CoreType -> CoreCoercion -> WeakCoercion.
+(* a WeakCoerVar just wraps a CoreVar and tags it with the pair of types amongst which it coerces *)
+Inductive WeakCoerVar := weakCoerVar : CoreVar -> WeakType -> WeakType -> WeakCoerVar.
 
-Inductive WeakCoerVar := weakCoerVar : CoreVar -> CoreType -> CoreType -> WeakCoerVar.
+(* a WeakExprVar just wraps a CoreVar and tags it with the type of its value *)
+Inductive WeakExprVar := weakExprVar : CoreVar -> WeakType -> WeakExprVar.
 
-Inductive WeakExprVar := weakExprVar : CoreVar -> CoreType -> WeakExprVar.
-
+(* a WeakVar is one of the three sorts *)
 Inductive WeakVar : Type :=
 | WExprVar : WeakExprVar -> WeakVar
 | WTypeVar : WeakTypeVar -> WeakVar
 | WCoerVar : WeakCoerVar -> WeakVar.
-Coercion WExprVar : WeakExprVar >-> WeakVar.
-Coercion WTypeVar : WeakTypeVar >-> WeakVar.
-Coercion WCoerVar : WeakCoerVar >-> WeakVar.
+  Coercion WExprVar : WeakExprVar >-> WeakVar.
+  Coercion WTypeVar : WeakTypeVar >-> WeakVar.
+  Coercion WCoerVar : WeakCoerVar >-> WeakVar.
 
+Definition weakTypeVarToKind (tv:WeakTypeVar) : Kind :=
+  match tv with weakTypeVar _ k => k end.
+  Coercion weakTypeVarToKind : WeakTypeVar >-> Kind.
 
-Definition haskLiteralToCoreType lit : CoreType :=
-  TyConApp (haskLiteralToTyCon lit) nil.
+Definition weakVarToCoreVar (wv:WeakVar) : CoreVar :=
+  match wv with
+  | WExprVar (weakExprVar v _   ) => v
+  | WTypeVar (weakTypeVar v _   ) => v
+  | WCoerVar (weakCoerVar v _ _ ) => v
+ end.
+ Coercion weakVarToCoreVar : WeakVar >-> CoreVar.
 
-Definition weakTypeToCoreType (wt:CoreType) : CoreType := wt.
-
-Definition weakTypeToString : CoreType -> string :=
-  coreTypeToString ○ weakTypeToCoreType.
+Definition haskLiteralToWeakType lit : WeakType :=
+  WTyCon (haskLiteralToTyCon lit).
+  Coercion haskLiteralToWeakType : HaskLiteral >-> WeakType.
 
 (* EqDecidable instances for all of the above *)
-Instance CoreTypeVarEqDecidable : EqDecidable WeakTypeVar.
-  apply Build_EqDecidable.
-  intros.
-  destruct v1 as [cv1 k1].
-  destruct v2 as [cv2 k2].
-  destruct (eqd_dec cv1 cv2); subst.
-    destruct (eqd_dec k1 k2); subst.
-    left; auto.
-    right; intro; apply n; inversion H; subst; auto.
-    right; intro; apply n; inversion H; subst; auto.
-    Defined.
-
 Instance WeakCoerVarEqDecidable : EqDecidable WeakCoerVar.
   apply Build_EqDecidable.
   intros.
@@ -87,7 +85,3 @@ Instance WeakVarEqDecidable : EqDecidable WeakVar.
      left; auto.
      right; intro X; apply n; inversion X; auto.
   Defined.
-
-
-
-

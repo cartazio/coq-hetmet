@@ -12,8 +12,9 @@ Require Import General.
 Require Import NaturalDeduction.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreTypes.
+Require Import HaskCoreLiterals.
 Require Import HaskStrongTypes.
 
 (* A judgment consists of an environment shape (Γ and Δ) and a pair of trees of leveled types (the antecedent and succedent) valid
@@ -48,14 +49,15 @@ Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
   Coercion UJudg2judg : UJudg >-> Judg.
 
 (* information needed to define a case branch in a HaskProof *)
-Record ProofCaseBranch {n}{tc:TyCon n}{Γ}{lev}{branchtype : HaskType Γ}{avars} :=
-{ pcb_scb            :  @StrongCaseBranch n tc Γ avars
-; pcb_freevars        :  Tree ??(LeveledHaskType Γ)
-; pcb_judg            := scb_Γ pcb_scb > scb_Δ  pcb_scb
-                          > (mapOptionTree weakLT' pcb_freevars),,(unleaves (vec2list (scb_types pcb_scb)))
-                          |- [weakLT' (branchtype @@ lev)]
+Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ}{avars} :=
+{ pcb_scb            :  @StrongAltCon tc
+; pcb_freevars       :  Tree ??(LeveledHaskType Γ)
+; pcb_judg           := sac_Γ pcb_scb Γ > sac_Δ pcb_scb Γ avars (map weakCK' Δ)
+                > (mapOptionTree weakLT' pcb_freevars),,(unleaves (map (fun t => t@@weakL' lev)
+                  (vec2list (sac_types pcb_scb Γ avars))))
+                |- [weakLT' (branchtype @@ lev)]
 }.
-Coercion pcb_scb : ProofCaseBranch >-> StrongCaseBranch.
+Coercion pcb_scb : ProofCaseBranch >-> StrongAltCon.
 Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
@@ -98,19 +100,19 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RAbsT   : ∀ Γ Δ Σ κ σ   l,
   Rule [(κ::Γ)> (weakCE Δ)    >   mapOptionTree weakLT Σ |- [ HaskTApp (weakF σ) (FreshHaskTyVar _) @@ (weakL l)]]
        [Γ>Δ            >    Σ     |- [HaskTAll κ σ   @@ l]]
-| RAppCo  : forall Γ Δ Σ κ σ₁ σ₂ σ γ l,   Δ ⊢ᴄᴏ γ  : σ₁∼σ₂ ->
-    Rule [Γ>Δ> Σ |- [σ₁∼∼σ₂:κ ⇒ σ@@l]] [Γ>Δ>    Σ     |- [σ        @@l]]
+| RAppCo  : forall Γ Δ Σ σ₁ σ₂ σ γ l,   Δ ⊢ᴄᴏ γ  : σ₁∼σ₂ ->
+    Rule [Γ>Δ> Σ |- [σ₁∼∼σ₂ ⇒ σ@@l]] [Γ>Δ>    Σ     |- [σ        @@l]]
 | RAbsCo  : ∀ Γ Δ Σ κ σ σ₁ σ₂ l,
    Γ ⊢ᴛy σ₁:κ ->
    Γ ⊢ᴛy σ₂:κ ->
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ @@ l]]
-        [Γ > Δ >                         Σ |- [σ₁∼∼σ₂:κ⇒ σ @@l]]
+        [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
 | RLetRec        : ∀ Γ Δ Σ₁ τ₁ τ₂, Rule [Γ > Δ > Σ₁,,τ₂ |- τ₁,,τ₂ ] [Γ > Δ > Σ₁ |- τ₁ ]
-| RCase          : forall Γ Δ lev n tc Σ avars tbranches
-  (alts:Tree ??(@ProofCaseBranch n tc Γ lev tbranches avars)),
+| RCase          : forall Γ Δ lev tc Σ avars tbranches
+  (alts:Tree ??(@ProofCaseBranch tc Γ Δ lev tbranches avars)),
                    Rule
                        ((mapOptionTree pcb_judg alts),,
-                        [Γ > Δ >                                               Σ |- [ caseType tc avars @@ lev ] ])
+                        [Γ > Δ >                                              Σ |- [ caseType tc avars @@ lev ] ])
                         [Γ > Δ > (mapOptionTreeAndFlatten pcb_freevars alts),,Σ |- [ tbranches         @@ lev ] ]
 .
 Coercion RURule : URule >-> Rule.
@@ -125,12 +127,12 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q    l,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q l)
 | Flat_RAbsT            : ∀ Γ   Σ κ σ a    q    ,  Rule_Flat (RAbsT Γ   Σ κ σ a    q )
 | Flat_RAppT            : ∀ Γ Δ  Σ κ σ τ    q    l,  Rule_Flat (RAppT Γ Δ  Σ κ σ τ    q l)
-| Flat_RAppCo           : ∀ Γ Δ  Σ κ σ₁ σ₂ σ γ q l,  Rule_Flat (RAppCo Γ Δ  Σ κ σ₁ σ₂ σ γ  q l)
+| Flat_RAppCo           : ∀ Γ Δ  Σ σ₁ σ₂ σ γ q l,  Rule_Flat (RAppCo Γ Δ  Σ  σ₁ σ₂ σ γ  q l)
 | Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2 q3 x , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2 q3 x )
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
 | Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
 | Flat_RBindingGroup    : ∀ q a b c d e ,  Rule_Flat (RBindingGroup q a b c d e)
-| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  q, Rule_Flat (RCase Σ Γ T κlen κ θ l x q).
+| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x ).
 
 (* given a proof that uses only uniform rules, we can produce a general proof *)
 Definition UND_to_ND Γ Δ h c : ND (@URule Γ Δ) h c -> ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)

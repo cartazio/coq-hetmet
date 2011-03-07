@@ -7,8 +7,9 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import HaskGeneral.
-Require Import HaskLiterals.
+Require Import HaskKinds.
+Require Import HaskCoreTypes.
+Require Import HaskCoreLiterals.
 Require Import HaskStrongTypes.
 
 Section HaskStrong.
@@ -17,13 +18,15 @@ Section HaskStrong.
   Context `{EQD_VV:EqDecidable VV}.
 
   (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
-  Record StrongCaseBranchWithVVs {n}{tc:TyCon n}{Γ}{atypes:vec (HaskType Γ) n} :=
-  { scbwv_scb       :  @StrongCaseBranch n tc Γ atypes
-  ; scbwv_exprvars  :  vec VV (saci_numExprVars scbwv_scb)
-  ; scbwv_varstypes := vec2list (vec_zip scbwv_exprvars (scb_types scbwv_scb))
+  Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:vec (HaskType Γ) tc} :=
+  { scbwv_sac       :  @StrongAltCon tc
+  ; scbwv_exprvars  :  vec VV (sac_numExprVars scbwv_sac)
+  ; scbwv_varstypes := vec_zip scbwv_exprvars (sac_types scbwv_sac Γ atypes)
+  ; scbwv_ξ         := fun ξ lev =>  update_ξ (weakLT'○ξ) (vec2list
+                                        (vec_map (fun x => ((fst x),(snd x @@ weakL' lev))) scbwv_varstypes))
   }.
-  Implicit Arguments StrongCaseBranchWithVVs [[n][Γ]].
-  Coercion scbwv_scb : StrongCaseBranchWithVVs >-> StrongCaseBranch.
+  Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
+  Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.
 
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ) -> LeveledHaskType Γ -> Type :=
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
@@ -36,15 +39,18 @@ Section HaskStrong.
   | ECast  : ∀ Γ Δ ξ γ t1 t2 l, Δ ⊢ᴄᴏ γ : t1 ∼ t2 ->  Expr Γ Δ ξ (t1 @@ l)                        -> Expr Γ Δ ξ (t2 @@ l)
   | ENote  : ∀ Γ Δ ξ t, Note                      -> Expr Γ Δ ξ t                                 -> Expr Γ Δ ξ t
   | ETyApp : ∀ Γ Δ κ σ τ ξ l,     Γ ⊢ᴛy τ : κ -> Expr Γ Δ ξ (HaskTAll κ σ @@ l)                   -> Expr Γ Δ ξ (substT σ τ @@ l)
-  | ECoLam : ∀ Γ Δ κ σ σ₁ σ₂ ξ l,   Γ ⊢ᴛy σ₁:κ -> Γ ⊢ᴛy σ₂:κ -> Expr Γ (σ₁∼∼∼σ₂::Δ) ξ (σ @@ l)    -> Expr Γ Δ ξ (σ₁∼∼σ₂ :κ ⇒ σ @@ l)
-  | ECoApp : ∀ Γ Δ κ γ σ₁ σ₂ σ ξ l, Δ ⊢ᴄᴏ γ  : σ₁∼σ₂ -> Expr Γ Δ ξ (σ₁ ∼∼ σ₂ : κ ⇒ σ @@ l)        -> Expr Γ Δ ξ (σ        @@l)
+  | ECoLam : ∀ Γ Δ κ σ σ₁ σ₂ ξ l,   Γ ⊢ᴛy σ₁:κ -> Γ ⊢ᴛy σ₂:κ -> Expr Γ (σ₁∼∼∼σ₂::Δ) ξ (σ @@ l)    -> Expr Γ Δ ξ (σ₁∼∼σ₂    ⇒ σ @@ l)
+  | ECoApp : ∀ Γ Δ   γ σ₁ σ₂ σ ξ l, Δ ⊢ᴄᴏ γ  : σ₁∼σ₂ -> Expr Γ Δ ξ (σ₁ ∼∼ σ₂ ⇒ σ @@ l)            -> Expr Γ Δ ξ (σ        @@l)
   | ETyLam : ∀ Γ Δ ξ κ σ l,
     Expr (κ::Γ) (weakCE Δ) (weakLT○ξ) (HaskTApp (weakF σ) (FreshHaskTyVar _)@@(weakL l))-> Expr Γ Δ ξ (HaskTAll κ σ @@ l)
 
-  | ECase    : forall Γ Δ ξ l n (tc:TyCon n) atypes tbranches,
+  | ECase    : forall Γ Δ ξ l tc atypes tbranches,
                Expr Γ Δ ξ (caseType tc atypes @@ l) ->
                Tree ??{ scb : StrongCaseBranchWithVVs tc atypes
-                            & Expr (scb_Γ scb) (scb_Δ scb) (update_ξ (weakLT'○ξ) (scbwv_varstypes scb)) (weakLT' (tbranches@@l)) } ->
+                            & Expr (sac_Γ scb Γ)
+                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+                                   (scbwv_ξ scb ξ l)
+                                   (weakLT' (tbranches@@l)) } ->
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars, let ξ' := update_ξ ξ (map (fun x => ((fst x),(snd x @@ l))) (leaves vars)) in
@@ -60,4 +66,4 @@ Section HaskStrong.
   .
 
 End HaskStrong.
-Implicit Arguments StrongCaseBranchWithVVs [[n][Γ]].
+Implicit Arguments StrongCaseBranchWithVVs [[Γ]].

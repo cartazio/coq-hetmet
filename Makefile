@@ -5,13 +5,9 @@ allfiles := $(coqfiles) $(shell find src -name \*.hs)
 default: build/CoqPass.hs
 
 build/CoqPass.hs: build/Makefile.coq $(allfiles)
-
-        # first we build with -dont-load-proofs, since that runs very quickly
-	cd build; make -f Makefile.coq OPT="-dont-load-proofs" Main.vo
-
-        # however the final extraction must be done without -dont-load-proofs
 	cd build; make -f Makefile.coq Extraction.vo
-	cat src/Extraction-prefix.hs build/Extraction.hs > build/CoqPass.hs
+	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
+	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
 
 build/Makefile.coq: $(coqfiles)
 	mkdir -p build
