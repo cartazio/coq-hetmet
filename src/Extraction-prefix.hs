@@ -5,7 +5,6 @@ where
 --import TcType
 --import CoreFVs
 --import CoreUtils
---import MkCore
 --import Var
 --import BasicTypes
 --import Bag
@@ -13,6 +12,7 @@ where
 --import SrcLoc
 --import Data.List
 
+import qualified MkCore
 import qualified TysWiredIn
 import qualified TysPrim
 import qualified Outputable

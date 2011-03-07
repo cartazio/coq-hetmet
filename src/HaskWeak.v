@@ -26,8 +26,12 @@ Inductive WeakExpr :=
 | WELam       : WeakExprVar                     -> WeakExpr                  -> WeakExpr
 | WETyLam     : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
 | WECoLam     : WeakCoerVar                     -> WeakExpr                  -> WeakExpr
-| WEBrak      : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
-| WEEsc       : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
+
+(* the CoreType argument is used only when going back from Weak to Core; it lets us dodge a possibly-failing type calculation *)
+| WEBrak      : WeakTypeVar                     -> WeakExpr  -> CoreType     -> WeakExpr
+| WEEsc       : WeakTypeVar                     -> WeakExpr  -> CoreType     -> WeakExpr
+
+(* note that HaskWeak "Case" does not bind a variable; coreExprToWeakExpr adds a let-binder *)
 | WECase      : forall (scrutinee:WeakExpr)
                        (tbranches:CoreType)
                        {n:nat}(tc:TyCon n)
@@ -44,8 +48,8 @@ Fixpoint getWeakExprFreeVars (me:WeakExpr) : list WeakExprVar :=
     | WENote   n e      =>                            getWeakExprFreeVars e
     | WETyApp  e t      =>                            getWeakExprFreeVars e
     | WECoApp  e co     =>                            getWeakExprFreeVars e
-    | WEBrak   ec e     =>                            getWeakExprFreeVars e
-    | WEEsc    ec e     =>                            getWeakExprFreeVars e
+    | WEBrak   ec e _   =>                            getWeakExprFreeVars e
+    | WEEsc    ec e _   =>                            getWeakExprFreeVars e
     | WELet    cv e1 e2 => mergeDistinctLists        (getWeakExprFreeVars e1) (removeFromDistinctList cv (getWeakExprFreeVars e2))
     | WEApp    e1 e2    => mergeDistinctLists        (getWeakExprFreeVars e1)                            (getWeakExprFreeVars e2)
     | WELam    cv e     => @removeFromDistinctList _ WeakExprVarEqDecidable cv (getWeakExprFreeVars e)
@@ -147,9 +151,11 @@ Fixpoint coreTypeOfWeakExpr (ce:WeakExpr) : ???CoreType :=
     | WENote  n e                => coreTypeOfWeakExpr e
     | WECast  e (weakCoercion t1 t2 _) => OK t2
     | WECase  scrutinee tbranches n tc type_params alts => OK tbranches
-    | WEBrak  ec e => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
+
+    (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)
+    | WEBrak  ec e _ => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
                                                            OK (TyConApp hetMetCodeTypeTyCon ((TyVarTy ecc)::t'::nil)) end
-    | WEEsc   ec e => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
+    | WEEsc   ec e _ => coreTypeOfWeakExpr e >>= fun t' => match ec with weakTypeVar ecc _ =>
       match t' with
         | (TyConApp 2 tc ((TyVarTy ec')::t''::nil)) =>
           if (tyCon_eq tc hetMetCodeTypeTyCon)

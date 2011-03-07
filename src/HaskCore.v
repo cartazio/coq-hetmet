@@ -12,19 +12,19 @@ Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 
 (* this type must extract to EXACTLY match TypeRep.Type *)
-Inductive CoreExpr (b:Type) :=
-| CoreEVar   : CoreVar                          -> CoreExpr b
-| CoreELit   : HaskLiteral                      -> CoreExpr b
-| CoreEApp   : CoreExpr b      ->  CoreExpr b   -> CoreExpr b
-| CoreELam   :          b      ->  CoreExpr b   -> CoreExpr b
-| CoreELet   : CoreBind b      ->  CoreExpr b   -> CoreExpr b
-| CoreECase  : CoreExpr b -> b ->  CoreType     -> list (@triple AltCon (list b) (CoreExpr b)) -> CoreExpr b
-| CoreECast  : CoreExpr b      ->  CoreCoercion -> CoreExpr b
-| CoreENote  : Note            ->  CoreExpr b   -> CoreExpr b
-| CoreEType  : CoreType                         -> CoreExpr b
-with      CoreBind (b:Type) :=
-| CoreNonRec : b -> CoreExpr b       -> CoreBind b
-| CoreRec    : list (b * CoreExpr b) -> CoreBind b.
+Inductive CoreExpr {b:Type} :=
+| CoreEVar   : CoreVar                          -> CoreExpr
+| CoreELit   : HaskLiteral                      -> CoreExpr
+| CoreEApp   : CoreExpr        ->  CoreExpr     -> CoreExpr
+| CoreELam   : b               ->  CoreExpr     -> CoreExpr
+| CoreELet   : CoreBind        ->  CoreExpr     -> CoreExpr
+| CoreECase  : CoreExpr   -> b ->  CoreType     -> list (@triple AltCon (list b) CoreExpr) -> CoreExpr
+| CoreECast  : CoreExpr        ->  CoreCoercion -> CoreExpr
+| CoreENote  : Note            ->  CoreExpr     -> CoreExpr
+| CoreEType  : CoreType                         -> CoreExpr
+with      CoreBind {b:Type} :=
+| CoreNonRec : b -> CoreExpr         -> CoreBind  
+| CoreRec    : list (b * CoreExpr  ) -> CoreBind.
 Extract Inductive CoreExpr =>
    "CoreSyn.Expr" [
       "CoreSyn.Var"

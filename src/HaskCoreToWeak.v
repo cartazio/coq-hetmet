@@ -17,24 +17,24 @@ Require Import HaskWeak.
 Variable coreVarToWeakVar      : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
-Definition isBrak (ce:CoreExpr CoreVar) : ??WeakTypeVar :=
+Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_brak_name (coreVarCoreName v) then
       match coreVarToWeakVar v with
         | WExprVar _  => None
-        | WTypeVar tv => Some tv
+        | WTypeVar tv => Some (tv,tbody)
         | WCoerVar _  => None
       end else None
   | _ => None
 end.
-Definition isEsc (ce:CoreExpr CoreVar) : ??WeakTypeVar :=
+Definition isEsc (ce:@CoreExpr CoreVar) : ??(WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_esc_name (coreVarCoreName v) then
       match coreVarToWeakVar v with
         | WExprVar _  => None
-        | WTypeVar tv => Some tv
+        | WTypeVar tv => Some (tv,tbody)
         | WCoerVar _  => None
       end else None
   | _ => None
@@ -44,7 +44,7 @@ Definition coreCoercionToWeakCoercion (cc:CoreCoercion) : WeakCoercion :=
   let (t1,t2) := coreCoercionKind cc
   in  weakCoercion t1 t2 cc.
 
-Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
+Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
   match ce with
     | CoreELit   lit   => OK (WELit lit)
     | CoreENote  n e   => coreExprToWeakExpr e >>= fun e' => OK (WENote n e')
@@ -59,9 +59,9 @@ Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
                           end
 
     | CoreEApp   e1 e2 => match isBrak e1 with
-                            | Some tv => coreExprToWeakExpr e2 >>= fun e' => OK (WEBrak tv e')
+                            | Some (tv,t) => coreExprToWeakExpr e2 >>= fun e' => OK (WEBrak tv e' t)
                             | None    => match isEsc e1 with
-                                           | Some tv => coreExprToWeakExpr e2 >>= fun e' => OK (WEEsc tv e')
+                                           | Some (tv,t) => coreExprToWeakExpr e2 >>= fun e' => OK (WEEsc tv e' t)
                                            | None    => coreExprToWeakExpr e1 >>= fun e1' =>
                                              match e2 with
                                                | CoreEType t => OK (WETyApp e1' t)
@@ -87,7 +87,7 @@ Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
                        end
 
     | CoreELet   (CoreRec rb)      e =>
-      ((fix coreExprToWeakExprList (cel:list (CoreVar * (CoreExpr CoreVar))) : ???(list (WeakExprVar * WeakExpr)) :=
+      ((fix coreExprToWeakExprList (cel:list (CoreVar * (@CoreExpr CoreVar))) : ???(list (WeakExprVar * WeakExpr)) :=
         match cel with
           | nil => OK nil
           | (v',e')::t => coreExprToWeakExprList t >>= fun t' =>
@@ -109,7 +109,7 @@ Fixpoint coreExprToWeakExpr (ce:CoreExpr CoreVar) : ???WeakExpr :=
       >>= fun e' => coreTypeOfWeakExpr e' >>= fun te' =>
       match te' with
         | TyConApp _ tc lt =>
-          ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (CoreExpr CoreVar)))
+          ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (@CoreExpr CoreVar)))
                 : ???(list (AltCon*list WeakVar*WeakExpr)) :=
             match branches with
               | nil => OK nil

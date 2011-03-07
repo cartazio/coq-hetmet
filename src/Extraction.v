@@ -40,7 +40,7 @@ Extract Constant shift => "\ b c -> Data.Char.chr (((Char.code c) `shiftL` 1) .&
 Unset Extraction Optimize.
 Unset Extraction AutoInline.
 
-Definition coqCoreToStringPass (s:CoreExpr CoreVar) : string
+Definition coqCoreToStringPass (s:@CoreExpr CoreVar) : string
    := "FIXME".
 (*
 Definition coqCoreToCorePass (s:CoreExpr CoreVar) : CoreExpr CoreVar
