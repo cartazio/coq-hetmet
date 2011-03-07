@@ -4,7 +4,8 @@ allfiles := $(coqfiles) $(shell find src -name \*.hs)
 
 default: build/CoqPass.hs
 
-build/CoqPass.hs: build/Makefile.coq $(allfiles)
+build/CoqPass.hs: $(allfiles)
+	make build/Makefile.coq
 	cd build; make -f Makefile.coq Extraction.vo
 	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
 	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
@@ -46,3 +47,10 @@ publish:
 	ssh login.eecs.berkeley.edu -- 'rm public_html/coq-in-ghc/pdfs/*.pdf' ; true
 	scp .temp/*.pdf login.eecs.berkeley.edu:public_html/coq-in-ghc/pdfs/
 	rm -rf .temp
+
+push: build/CoqPass.hs
+	git push http://git.megacz.com/coq-garrows.git master
+	git add -f build/CoqPass.hs
+	git commit -m 'update baked-in CoqPass.hs'
+	git push http://git.megacz.com/coq-garrows.git master:coq-extraction-baked-in
+	git reset HEAD^
