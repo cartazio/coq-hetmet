@@ -24,10 +24,10 @@ clean:
 
 # this is for Adam's use only!
 push: build/CoqPass.hs
-	git push http://git.megacz.com/coq-garrows.git master
+	git push http://git.megacz.com/coq-hetmet.git master
 	git add -f build/CoqPass.hs; \
 	  git commit -m 'update baked-in CoqPass.hs' && \
-	  (git push -f http://git.megacz.com/coq-garrows.git master:coq-extraction-baked-in; \
+	  (git push -f http://git.megacz.com/coq-hetmet.git master:coq-extraction-baked-in; \
 	   git reset HEAD^)
 	make publish
 
