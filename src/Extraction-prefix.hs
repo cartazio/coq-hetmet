@@ -26,25 +26,46 @@ import Prelude ( (++), (+), (==), Show, show, Char )
 import qualified Prelude
 import qualified GHC.Base
 
+-- used for extracting strings
+bin2ascii =
+  (\ b0 b1 b2 b3 b4 b5 b6 b7 ->
+     let f b i = if b then 1 `shiftL` i else 0
+     in Data.Char.chr (f b0 0 .|. f b1 1 .|. f b2 2 .|. f b3 3 .|. f b4 4 .|. f b5 5 .|. f b6 6 .|. f b7 7))
+--bin2ascii' =
+--  (\ f c -> let n = Char.code c in let h i = (n .&. (1 `shiftL` i)) /= 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))
+--shiftAscii =
+--  \ b c -> Data.Char.chr (((Char.code c) `shiftL` 1) .&. 255 .|. if b then 1 else 0)
+
 -- crude way of casting Coq "error monad" into Haskell exceptions
 errOrFail :: OrError a -> a
 errOrFail (OK x)    = x
 errOrFail (Error s) = Prelude.error s
 
+getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]
+getTyConTyVars tc = if TyCon.isFunTyCon tc then [] else if TyCon.isPrimTyCon tc then [] else TyCon.tyConTyVars tc
+
 -- to do: this could be moved into Coq
 coreVarToWeakVar :: Var.Var -> WeakVar
 coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
 coreVarToWeakVar v | Var.isTyVar v = WTypeVar (WeakTypeVar v (coreKindToKind (Var.varType v)))
-coreVarToWeakVar v | Var.isCoVar v = Prelude.error "FIXME coerVarSort not fully implemented"
+coreVarToWeakVar v | Var.isCoVar v = WCoerVar (WeakCoerVar v (Prelude.error "FIXME") (Prelude.error "FIXME"))
 coreVarToWeakVar _                 =
    Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
+
+tyConOrTyFun :: TyCon.TyCon -> Prelude.Either TyCon.TyCon TyCon.TyCon
+--FIXME: go back to this
+--tyConOrTyFun n = if TyCon.isFamInstTyCon n then Prelude.Left n else Prelude.Right n
+tyConOrTyFun n = if TyCon.isFamInstTyCon n then Prelude.Left n else Prelude.Left n
+
+tyFunResultKind :: TyCon.TyCon -> Kind
+tyFunResultKind tc = coreKindToKind (TyCon.tyConKind tc)
 
 nat2int :: Nat -> Prelude.Int
 nat2int O     = 0
 nat2int (S x) = 1 + (nat2int x)
 
-nat2string :: Nat -> Prelude.String
-nat2string n = show (nat2int n)
+natToString :: Nat -> Prelude.String
+natToString n = show (nat2int n)
 
 -- only needs to sanitize characters which might appear in Haskell identifiers
 sanitizeForLatex :: Prelude.String -> Prelude.String
@@ -71,9 +92,8 @@ coreKindToKind k =
 outputableToString :: Outputable.Outputable a => a -> Prelude.String
 outputableToString = (\x -> Outputable.showSDoc (Outputable.ppr x))
 
+-- TO DO: I think we can remove this now
 checkTypeEquality :: Type.Type -> Type.Type -> Prelude.Bool
--- checkTypeEquality t1 t2 = Type.coreEqType (coreViewDeep t1) (coreViewDeep t2)
--- checkTypeEquality t1 t2 = Type.tcEqType (coreViewDeep t1) (coreViewDeep t2)
 checkTypeEquality t1 t2 = Type.tcEqType (Type.expandTypeSynonyms t1) (Type.expandTypeSynonyms t2)
 
 --showType t = outputableToString (Type.expandTypeSynonyms t)

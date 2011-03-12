@@ -47,6 +47,17 @@ Definition haskLiteralToWeakType lit : WeakType :=
   WTyCon (haskLiteralToTyCon lit).
   Coercion haskLiteralToWeakType : HaskLiteral >-> WeakType.
 
+Variable coreVarToWeakVar  : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
+Variable getTyConTyVars_   : CoreTyCon   -> list CoreVar.  Extract Inlined Constant getTyConTyVars_   => "getTyConTyVars".
+Definition tyConTyVars (tc:CoreTyCon) :=
+  General.filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (getTyConTyVars_ tc)).
+  Opaque tyConTyVars.
+Definition tyConKind (tc:TyCon) : list Kind :=
+  map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc).
+Variable tyFunResultKind : CoreTyCon -> Kind. Extract Inlined Constant tyFunResultKind => "tyFunResultKind".
+Definition tyFunKind (tc:TyFun) : ((list Kind) * Kind) :=
+  ((map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc)) , (tyFunResultKind tc)).
+
 (* EqDecidable instances for all of the above *)
 Instance WeakCoerVarEqDecidable : EqDecidable WeakCoerVar.
   apply Build_EqDecidable.
@@ -85,3 +96,8 @@ Instance WeakVarEqDecidable : EqDecidable WeakVar.
      left; auto.
      right; intro X; apply n; inversion X; auto.
   Defined.
+
+
+
+Instance WeakVarToString : ToString WeakVar :=
+  { toString := fun x => toString (weakVarToCoreVar x) }.

@@ -21,6 +21,10 @@ Class EqDecidable (T:Type) :=
 Coercion eqd_type : EqDecidable >-> Sortclass.
 
 
+Class ToString (T:Type) := { toString : T -> string }.
+Instance StringToString : ToString string := { toString := fun x => x }.
+Notation "a +++ b" := (append (toString a) (toString b)) (at level 100).
+
 (*******************************************************************************)
 (* Trees                                                                       *)
 
@@ -524,6 +528,50 @@ Inductive IList (I:Type)(F:I->Type) : list I -> Type :=
 | ICons     :   forall i is, F i -> IList I F is -> IList I F (i::is).
 Implicit Arguments INil [ I F ].
 Implicit Arguments ICons [ I F ].
+
+Notation "a :::: b" := (@ICons _ _ _ _ a b) (at level 20).
+
+Definition ilist_head {T}{F}{x}{y} : IList T F (x::y) -> F x.
+  intro il.
+  inversion il.
+  subst.
+  apply X.
+  Defined.
+
+Definition ilist_tail {T}{F}{x}{y} : IList T F (x::y) -> IList T F y.
+  intro il.
+  inversion il.
+  subst.
+  apply X0.
+  Defined.
+
+Definition ilmap {I}{F}{G}{il:list I}(f:forall i:I, F i -> G i) : IList I F il -> IList I G il.
+  induction il; intros; auto.
+  apply INil.
+  inversion X; subst.
+  apply ICons; auto.
+  Defined.
+
+Lemma ilist_chop {T}{F}{l1 l2:list T}(v:IList T F (app l1 l2)) : IList T F l1.
+  induction l1; auto.
+  apply INil.
+  apply ICons.
+  inversion v; auto.
+  apply IHl1.
+  inversion v; auto.
+  Defined.
+
+Lemma ilist_chop' {T}{F}{l1 l2:list T}(v:IList T F (app l1 l2)) : IList T F l2.
+  induction l1; auto.
+  apply IHl1.
+  inversion v; subst; auto.
+  Defined.
+
+Fixpoint ilist_to_list {T}{Z}{l:list T}(il:IList T (fun _ => Z) l) : list Z :=
+  match il with
+  | INil   => nil
+  | a::::b => a::(ilist_to_list b)
+  end.
 
 (* a tree indexed by a (Tree (option X)) *)
 Inductive ITree (I:Type)(F:I->Type) : Tree ??I -> Type :=

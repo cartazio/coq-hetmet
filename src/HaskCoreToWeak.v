@@ -15,15 +15,10 @@ Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
 
-(* this distinguishes SystemFC "type functions" (true) which are always fully applied from "type constructors" which aren't *)
-Variable isFamilyTyCon         : TyCon -> bool.         Extract Inlined Constant isFamilyTyCon => "TyCon.isFamilyTyCon".
-
-
 Axiom    tycons_distinct       : ~(ArrowTyCon=ModalBoxTyCon).
+Variable tyConOrTyFun          : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun      => "tyConOrTyFun".
 
-Variable coreVarToWeakVar      : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
-
-Fixpoint coreTypeToWeakType (ct:CoreType) : ???WeakType :=
+Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   match ct with
   | TyVarTy  cv              => match coreVarToWeakVar cv with
                                   | WExprVar _  => Error "encountered expression variable in a type"
@@ -31,49 +26,53 @@ Fixpoint coreTypeToWeakType (ct:CoreType) : ???WeakType :=
                                   | WCoerVar _  => Error "encountered coercion variable in a type"
                                 end
 
-  | AppTy    t1 t2           => coreTypeToWeakType t2 >>= fun t2' => coreTypeToWeakType t1 >>= fun t1' => OK (WAppTy t1' t2')
+  | AppTy    t1 t2           => coreTypeToWeakType' t2 >>= fun t2' => coreTypeToWeakType' t1 >>= fun t1' => OK (WAppTy t1' t2')
                                        
-  | TyConApp  tc lct        =>
+  | TyConApp  tc_ lct        =>
       let recurse := ((fix rec tl := match tl with 
                                   | nil => OK nil
-                                  | a::b => coreTypeToWeakType a >>= fun a' => rec b >>= fun b' => OK (a'::b')
+                                  | a::b => coreTypeToWeakType' a >>= fun a' => rec b >>= fun b' => OK (a'::b')
                                 end) lct)
-      in if (isFamilyTyCon tc)
-      then recurse >>= fun recurse' => OK (WTyFunApp tc recurse')
-      else if eqd_dec tc ModalBoxTyCon
-           then match lct with
-                  | ((TyVarTy ec)::tbody::nil) =>
-                    match coreVarToWeakVar ec with
-                      | WTypeVar ec' => coreTypeToWeakType tbody >>= fun tbody' => OK (WCodeTy ec' tbody')
-                      | WExprVar _  => Error "encountered expression variable in a modal box type"
-                      | WCoerVar _  => Error "encountered coercion variable in a modal box type"
-                    end
-                  | _                           => Error "mis-applied modal box tycon"
-                end
-           else let tc' := if eqd_dec tc ArrowTyCon
-                           then WFunTyCon
-                           else WTyCon tc
-                in recurse >>= fun recurse' => OK (fold_left (fun x y => WAppTy x y) recurse' tc')
-  | FunTy (PredTy (EqPred t1 t2)) t3    => coreTypeToWeakType t1 >>= fun t1' => 
-                                coreTypeToWeakType t2 >>= fun t2' => 
-                                coreTypeToWeakType t3 >>= fun t3' => 
+      in match tyConOrTyFun tc_ with
+           | inr tf => recurse >>= fun recurse' => OK (WTyFunApp tf recurse')
+           | inl tc => if eqd_dec tc ModalBoxTyCon
+                         then match lct with
+                                | ((TyVarTy ec)::tbody::nil) =>
+                                  match coreVarToWeakVar ec with
+                                    | WTypeVar ec' => coreTypeToWeakType' tbody >>= fun tbody' => OK (WCodeTy ec' tbody')
+                                    | WExprVar _  => Error "encountered expression variable in a modal box type"
+                                    | WCoerVar _  => Error "encountered coercion variable in a modal box type"
+                                  end
+                                | _                           => Error "mis-applied modal box tycon"
+                              end
+                         else let tc' := if eqd_dec tc ArrowTyCon
+                                         then WFunTyCon
+                                         else WTyCon tc
+                              in recurse >>= fun recurse' => OK (fold_left (fun x y => WAppTy x y) recurse' tc')
+         end
+  | FunTy (PredTy (EqPred t1 t2)) t3    => coreTypeToWeakType' t1 >>= fun t1' => 
+                                coreTypeToWeakType' t2 >>= fun t2' => 
+                                coreTypeToWeakType' t3 >>= fun t3' => 
                                   OK (WCoFunTy t1' t2' t3')
-  | FunTy    t1 t2           => coreTypeToWeakType t1 >>= fun t1' => 
-                                coreTypeToWeakType t2 >>= fun t2' => 
+  | FunTy    t1 t2           => coreTypeToWeakType' t1 >>= fun t1' => 
+                                coreTypeToWeakType' t2 >>= fun t2' => 
                                   OK (WAppTy (WAppTy WFunTyCon t1') t2')
   | ForAllTy cv t            => match coreVarToWeakVar cv with
                                   | WExprVar _  => Error "encountered expression variable in a type"
-                                  | WTypeVar tv => coreTypeToWeakType t >>= fun t' => OK (WForAllTy tv t')
+                                  | WTypeVar tv => coreTypeToWeakType' t >>= fun t' => OK (WForAllTy tv t')
                                   | WCoerVar _  => Error "encountered coercion variable in a type"
                                 end
   | PredTy (ClassP  cl lct) => ((fix rec tl := match tl with 
                                                   | nil => OK nil
-                                                  | a::b => coreTypeToWeakType a >>= fun a' =>
+                                                  | a::b => coreTypeToWeakType' a >>= fun a' =>
                                                     rec b >>= fun b' => OK (a'::b')
                                                 end) lct) >>= fun lct' => OK (WClassP cl lct')
-  | PredTy (IParam ipn ct)   => coreTypeToWeakType ct >>= fun ct' => OK (WIParam ipn ct')
+  | PredTy (IParam ipn ct)   => coreTypeToWeakType' ct >>= fun ct' => OK (WIParam ipn ct')
   | PredTy (EqPred _ _)   => Error "hit a bare EqPred"
   end.
+
+Variable coreViewDeep : CoreType -> CoreType.  Extract Inlined Constant coreViewDeep => "coreViewDeep".
+Definition coreTypeToWeakType t := coreTypeToWeakType' (coreViewDeep t).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakTypeVar * CoreType) :=

@@ -85,7 +85,7 @@ Reserved Notation "Γ '∌∌'   x"                  (at level 10).
 Reserved Notation "Γ '∋∋'   x : a ∼ b"          (at level 10, x at level 99).
 Reserved Notation "Γ '∋'    x : c"              (at level 10, x at level 99).
 
-Reserved Notation "a ⇛ b"                       (at level 40).
+Reserved Notation "a ⇛ b"                       (at level 55, right associativity).
 Reserved Notation "φ₁ →→ φ₂"                    (at level 11, right associativity).
 Reserved Notation "a '⊢ᴛy'  b : c"              (at level 20, b at level 99, c at level 80).
 Reserved Notation "a '⊢ᴄᴏ'  b : c ∼ d"          (at level 20, b at level 99).
@@ -100,7 +100,6 @@ Reserved Notation "'η'".
 Reserved Notation "'ε'".
 Reserved Notation "'★'".
 
-Notation "a +++ b" := (append a b) (at level 100).
 Close Scope nat_scope.  (* so I can redefine '1' *)
 
 Delimit Scope arrow_scope   with arrow.
@@ -109,6 +108,7 @@ Delimit Scope garrow_scope  with garrow.
 
 Notation "f ○ g"    := (fun x => f(g(x))).
 Notation "?? T"     := (option T).
+Notation "a && b"   := (if a then b else false).
 
 (* these are handy since Coq's pattern matching syntax isn't integrated with its abstraction binders (like Haskell and ML) *)
 Notation "'⟨' x ',' y '⟩'" := ((x,y)) (at level 100).

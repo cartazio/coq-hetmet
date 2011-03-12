@@ -13,6 +13,13 @@ Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 
 (* TO DO: mark the TyCon used for hetmet as a "type family" so GHC keeps it fully-applied-at-all-times *)
+Variable tyConToCoreTyCon : TyCon -> CoreTyCon.           Extract Inlined Constant tyConToCoreTyCon  => "(\x -> x)".
+Variable tyFunToCoreTyCon : TyFun -> CoreTyCon.           Extract Inlined Constant tyFunToCoreTyCon  => "(\x -> x)".
+Coercion tyConToCoreTyCon : TyCon >-> CoreTyCon.
+Coercion tyFunToCoreTyCon : TyFun >-> CoreTyCon.
+
+Instance TyConToString : ToString TyCon := { toString := tyConToString }.
+Instance TyFunToString : ToString TyFun := { toString := tyConToString }.
 
 (* a WeakTypeVar merely wraps a CoreVar and includes its Kind *)
 Inductive WeakTypeVar := weakTypeVar : CoreVar -> Kind -> WeakTypeVar.
@@ -26,7 +33,7 @@ Inductive WeakTypeVar := weakTypeVar : CoreVar -> Kind -> WeakTypeVar.
 Inductive WeakType :=
 | WTyVarTy  : WeakTypeVar                                      -> WeakType
 | WAppTy    : WeakType            ->                  WeakType -> WeakType
-| WTyFunApp : TyCon               ->             list WeakType -> WeakType
+| WTyFunApp : TyFun               ->             list WeakType -> WeakType
 | WTyCon    : TyCon                                            -> WeakType
 | WFunTyCon :                                                     WeakType    (* never use (WTyCon ArrowCon);    always use this! *)
 | WCodeTy   : WeakTypeVar         ->                  WeakType -> WeakType    (* never use the raw tycon *)
@@ -95,7 +102,7 @@ Fixpoint weakTypeToCoreType' (wt:WeakType) : CoreType :=
                                            | t1'             => AppTy t1' (weakTypeToCoreType' t2)
                                          end
     | WTyCon    tc                    => TyConApp tc nil
-    | WTyFunApp tc lt                 => TyConApp tc (map weakTypeToCoreType' lt)
+    | WTyFunApp tf lt                 => TyConApp tf (map weakTypeToCoreType' lt)
     | WClassP c lt                    => PredTy (ClassP c (map weakTypeToCoreType' lt))
     | WIParam n ty                    => PredTy (IParam n (weakTypeToCoreType' ty))
     | WForAllTy (weakTypeVar wtv _) t => ForAllTy wtv (weakTypeToCoreType' t)
@@ -127,6 +134,6 @@ Instance EqDecidableWeakType : EqDecidable WeakType.
   right; auto.
   Defined.
 
-Definition weakTypeToString : WeakType -> string :=
-  coreTypeToString ○ weakTypeToCoreType.
+Instance WeakTypeToString : ToString WeakType :=
+  { toString := coreTypeToString ○ weakTypeToCoreType }.
 

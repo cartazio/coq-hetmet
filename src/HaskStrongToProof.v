@@ -21,9 +21,9 @@ Section HaskStrongToProof.
 
 (* Whereas RLeft/RRight perform left and right context expansion on a single uniform rule, these functions perform
  * expansion on an entire uniform proof *)
-Definition ext_left  {Γ}{Δ}(ctx:Tree ??(LeveledHaskType Γ))
+Definition ext_left  {Γ}{Δ}(ctx:Tree ??(LeveledHaskType Γ ★))
   := @nd_map' _ _ _ _ (ext_tree_left ctx)  (fun h c r => nd_rule (@RLeft Γ Δ h c ctx r)).
-Definition ext_right {Γ}{Δ}(ctx:Tree ??(LeveledHaskType Γ))
+Definition ext_right {Γ}{Δ}(ctx:Tree ??(LeveledHaskType Γ ★))
   := @nd_map' _ _ _ _ (ext_tree_right ctx) (fun h c r => nd_rule (@RRight Γ Δ h c ctx r)).
 
 Definition pivotContext {Γ}{Δ} a b c τ :
@@ -75,27 +75,27 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | EVar     Γ Δ ξ ev                             => [ev]
   | ELit     Γ Δ ξ lit lev                        => []
   | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e1),,(expr2antecedent e2)
-  | ELam     Γ Δ ξ t1 t2 lev v pf e               => stripOutVars (v::nil) (expr2antecedent e)
+  | ELam     Γ Δ ξ t1 t2 lev v    e               => stripOutVars (v::nil) (expr2antecedent e)
   | ELet     Γ Δ ξ tv t  lev v ev ebody           => ((stripOutVars (v::nil) (expr2antecedent ebody)),,(expr2antecedent ev))
   | EEsc     Γ Δ ξ ec t lev e                     => expr2antecedent e
   | EBrak    Γ Δ ξ ec t lev e                     => expr2antecedent e
-  | ECast    Γ Δ ξ γ t1 t2 lev wfco e             => expr2antecedent e
+  | ECast    Γ Δ ξ γ t1 t2 lev      e             => expr2antecedent e
   | ENote    Γ Δ ξ t n e                          => expr2antecedent e
   | ETyLam   Γ Δ ξ κ σ l e                        => expr2antecedent e
-  | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l wfco1 wfco2 e      => expr2antecedent e
-  | ECoApp   Γ Δ   γ σ₁ σ₂ σ ξ l wfco e           => expr2antecedent e
-  | ETyApp   Γ Δ κ σ τ ξ  l pf e                  => expr2antecedent e
+  | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => expr2antecedent e
+  | ECoApp   Γ Δ κ γ σ₁ σ₂ σ ξ l      e           => expr2antecedent e
+  | ETyApp   Γ Δ κ σ τ ξ  l    e                  => expr2antecedent e
   | ELetRec  Γ Δ ξ l τ vars branches body         =>
       let branch_context := eLetRecContext branches
    in let all_contexts := (expr2antecedent body),,branch_context
    in     stripOutVars (leaves (mapOptionTree (@fst _ _ ) vars)) all_contexts
-  | ECase    Γ Δ ξ lev tc avars tbranches e' alts =>
+  | ECase    Γ Δ ξ l tc tbranches sac atypes e' alts =>
     ((fix varsfromalts (alts:
-               Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc avars
+               Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc sac atypes
                             & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ avars (weakCK'' Δ))
-                                   (scbwv_ξ scb ξ lev)
-                                   (weakLT' (tbranches@@lev)) }      
+                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+                                   (scbwv_ξ scb ξ l)
+                                   (weakLT' (tbranches@@l)) }
       ): Tree ??VV :=
       match alts with
         | T_Leaf None     => []
@@ -129,8 +129,8 @@ Definition judgFromEStrongAltCon
 
 Implicit Arguments caseBranchRuleInfoFromEStrongAltCon [ [Γ] [Δ] [ξ] [lev] [tc] [avars] [tbranches] ].
 *)
-Definition unlev {Γ:TypeEnv}(lht:LeveledHaskType Γ) : HaskType Γ   := match lht with t @@ l => t end.
-Fixpoint eLetRecTypes {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(LeveledHaskType Γ) :=
+Definition unlev {Γ:TypeEnv}(lht:LeveledHaskType Γ ★) : HaskType Γ ★  := match lht with t @@ l => t end.
+Fixpoint eLetRecTypes {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(LeveledHaskType Γ ★) :=
   match elrb with
   | ELR_nil    Γ Δ ξ lev  => []
   | ELR_leaf   Γ Δ ξ t lev  v e => [unlev (ξ v) @@ lev]
@@ -144,7 +144,7 @@ Fixpoint eLetRecVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ)
   | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => (eLetRecVars b1),,(eLetRecVars b2)
   end.
 
-Fixpoint eLetRecTypesVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(VV * LeveledHaskType Γ):=
+Fixpoint eLetRecTypesVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(VV * LeveledHaskType Γ ★):=
   match elrb with
   | ELR_nil    Γ Δ ξ lev  => []
   | ELR_leaf   Γ Δ ξ t lev  v e => [(v, ξ v)]
@@ -154,7 +154,7 @@ Fixpoint eLetRecTypesVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ le
 
 Lemma stripping_nothing_is_inert
   {Γ:TypeEnv}
-  (ξ:VV -> LeveledHaskType Γ)
+  (ξ:VV -> LeveledHaskType Γ ★)
   tree :
   stripOutVars nil tree = tree.
   induction tree.
@@ -175,7 +175,7 @@ Definition arrangeContext
      v      (* variable to be pivoted, if found *)
      ctx    (* initial context *)
      τ      (* type of succedent *)
-     (ξ:VV -> LeveledHaskType Γ)
+     (ξ:VV -> LeveledHaskType Γ ★)
      :
  
     (* a proof concluding in a context where that variable does not appear *)
@@ -352,10 +352,10 @@ Definition arrangeContextAndWeaken'' Γ Δ ξ v : forall ctx z,
 
 Definition update_ξ'' {Γ} ξ tree lev :=
 (update_ξ ξ
-                  (map (fun x : VV * HaskType Γ => ⟨fst x, snd x @@  lev ⟩)
+                  (map (fun x : VV * HaskType Γ ★ => ⟨fst x, snd x @@  lev ⟩)
                      (leaves tree))).
 
-Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ) v tree lev :
+Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v tree lev :
       mapOptionTree (update_ξ ξ ((v,lev)::nil)) (stripOutVars (v :: nil) tree)
     = mapOptionTree ξ (stripOutVars (v :: nil) tree).
   induction tree; simpl in *; try reflexivity; auto.
@@ -391,7 +391,7 @@ Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ) v tree 
 
 Lemma updating_stripped_tree_is_inert'
   {Γ} lev
-  (ξ:VV -> LeveledHaskType Γ)
+  (ξ:VV -> LeveledHaskType Γ ★)
   tree tree2 :
     mapOptionTree (update_ξ'' ξ tree lev) (stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) tree2)
   = mapOptionTree ξ (stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) tree2).
@@ -400,7 +400,7 @@ admit.
 
 Lemma updating_stripped_tree_is_inert''
   {Γ}
-  (ξ:VV -> LeveledHaskType Γ)
+  (ξ:VV -> LeveledHaskType Γ ★)
   v tree lev :
     mapOptionTree   (update_ξ'' ξ (unleaves v) lev) (stripOutVars (map (@fst _ _) v) tree)
   = mapOptionTree ξ (stripOutVars  (map (@fst _ _) v) tree).
@@ -467,7 +467,7 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches
   Defined.
 
 
-Lemma update_twice_useless : forall Γ (ξ:VV -> LeveledHaskType Γ) tree z lev,
+Lemma update_twice_useless : forall Γ (ξ:VV -> LeveledHaskType Γ ★) tree z lev,
   mapOptionTree (@update_ξ'' Γ ξ tree lev) z = mapOptionTree (update_ξ'' (update_ξ'' ξ tree lev) tree lev) z.
 admit.
   Qed.
@@ -487,7 +487,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   intro pf.
   intro lrsp.
   set ((update_ξ ξ
-           (map (fun x : VV * HaskType Γ => ⟨fst x, snd x @@  lev ⟩)
+           (map (fun x : VV * HaskType Γ ★ => ⟨fst x, snd x @@  lev ⟩)
               (leaves tree)))) as ξ' in *.
   set ((stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) (eLetRecContext branches))) as ctx.
   set (mapOptionTree (@fst _ _) tree) as pctx.
@@ -549,7 +549,7 @@ Definition expr2proof  :
     | EApp     Γ Δ ξ t1 t2 lev e1 e2                => let case_EApp := tt in 
       let e1' := expr2proof _ _ _ _ e1 in
       let e2' := expr2proof _ _ _ _ e2 in _
-    | ELam     Γ Δ ξ t1 t2 lev v pf e               => let case_ELam := tt in 
+    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in 
       let e' := expr2proof _ _ _ _ e in _
     | ELet     Γ Δ ξ tv t      v lev ev ebody       => let case_ELet := tt in 
       let pf_let := (expr2proof _ _ _ _ ev) in
@@ -557,7 +557,7 @@ Definition expr2proof  :
     | ELetRec  Γ Δ ξ lev t tree branches ebody      =>
       let e' := expr2proof _ _ _ _ ebody in 
       let ξ' := update_ξ'' ξ tree lev in
-      let subproofs := ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ''))
+      let subproofs := ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
         (branches':ELetRecBindings Γ'' Δ'' ξ'' lev'' tree')
         : LetRecSubproofs Γ'' Δ'' ξ'' lev'' tree' branches' :=
         match branches' as B in ELetRecBindings G D X L T return LetRecSubproofs G D X L T B with
@@ -569,13 +569,13 @@ Definition expr2proof  :
       let case_ELetRec := tt in  _
     | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in let e' := expr2proof _ _ _ _ e in _
     | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECast    Γ Δ ξ γ t1 t2 lev wfco e             => let case_ECast   := tt in let e' := expr2proof _ _ _ _ e in _
+    | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in let e' := expr2proof _ _ _ _ e in _
     | ENote    Γ Δ ξ t n e                          => let case_ENote   := tt in let e' := expr2proof _ _ _ _ e in _
     | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l wfco1 wfco2 e      => let case_ECoLam  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECoApp   Γ Δ   γ σ₁ σ₂ σ ξ l wfco e           => let case_ECoApp  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ETyApp   Γ Δ κ σ τ ξ  l pf e                  => let case_ETyApp  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECase    Γ Δ ξ lev tbranches tc avars e alts => 
+    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in let e' := expr2proof _ _ _ _ e in _
+    | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in let e' := expr2proof _ _ _ _ e in _
+    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in let e' := expr2proof _ _ _ _ e in _
+    | ECase    Γ Δ ξ l tc tbranches sac atypes e alts => 
 (*
       let dcsp :=
         ((fix mkdcsp (alts:
@@ -629,7 +629,6 @@ Definition expr2proof  :
         apply n.
         auto.
         inversion H.
-        apply pf.
 
     destruct case_ELet; intros.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
@@ -662,7 +661,7 @@ Definition expr2proof  :
       apply e'.
 
     destruct case_ECast.
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RCast with (γ:=γ)].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RCast ].
       apply e'.
       auto.
 
@@ -679,11 +678,9 @@ Definition expr2proof  :
     destruct case_ECoLam; intros.
       eapply nd_comp; [ idtac | eapply nd_rule; apply RAbsCo with (κ:=κ) ].
       apply e'.
-      auto.
-      auto.
 
     destruct case_ECoApp; intros.
-      eapply nd_comp; [ idtac | eapply nd_rule; apply (@RAppCo _ _ (mapOptionTree ξ (expr2antecedent e)) σ₁ σ₂ σ γ l) ].
+      eapply nd_comp; [ idtac | eapply nd_rule; apply (@RAppCo _ _ (mapOptionTree ξ (expr2antecedent e)) _ σ₁ σ₂ σ γ l) ].
       apply e'.
       auto.
 

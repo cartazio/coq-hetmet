@@ -26,8 +26,8 @@ Inductive Judg  :=
   mkJudg :
   forall Γ:TypeEnv,
   forall Δ:CoercionEnv Γ,
-  Tree ??(LeveledHaskType Γ) ->
-  Tree ??(LeveledHaskType Γ) ->
+  Tree ??(LeveledHaskType Γ ★) ->
+  Tree ??(LeveledHaskType Γ ★) ->
   Judg.
   Notation "Γ > Δ > a '|-' s" := (mkJudg Γ Δ a s) (at level 52, Δ at level 50, a at level 52, s at level 50).
 
@@ -36,8 +36,8 @@ Inductive Judg  :=
  * expansion on them (see rules RLeft and RRight) and (2) they will form the fiber categories of our fibration later on *)
 Inductive UJudg (Γ:TypeEnv)(Δ:CoercionEnv Γ) :=
   mkUJudg :
-  Tree ??(LeveledHaskType Γ) ->
-  Tree ??(LeveledHaskType Γ) ->
+  Tree ??(LeveledHaskType Γ ★) ->
+  Tree ??(LeveledHaskType Γ ★) ->
   UJudg Γ Δ.
   Notation "Γ >> Δ > a '|-' s" := (mkUJudg Γ Δ a s) (at level 52, Δ at level 50, a at level 52, s at level 50).
   Notation "'ext_tree_left'"    := (fun ctx j => match j with mkUJudg t s => mkUJudg _ _ (ctx,,t)  s end).
@@ -49,9 +49,9 @@ Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
   Coercion UJudg2judg : UJudg >-> Judg.
 
 (* information needed to define a case branch in a HaskProof *)
-Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ}{avars} :=
+Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars} :=
 { pcb_scb            :  @StrongAltCon tc
-; pcb_freevars       :  Tree ??(LeveledHaskType Γ)
+; pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
 ; pcb_judg           := sac_Γ pcb_scb Γ > sac_Δ pcb_scb Γ avars (map weakCK' Δ)
                 > (mapOptionTree weakLT' pcb_freevars),,(unleaves (map (fun t => t@@weakL' lev)
                   (vec2list (sac_types pcb_scb Γ avars))))
@@ -90,21 +90,21 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 (* SystemFC rules *)
 | RVar    : ∀ Γ Δ σ       l,                          Rule [                                 ]   [Γ>Δ> [σ@@l]   |- [σ          @@l]]
-| RLam    : ∀ Γ Δ Σ tx te l,     Γ ⊢ᴛy tx : ★      -> Rule [Γ>Δ> Σ,,[tx@@l]|- [te@@l]        ]   [Γ>Δ>    Σ     |- [tx--->te   @@l]]
-| RCast   : ∀ Γ Δ Σ σ τ γ l,     Δ ⊢ᴄᴏ γ  : σ ∼ τ  -> Rule [Γ>Δ> Σ         |- [σ@@l]         ]   [Γ>Δ>    Σ     |- [τ          @@l]]
+| RLam    : forall Γ Δ Σ (tx:HaskType Γ ★) te l,      Rule [Γ>Δ> Σ,,[tx@@l]|- [te@@l]        ]   [Γ>Δ>    Σ     |- [tx--->te   @@l]]
+| RCast   : forall Γ Δ Σ (σ₁ σ₂:HaskType Γ ★) l,
+HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->
+ Rule [Γ>Δ> Σ         |- [σ₁@@l]         ]   [Γ>Δ>    Σ     |- [σ₂          @@l]]
 | RBindingGroup  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁       |- [tx--->te @@l]],,[Γ>Δ> Σ₂ |- [tx@@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,[σ₂@@l] |- [σ₁@@l] ],,[Γ>Δ> Σ₂ |- [σ₂@@l]])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₁   @@l]]
 | REmptyGroup    : ∀ Γ Δ ,               Rule [] [Γ > Δ > [] |- [] ]
-| RAppT   : ∀ Γ Δ Σ κ σ τ l,     Γ ⊢ᴛy τ  : κ      -> Rule [Γ>Δ> Σ   |- [HaskTAll κ σ @@l]]      [Γ>Δ>    Σ     |- [substT σ τ @@l]]
+| RAppT   : forall Γ Δ Σ κ σ (τ:HaskType Γ κ) l,      Rule [Γ>Δ> Σ   |- [HaskTAll κ σ @@l]]      [Γ>Δ>    Σ     |- [substT σ τ @@l]]
 | RAbsT   : ∀ Γ Δ Σ κ σ   l,
   Rule [(κ::Γ)> (weakCE Δ)    >   mapOptionTree weakLT Σ |- [ HaskTApp (weakF σ) (FreshHaskTyVar _) @@ (weakL l)]]
        [Γ>Δ            >    Σ     |- [HaskTAll κ σ   @@ l]]
-| RAppCo  : forall Γ Δ Σ σ₁ σ₂ σ γ l,   Δ ⊢ᴄᴏ γ  : σ₁∼σ₂ ->
+| RAppCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ₁∼∼∼σ₂)) σ l,
     Rule [Γ>Δ> Σ |- [σ₁∼∼σ₂ ⇒ σ@@l]] [Γ>Δ>    Σ     |- [σ        @@l]]
-| RAbsCo  : ∀ Γ Δ Σ κ σ σ₁ σ₂ l,
-   Γ ⊢ᴛy σ₁:κ ->
-   Γ ⊢ᴛy σ₂:κ ->
+| RAbsCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) σ l,
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ @@ l]]
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
 | RLetRec        : ∀ Γ Δ Σ₁ τ₁ τ₂, Rule [Γ > Δ > Σ₁,,τ₂ |- τ₁,,τ₂ ] [Γ > Δ > Σ₁ |- τ₁ ]
@@ -123,16 +123,16 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RURule           : ∀ Γ Δ  h c r            ,  Rule_Flat (RURule Γ Δ  h c r)
 | Flat_RNote            : ∀ x y z              ,  Rule_Flat (RNote x y z)
 | Flat_RVar             : ∀ Γ Δ  σ               l,  Rule_Flat (RVar Γ Δ  σ         l)
-| Flat_RLam             : ∀ Γ Δ  Σ tx te    q    l,  Rule_Flat (RLam Γ Δ  Σ tx te      q l)
-| Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q    l,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q l)
+| Flat_RLam             : ∀ Γ Δ  Σ tx te    q    ,  Rule_Flat (RLam Γ Δ  Σ tx te      q )
+| Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q     ,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q )
 | Flat_RAbsT            : ∀ Γ   Σ κ σ a    q    ,  Rule_Flat (RAbsT Γ   Σ κ σ a    q )
-| Flat_RAppT            : ∀ Γ Δ  Σ κ σ τ    q    l,  Rule_Flat (RAppT Γ Δ  Σ κ σ τ    q l)
+| Flat_RAppT            : ∀ Γ Δ  Σ κ σ τ    q    ,  Rule_Flat (RAppT Γ Δ  Σ κ σ τ    q )
 | Flat_RAppCo           : ∀ Γ Δ  Σ σ₁ σ₂ σ γ q l,  Rule_Flat (RAppCo Γ Δ  Σ  σ₁ σ₂ σ γ  q l)
-| Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2 q3 x , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2 q3 x )
+| Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2   , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2   )
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
 | Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
 | Flat_RBindingGroup    : ∀ q a b c d e ,  Rule_Flat (RBindingGroup q a b c d e)
-| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x ).
+| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x).
 
 (* given a proof that uses only uniform rules, we can produce a general proof *)
 Definition UND_to_ND Γ Δ h c : ND (@URule Γ Δ) h c -> ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)
@@ -159,12 +159,12 @@ Lemma no_urules_with_multiple_conclusions : forall Γ Δ c h,
   intro.
   intro.
   induction 1; intros.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
 
   apply IHX.
   destruct X0. destruct s. destruct c; try destruct o; try destruct u; simpl in *.
@@ -178,9 +178,9 @@ Lemma no_urules_with_multiple_conclusions : forall Γ Δ c h,
     inversion e.
     exists c1. exists c2. auto.
 
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X; inversion X0; inversion H; inversion X1; destruct c; try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
+  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
   Qed.
 
 Lemma no_rules_with_multiple_conclusions : forall c h,

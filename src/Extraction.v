@@ -50,14 +50,10 @@ Extract Inlined Constant ascii_dec => "(==)".
 Extract Inductive string => "Prelude.String" [ "[]" "(:)" ].
 
 (* adapted from ExtrOcamlString.v *)
-Extract Inductive ascii => "Prelude.Char"
-[
-"{- If this appears, you're using Ascii internals. Please don't -} (\ b0 b1 b2 b3 b4 b5 b6 b7 ->   let f b i = if b then 1 `shiftL` i else 0 in Data.Char.chr (f b0 0 .|. f b1 1 .|. f b2 2 .|. f b3 3 .|. f b4 4 .|. f b5 5 .|. f b6 6 .|. f b7 7))"
-]
-"{- If this appears, you're using Ascii internals. Please don't -} (\ f c -> let n = Char.code c in let h i = (n .&. (1 `shiftL` i)) /= 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
-Extract Constant zero  => "'\000'".
-Extract Constant one   => "'\001'".
-Extract Constant shift => "\ b c -> Data.Char.chr (((Char.code c) `shiftL` 1) .&. 255 .|. if b then 1 else 0)".
+Extract Inductive ascii => "Prelude.Char" [ "bin2ascii" ] "bin2ascii'".
+Extract Constant zero   => "'\000'".
+Extract Constant one    => "'\001'".
+Extract Constant shift  => "shiftAscii".
 
 Unset Extraction Optimize.
 Unset Extraction AutoInline.
@@ -72,7 +68,7 @@ Section core2proof.
 
   Definition Δ : CoercionEnv Γ := nil.
 
-  Definition φ : CoreVar->HaskTyVar Γ :=
+  Definition φ : TyVarResolver Γ :=
     fun cv => (fun TV env => fail "unbound tyvar").
     (*fun tv => error ("tried to get the representative of an unbound tyvar:" +++ (getCoreVarOccString tv)).*)
 
@@ -81,8 +77,11 @@ Section core2proof.
 
   (* We need to be able to resolve unbound exprvars, but we can be sure their types will have no
    * free tyvars in them *)
-  Definition ξ : WeakExprVar -> WeakType * list WeakTypeVar
-    := fun (v:WeakExprVar) => ((v:WeakType),nil).
+  Definition ξ (wev:WeakExprVar) : LeveledHaskType Γ ★ :=
+    match weakTypeToType' φ wev ★ with
+      | Error s => fail ("Error in top-level xi: " +++ s)
+      | OK    t => t @@ nil
+    end.
 
   Definition header : string :=
     "\documentclass[9pt]{article}"+++eol+++
@@ -105,17 +104,19 @@ Section core2proof.
   Definition handleExpr (ce:@CoreExpr CoreVar) : string :=
     match coreExprToWeakExpr ce with
       | Error s => fail ("unable to convert GHC Core expression into Coq HaskWeak expression due to:\n  "+++s)
-      | OK me   =>
-        match weakExprToStrongExpr (*(makeClosedExpression me)*) me Γ Δ φ ψ ξ nil with
-          | Indexed_Error  s  => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
-          | Indexed_OK    τ e => match e with
-                                   | Error s => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
-                                   | OK e'   =>
-                                     eol+++"$$"+++
-                                     nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')+++
-                                     "$$"+++eol
-                                 end
-        end
+      | OK we   =>  match weakTypeOfWeakExpr we >>= fun t => weakTypeToType φ t with
+                      | Error s => fail ("unable to calculate HaskType of a HaskWeak expression because: " +++ s)
+                      | OK τ    => match τ with
+                                     | haskTypeOfSomeKind ★  τ' =>
+                                       match weakExprToStrongExpr Γ Δ φ ψ ξ τ' nil (*(makeClosedExpression*) we (* ) *) with
+                                         | Error s => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
+                                         | OK e'   => eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')+++"$$"+++eol
+                                       end
+                                     | haskTypeOfSomeKind κ τ' =>
+                                       fail ("encountered 'expression' of kind "+++κ+++" at top level (type "+++τ'
+                                              +++"); shouldn't happen")
+                                   end
+                    end
     end.
 
   Definition handleBind (bind:@CoreBind CoreVar) : string :=

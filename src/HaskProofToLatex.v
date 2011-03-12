@@ -10,6 +10,8 @@ Require Import NaturalDeductionToLatex.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
+Require Import HaskWeakVars.
+Require Import HaskWeakTypes.
 Require Import HaskCoreLiterals.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
@@ -29,7 +31,7 @@ Section ToLatex.
     | KindTypeFunction k1 k2       => "("+++kind2latex k1+++")\Rightarrow "+++kind2latex k2
     | KindUnliftedType             => "\text{\tt{\#}}"
     | KindUnboxedTuple             => "\text{\tt{(\#)}}"
-    | KindArgType                  => "\text{\tt{?}}"
+    | KindArgType                  => "\text{\tt{??}}"
     | KindOpenType                 => "\text{\tt{?}}"
     end.
 
@@ -47,7 +49,7 @@ Section ToLatex.
       | 8 => "f"
       | 9 => "g"
       | 10 => "h"
-      | S (S (S (S (S (S (S (S (S (S (S x)))))))))) => "z_{"+++(nat2string x)+++"}"
+      | S (S (S (S (S (S (S (S (S (S (S x)))))))))) => "z_{"+++x+++"}"
     end.
   Close Scope nat_scope.
 
@@ -56,51 +58,48 @@ Section ToLatex.
       | O => "\alpha"
       | S O => "\beta"
       | S (S O) => "\xi"
-      | S (S (S n)) => "\alpha_{"+++nat2string n+++"}"
+      | S (S (S n)) => "\alpha_{"+++n+++"}"
     end.
 
   Definition covar2greek (n:nat) :=
-    "{\gamma_{"+++(nat2string n)+++"}}".
+    "{\gamma_{"+++n+++"}}".
 
-  Fixpoint count (n:nat) : vec nat n :=
-  match n with
-    | O    => vec_nil
-    | S n' => n':::(count n')
-  end.
-
-  Fixpoint type2latex (needparens:bool)(n:nat)(t:RawHaskType nat) {struct t} : string :=
+  (* TODO: now that PHOAS tyvar-representation-types are kind-indexed, we can do some clever stuff here *)
+  Fixpoint type2latex (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat) κ) {struct t} : string :=
     match t with
-    | TVar   v                                => tyvar2greek v
-    | TCon    tc                              => "\text{\tt{"+++sanitizeForLatex (tyConToString tc) +++"}}"
-    | TCoerc t1 t2   t                        => "{("+++type2latex false n t1+++"{\sim}"
-                                                     +++type2latex false n t2+++")}\Rightarrow{"
-                                                     +++type2latex needparens n t+++"}"
-    | (TApp (TApp TArrow t1) t2)              =>
-      (if needparens
-                            then "("+++(type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)+++")"
-                            else (type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2))
-    | TArrow => "\text{\tt{(->)}}"
-    | TApp   t1 t2                            =>
+    | TVar    _ v          => tyvar2greek v
+    | TCon    tc           => "\text{\tt{"+++sanitizeForLatex (toString tc) +++"}}"
+    | TCoerc _ t1 t2   t   => "{("+++type2latex false n t1+++"{\sim}"
+                                  +++type2latex false n t2+++")}\Rightarrow{"
+                                  +++type2latex needparens n t+++"}"
+    | TApp  _ _  t1 t2     =>
+      match t1 with
+        | TApp _ _ TArrow t1 =>
+                     if needparens
+                     then "("+++(type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)+++")"
+                     else (type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)
+        | _ =>
                      if needparens
                      then "("+++(type2latex true n t1)+++" "+++(type2latex false n t2)+++")"
                      else (type2latex true n t1)+++" "+++(type2latex false n t2)
-    | TFCApp   tfc lt                         => "{\text{\tt{"+++sanitizeForLatex (tyConToString tfc) +++"}}}"+++
-                                                 "_{"+++(nat2string n)+++"}"+++
-                                                 fold_left (fun x y => " \  "+++x+++y)
-                                                 ((fix type2latex_vec (needparens:bool)(n:nat){m}(lt:vec (RawHaskType nat) m)
-                                                   : list string :=
-                                                   match lt with
-                                                     | vec_nil => nil
-                                                     | a:::b   => (type2latex needparens n a)::(type2latex_vec needparens n _ b)
-                                                   end )
-                                                   false n _ lt) ""
-    | TAll   k f                              => let alpha := tyvar2greek n
-                                                 in "(\forall "+++ alpha +++ "{:}"+++ kind2latex k +++")"+++
-                                                      type2latex false (S n) (f n)
-    | TCode  ec t                             => "\code{"+++(type2latex true n ec)+++"}{"+++(type2latex false n t)+++"}"
-    end.
+      end
+    | TArrow => "\text{\tt{(->)}}"
+    | TAll   k f           => let alpha := tyvar2greek n
+                              in "(\forall "+++ alpha +++ "{:}"+++ kind2latex k +++")"+++
+                                   type2latex false (S n) (f n)
+    | TCode  ec t          => "\code{"+++(type2latex true n ec)+++"}{"+++(type2latex false n t)+++"}"
+    | TyFunApp   tfc lt    => "{\text{\tt{"+++sanitizeForLatex (toString tfc) +++"}}}"+++
+                              "_{"+++n+++"}"+++
+                              fold_left (fun x y => " \  "+++x+++y)
+                              (typeList2latex false n lt) ""
+  end
+  with typeList2latex (needparens:bool)(n:nat){κ}(t:RawHaskTypeList κ) {struct t} : list string :=
+  match t with
+  | TyFunApp_nil                 => nil
+  | TyFunApp_cons  κ kl rhk rhkl => (type2latex needparens n rhk)::(typeList2latex needparens n rhkl)
+  end.
 
-  Definition ltype2latex {Γ:TypeEnv}(t:RawHaskType nat)(lev:list nat) : string :=
+  Definition ltype2latex {Γ:TypeEnv}{κ}(t:RawHaskType (fun _ => nat) κ)(lev:list nat) : string :=
     match lev with
       | nil => type2latex false O t
       | lv  => "{"+++type2latex true O t+++"}^{"+++(fold_left (fun x y => x+++":"+++y) (map tyvar2greek lv) "")+++"}"
@@ -114,23 +113,37 @@ Section ToLatex.
 
   Definition enumerate {T:Type}(l:list T) := enumerate' O l.
 
-  Definition InstantiatedTypeEnvString Γ : @InstantiatedTypeEnv nat Γ := count (length Γ).
-  Definition InstantiatedCoercionEnvString Γ Δ : @InstantiatedCoercionEnv nat nat Γ Δ := count (length Δ).
+  Fixpoint count (n:nat) : vec nat n :=
+  match n with
+    | O    => vec_nil
+    | S n' => n':::(count n')
+  end.
+
+  Fixpoint count' (lk:list Kind)(n:nat) : IList _ (fun _ => nat) lk :=
+  match lk as LK return IList _ _ LK with
+    | nil    => INil
+    | h::t   => n::::(count' t (S n))
+  end.
+
+  Definition InstantiatedTypeEnvString     Γ   : @InstantiatedTypeEnv     (fun _ => nat) Γ := count' Γ O.
+  Definition InstantiatedCoercionEnvString Γ Δ : @InstantiatedCoercionEnv (fun _ => nat) nat Γ Δ  := count (length Δ).
   Definition judgment2latex (j:Judg) : string :=
       match j with
         | mkJudg Γ Δ  a b =>
           let Γ' := InstantiatedTypeEnvString Γ in
           let Δ' := InstantiatedCoercionEnvString Γ Δ in
-          let lt2l := fun nt:nat*(LeveledHaskType Γ) => 
+          let lt2l := fun nt:nat*(LeveledHaskType Γ ★) => 
             let (n,lt) := nt in
               match lt with
                 t @@ l =>
-                (var2string n)+++"{:}"+++(@ltype2latex Γ (t nat Γ') (map (fun x:HaskTyVar Γ => x nat Γ') l))
+                (var2string n)+++"{:}"+++(@ltype2latex Γ _ (t (fun _ => nat) Γ')
+                  (map (fun x:HaskTyVar Γ _ => x (fun _ => nat) Γ') l))
               end in
-          let lt2l' := fun lt:(LeveledHaskType Γ) => 
+          let lt2l' := fun lt:(LeveledHaskType Γ ★) => 
               match lt with
                 t @@ l =>
-                "e{:}"+++(@ltype2latex Γ (t nat Γ') (map (fun x:HaskTyVar Γ => x nat Γ') l))
+                "e{:}"+++(@ltype2latex Γ _ (t (fun _ => nat) Γ')
+                  (map (fun x:HaskTyVar Γ _ => x (fun _ => nat) Γ') l))
               end in
           (list2latex "" lt2l "\ ,\ " (enumerate (leaves a)))
           +++" \ \vdash_e\  "(*+++"e{:}"*)
@@ -142,63 +155,63 @@ Section ToLatex.
 
   Fixpoint nd_urule2latex {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : string :=
     match r with
-      | (RLeft   _ _  c r  ) => nd_urule2latex r
-      | (RRight   _ _ c r  ) => nd_urule2latex r
-      | (RCanL   t a       ) => "CanL"
-      | (RCanR   t a       ) => "CanR"
-      | (RuCanL  t a       ) => "uCanL"
-      | (RuCanR  t a       ) => "uCanR"
-      | (RAssoc  t a b c   ) => "Assoc"
-      | (RCossa  t a b c   ) => "Cossa"
-      | (RExch   t a b     ) => "Exch"
-      | (RWeak   t a       ) => "Weak"
-      | (RCont   t a       ) => "Cont"
+      | RLeft   _ _ _ r => nd_urule2latex r
+      | RRight  _ _ _ r => nd_urule2latex r
+      | RCanL   _ _     => "CanL"
+      | RCanR   _ _     => "CanR"
+      | RuCanL  _ _     => "uCanL"
+      | RuCanR  _ _     => "uCanR"
+      | RAssoc  _ _ _ _ => "Assoc"
+      | RCossa  _ _ _ _ => "Cossa"
+      | RExch   _ _ _   => "Exch"
+      | RWeak   _ _     => "Weak"
+      | RCont   _ _     => "Cont"
     end.
 
   Fixpoint nd_rule2latex {h}{c}(r:Rule h c) : string :=
     match r with
-      | RURule _ _ _ _ r => nd_urule2latex r
-      | RNote   x n z        => "Note"
-      | RLit    Γ _ l     _    => "Lit"
-      | RVar    Γ _ σ         p => "Var"
-      | RLam    Γ _ Σ tx te   p x => "Abs"
-      | RCast   Γ _ Σ σ τ γ   p x => "Cast"
-      | RAbsT   Γ  Σ κ σ a   p    => "AbsT"
-      | RAppT   Γ _  Σ κ σ τ   p y => "AppT"
-      | RAppCo  Γ _ Σ  _ σ₁ σ₂ σ γ p  => "AppCo"
-      | RAbsCo  Γ  Σ κ σ cc σ₁ σ₂ p y q  => "AbsCo"
-      | RApp    Γ _ Σ₁ Σ₂ tx te p => "App"
-      | RLet    Γ _ Σ₁ Σ₂ σ₁ σ₂ p => "Let"
-      | REmptyGroup _ a => "REmptyGroup"
-      | RBindingGroup _ a b c d e => "RBindingGroup"
-      | RLetRec Γ _ p lri q  => "LetRec"
-      | RCase   Σ Γ T κlen κ  ldcd τ  _  => "Case"
-      | RBrak   Σ _ a b c _ => "Brak"
-      | REsc   Σ _ a b c _ => "Esc"
+      | RURule        _ _ _ _ r         => nd_urule2latex r
+      | RNote         _ _ _             => "Note"
+      | RLit          _ _ _ _           => "Lit"
+      | RVar          _ _ _ _           => "Var"
+      | RLam          _ _ _ _ _ _       => "Abs"
+      | RCast         _ _ _ _ _ _ _     => "Cast"
+      | RAbsT         _ _ _ _ _ _       => "AbsT"
+      | RAppT         _ _ _ _ _ _ _     => "AppT"
+      | RAppCo        _ _ _ _ _ _ _ _ _ => "AppCo"
+      | RAbsCo        _ _ _ _ _ _ _ _   => "AbsCo"
+      | RApp          _ _ _ _ _ _ _     => "App"
+      | RLet          _ _ _ _ _ _ _     => "Let"
+      | RBindingGroup _ _ _ _ _ _       => "RBindingGroup"
+      | RLetRec       _ _ _ _ _         => "LetRec"
+      | RCase         _ _ _ _ _ _ _ _   => "Case"
+      | RBrak         _ _ _ _ _ _       => "Brak"
+      | REsc          _ _ _ _ _ _       => "Esc"
+      | REmptyGroup   _ _               => "REmptyGroup"
   end.
 
   Fixpoint nd_hideURule {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : bool :=
     match r with
-      | RLeft  h c ctx r   => nd_hideURule r
-      | RRight h c ctx r   => nd_hideURule r
-      | RCanL   t a        => true
-      | RCanR   t a        => true
-      | RuCanL  t a        => true
-      | RuCanR  t a        => true
-      | RAssoc  t a b c    => true
-      | RCossa  t a b c    => true
-      | RExch   t (T_Leaf None) b     => true
-      | RExch   t a  (T_Leaf None)    => true
-      | RWeak   t (T_Leaf None)       => true
-      | RCont   t (T_Leaf None)       => true
-      | _ => false
+      | RLeft   _ _ _ r               => nd_hideURule r
+      | RRight  _ _ _ r               => nd_hideURule r
+      | RCanL   _ _                   => true
+      | RCanR   _ _                   => true
+      | RuCanL  _ _                   => true
+      | RuCanR  _ _                   => true
+      | RAssoc  _ _ _ _               => true
+      | RCossa  _ _ _ _               => true
+      | RExch   _    (T_Leaf None) b  => true
+      | RExch   _ a  (T_Leaf None)    => true
+      | RWeak   _    (T_Leaf None)    => true
+      | RCont   _    (T_Leaf None)    => true
+      | _                             => false
     end.
   Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=
     match r with
-      | RURule _ _ _ _ r => nd_hideURule r
-      | REmptyGroup a _ => true
-      | RBindingGroup _ _ _ _ _ _  => true
-      | _ => false
+      | RURule        _ _ _ _ r   => nd_hideURule r
+      | REmptyGroup   _ _         => true
+      | RBindingGroup _ _ _ _ _ _ => true
+      | _                         => false
     end.
 End ToLatex.
 

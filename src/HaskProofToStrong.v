@@ -21,12 +21,12 @@ Section HaskProofToStrong.
     {eqdec_vv:EqDecidable VV}
     {fresh: forall (l:list VV), { lf:VV & distinct (lf::l) }}.
 
-  Definition Exprs (Γ:TypeEnv)(Δ:CoercionEnv Γ)(ξ:VV -> LeveledHaskType Γ)(τ:Tree ??(LeveledHaskType Γ)) :=
+  Definition Exprs (Γ:TypeEnv)(Δ:CoercionEnv Γ)(ξ:VV -> LeveledHaskType Γ ★)(τ:Tree ??(LeveledHaskType Γ ★)) :=
     ITree _ (fun τ => Expr Γ Δ ξ τ) τ.
 
   Definition judg2exprType (j:Judg) : Type :=
     match j with
-      (Γ > Δ > Σ |- τ) => { ξ:VV -> LeveledHaskType Γ & Exprs Γ Δ ξ τ }
+      (Γ > Δ > Σ |- τ) => { ξ:VV -> LeveledHaskType Γ ★ & Exprs Γ Δ ξ τ }
       end.
 
   (* reminder: need to pass around uniq-supplies *)
@@ -43,12 +43,12 @@ Section HaskProofToStrong.
       | RNote   x n z        => let case_RNote := tt in _
       | RLit    Γ Δ l     _    => let case_RLit := tt in _
       | RVar    Γ Δ σ         p => let case_RVar := tt in _
-      | RLam    Γ Δ Σ tx te   p x => let case_RLam := tt in _
-      | RCast   Γ Δ Σ σ τ γ   p x => let case_RCast := tt in _
+      | RLam    Γ Δ Σ tx te     x => let case_RLam := tt in _
+      | RCast   Γ Δ Σ σ τ γ     x => let case_RCast := tt in _
       | RAbsT   Γ Δ Σ κ σ a    => let case_RAbsT := tt in _
-      | RAppT   Γ Δ Σ κ σ τ   p y => let case_RAppT := tt in _
-      | RAppCo  Γ Δ Σ κ σ₁ σ₂ σ γ p  => let case_RAppCo := tt in _
-      | RAbsCo  Γ Δ Σ κ σ cc σ₁ σ₂ p y => let case_RAbsCo := tt in _
+      | RAppT   Γ Δ Σ κ σ τ     y => let case_RAppT := tt in _
+      | RAppCo  Γ Δ Σ κ σ₁ σ₂ γ σ l => let case_RAppCo := tt in _
+      | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y => let case_RAbsCo := tt in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p => let case_RApp := tt in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p => let case_RLet := tt in _
       | RLetRec Γ p lri x y => let case_RLetRec := tt in _
@@ -142,7 +142,7 @@ Section HaskProofToStrong.
         apply rest2.
         Defined.
 
-  Definition proof2expr Γ Δ τ Σ : ND Rule [] [Γ > Δ > Σ |- [τ]] -> { ξ:VV -> LeveledHaskType Γ & Expr Γ Δ ξ τ }.
+  Definition proof2expr Γ Δ τ Σ : ND Rule [] [Γ > Δ > Σ |- [τ]] -> { ξ:VV -> LeveledHaskType Γ ★ & Expr Γ Δ ξ τ }.
     intro pf.
     set (closedFromSCND _ _ (mkSCND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) cnd_weak) as cnd.
     apply closed2expr in cnd.

@@ -104,17 +104,17 @@ Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
     | WEApp   e1 e2 => weakTypeOfWeakExpr e1 >>= fun t' =>
                        match t' with
                          | (WAppTy (WAppTy WFunTyCon t1) t2) => OK t2
-                         | _ => Error ("found non-function type "+++(weakTypeToString t')+++" in EApp")
+                         | _ => Error ("found non-function type "+++t'+++" in EApp")
                        end
     | WETyApp e t    => weakTypeOfWeakExpr e >>= fun te =>
                         match te with
                           | WForAllTy v ct => OK (replaceWeakTypeVar ct v t)
-                          | _ => Error ("found non-forall type "+++(weakTypeToString te)+++" in ETyApp")
+                          | _ => Error ("found non-forall type "+++te+++" in ETyApp")
                         end
     | WECoApp e co   => weakTypeOfWeakExpr e >>= fun te =>
                         match te with
                           | WCoFunTy t1 t2 t => OK t
-                          | _ => Error ("found non-coercion type "+++(weakTypeToString te)+++" in ETyApp")
+                          | _ => Error ("found non-coercion type "+++te+++" in ETyApp")
                         end
     | WELam   (weakExprVar ev vt) e => weakTypeOfWeakExpr e >>= fun t' => OK (WAppTy (WAppTy WFunTyCon vt) t')
     | WETyLam tv e => weakTypeOfWeakExpr e >>= fun t' => OK (WForAllTy tv t')

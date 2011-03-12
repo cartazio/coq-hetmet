@@ -1,5 +1,5 @@
 (*********************************************************************************************************************************)
-(* HaskKinds:  Definitions shared by all four representations (Core, Weak, Strong, Proof)                                      *)
+(* HaskKinds:  Definitions shared by all four representations (Core, Weak, Strong, Proof)                                        *)
 (*********************************************************************************************************************************)
 
 Generalizable All Variables.
@@ -8,17 +8,31 @@ Require Import General.
 Require Import Coq.Strings.String.
 Open Scope nat_scope.
 
-Variable Note                : Type.                         Extract Inlined Constant Note       => "CoreSyn.Note".
-Variable nat2string          : nat         -> string.        Extract Inlined Constant nat2string            => "nat2string".
+Variable Note                : Type.                         Extract Inlined Constant Note        => "CoreSyn.Note".
+Variable natToString         : nat         -> string.        Extract Inlined Constant natToString => "natToString".
+Instance NatToStringInstance : ToString nat := { toString := natToString }.
 
 (* Figure 7: production κ, ι *)
 Inductive Kind : Type := 
-  | KindType         : Kind                      (* ★  - the kind of boxed types*)
-  | KindTypeFunction : Kind  -> Kind  -> Kind    (* ⇛ *)
-  | KindUnliftedType : Kind                      (* not in the paper - this is the kind of unboxed non-tuple types *)
-  | KindUnboxedTuple : Kind                      (* not in the paper - this is the kind of unboxed tuples *)
-  | KindArgType      : Kind                      (* not in the paper - this is the lub of KindType and KindUnliftedType *)
-  | KindOpenType     : Kind                      (* not in the paper - kind of all types (lifted, boxed, whatever) *).
+  | KindType          : Kind                      (* ★  - the kind of coercions and the kind of types inhabited by [boxed] values *)
+  | KindTypeFunction  : Kind  -> Kind  -> Kind    (* ⇛  - type-function-space; things of kind X⇛Y are NOT inhabited by expressions*)
+  | KindUnliftedType  : Kind                      (* not in the paper - this is the kind of unboxed non-tuple types *)
+  | KindUnboxedTuple  : Kind                      (* not in the paper - this is the kind of unboxed tuples *)
+  | KindArgType       : Kind                      (* not in the paper - this is the lub of KindType and KindUnliftedType *)
+  | KindOpenType      : Kind                      (* not in the paper - kind of all types (lifted, boxed, whatever) *).
+
+Open Scope string_scope.
+Fixpoint kindToString (k:Kind) : string :=
+  match k with
+  | KindType                     => "*"
+  | KindTypeFunction KindType k2 => "*=>"+++kindToString k2
+  | KindTypeFunction k1 k2       => "("+++kindToString k1+++")=>"+++kindToString k2
+  | KindUnliftedType             => "#"
+  | KindUnboxedTuple             => "(#)"
+  | KindArgType                  => "?"
+  | KindOpenType                 => "?"
+  end.
+Instance KindToString : ToString Kind := { toString := kindToString }.
 
 Notation "'★'"   := KindType.
 Notation "a ⇛ b" := (KindTypeFunction a b).

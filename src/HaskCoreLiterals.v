@@ -45,12 +45,20 @@ Extract Inductive HaskFunctionOrData =>
   "BasicTypes.FunctionOrData" [ "BasicTypes.IsFunction" "BasicTypes.IsData" ].
 
 Variable haskLiteralToString  : HaskLiteral -> string.    Extract Inlined Constant haskLiteralToString     => "outputableToString".
+Instance HaskLiteralToString : ToString HaskLiteral := { toString := haskLiteralToString }.
 
 (* because Haskell's 3-tuples (triples) are distinct from both ((x,y),z) and (x,(y,z)), we need a new type: *)
 Inductive triple {A B C:Type} :=
 | mkTriple : A -> B -> C -> triple.
 Notation "a ** b ** c" := (mkTriple a b c) (at level 20).
 Extract Inductive triple => "(,,)" [ "(,,)" ].
+
+Inductive AltCon :=
+| DataAlt : CoreDataCon -> AltCon
+| LitAlt  : HaskLiteral -> AltCon
+| DEFAULT :                AltCon.
+Extract Inductive AltCon =>
+  "CoreSyn.AltCon" [ "CoreSyn.DataAlt" "CoreSyn.LitAlt" "CoreSyn.DEFAULT" ].
 
 (* the TyCons for each of the literals above *)
 Variable addrPrimTyCon       : TyCon.   Extract Inlined Constant addrPrimTyCon   => "TysPrim.addrPrimTyCon".
@@ -76,10 +84,3 @@ match lit with
   | HaskMachDouble _    => doublePrimTyCon
   | HaskMachLabel _ _ _ => addrPrimTyCon
 end.
-
-Inductive AltCon :=
-| DataAlt : CoreDataCon -> AltCon
-| LitAlt  : HaskLiteral -> AltCon
-| DEFAULT :                AltCon.
-Extract Inductive AltCon =>
-  "CoreSyn.AltCon" [ "CoreSyn.DataAlt" "CoreSyn.LitAlt" "CoreSyn.DEFAULT" ].
