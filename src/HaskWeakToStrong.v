@@ -347,8 +347,8 @@ Definition weakψ {Γ}{Δ:CoercionEnv Γ} {κ}(ψ:WeakCoerVar -> HaskCoVar Γ Δ
   Defined.
 
 (* attempt to "cast" an expression by simply checking if it already had the desired type, and failing otherwise *)
-Definition castExpr (err_msg:string) {Γ} {Δ} {ξ} {τ} τ' (e:@Expr _ WeakExprVarEqDecidable Γ Δ ξ τ)
-  : ???(@Expr _ WeakExprVarEqDecidable Γ Δ ξ τ').
+Definition castExpr (err_msg:string) {Γ} {Δ} {ξ} {τ} τ' (e:@Expr _ CoreVarEqDecidable Γ Δ ξ τ)
+  : ???(@Expr _ CoreVarEqDecidable Γ Δ ξ τ').
   intros.
   destruct τ  as [τ  l].
   destruct τ' as [τ' l'].
@@ -375,20 +375,20 @@ Definition weakExprToStrongExpr : forall
     (Δ:CoercionEnv Γ)
     (φ:TyVarResolver Γ)
     (ψ:CoVarResolver Γ Δ)
-    (ξ:WeakExprVar -> LeveledHaskType Γ ★)
+    (ξ:CoreVar -> LeveledHaskType Γ ★)
     (τ:HaskType Γ ★)
     (lev:HaskLevel Γ),
-    WeakExpr -> ???(Expr Γ Δ ξ (τ @@ lev) ).
+    WeakExpr -> ???(@Expr _ CoreVarEqDecidable Γ Δ ξ (τ @@ lev) ).
   refine ((
     fix weakExprToStrongExpr 
     (Γ:TypeEnv)
     (Δ:CoercionEnv Γ)
     (φ:TyVarResolver Γ)
     (ψ:CoVarResolver Γ Δ)
-    (ξ:WeakExprVar -> LeveledHaskType Γ ★)
+    (ξ:CoreVar -> LeveledHaskType Γ ★)
     (τ:HaskType Γ ★)
     (lev:HaskLevel Γ)
-    (we:WeakExpr) : ???(@Expr _ WeakExprVarEqDecidable Γ Δ ξ (τ @@ lev) )  :=
+    (we:WeakExpr) : ???(@Expr _ CoreVarEqDecidable Γ Δ ξ (τ @@ lev) )  :=
     match we with
 
     | WEVar   v                         => castExpr "WEVar" (τ @@ lev) (EVar Γ Δ ξ v)
@@ -398,7 +398,8 @@ Definition weakExprToStrongExpr : forall
     | WELam   ev e                      => weakTypeToType' φ ev ★ >>= fun tv =>
                                              weakTypeOfWeakExpr e >>= fun t =>
                                                weakTypeToType' φ t ★ >>= fun τ' =>
-                                                 weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ ((ev,tv@@lev)::nil)) τ' _ e >>= fun e' =>
+                                                 weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ (((ev:CoreVar),tv@@lev)::nil))
+                                                    τ' _ e >>= fun e' =>
                                                    castExpr "WELam" _ (ELam Γ Δ ξ tv _ _ ev e')
 
     | WEBrak  ec e tbody                => weakExprToStrongExpr Γ Δ φ ψ ξ τ ((φ (`ec))::lev) e >>= fun e' =>
@@ -415,9 +416,9 @@ Definition weakExprToStrongExpr : forall
 
     | WELet   v ve  ebody               => weakTypeToType' φ v ★  >>= fun tv =>
                                              weakExprToStrongExpr Γ Δ φ ψ ξ tv lev ve >>= fun ve' =>
-                                               weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ ((v,tv@@lev)::nil)) τ lev ebody
+                                               weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ (((v:CoreVar),tv@@lev)::nil)) τ lev ebody
                                                >>= fun ebody' =>
-                                                 OK (ELet _ _ _ tv _ lev v ve' ebody')
+                                                 OK (ELet _ _ _ tv _ lev (v:CoreVar) ve' ebody')
 
     | WEApp   e1 e2                     => weakTypeOfWeakExpr e2 >>= fun t2 =>
                                              weakTypeToType' φ t2 ★ >>= fun t2' =>

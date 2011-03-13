@@ -43,6 +43,7 @@ Inductive WeakExpr :=
                        WeakExpr.
 
 (* calculate the free WeakVar's in a WeakExpr *)
+(*
 Fixpoint getWeakExprFreeVars (me:WeakExpr) : list WeakExprVar :=
   match me with
     | WELit    _        =>     nil
@@ -92,7 +93,7 @@ Definition makeClosedExpression : WeakExpr -> WeakExpr :=
     | nil      => me
     | cv::cvl' => WELam cv (closeExpression me cvl')
   end) me (getWeakExprFreeVars me).
-
+*)
 Definition weakTypeOfLiteral (lit:HaskLiteral) : WeakType :=
   (WTyCon (haskLiteralToTyCon lit)).
 

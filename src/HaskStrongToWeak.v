@@ -11,6 +11,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.
 Require Import HaskKinds.
 Require Import HaskCoreLiterals.
+Require Import HaskCoreVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
@@ -67,17 +68,20 @@ Definition reindexStrongExpr {VV}{HH}{eqVV:EqDecidable VV}{eqHH:EqDecidable HH}
 Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
   := tv::::ite.
 
-Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{lev}
+Definition unlev {Γ}{κ}(lht:LeveledHaskType Γ κ) :=
+  match lht with t@@l => t end.
+
+Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
   (ftv:Fresh Kind                (fun _ => WeakTypeVar))
   (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
-  (exp:@Expr WeakExprVar _ Γ Δ ξ lev)
+  (exp:@Expr _ CoreVarEqDecidable Γ Δ ξ τ)
   : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> WeakExpr :=
-match exp as E in Expr G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> WeakExpr with
-| EVar  _ _ _ ev                => fun ite => WEVar ev
+match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> WeakExpr with
+| EVar  Γ' _ ξ' ev              => fun ite => WEVar (weakExprVar ev (@typeToWeakType ftv Γ' ★  (unlev (ξ' ev)) ite))
 | ELit  _ _ _ lit _             => fun ite => WELit lit
 | EApp  Γ' _ _ _ _ _ e1 e2      => fun ite => WEApp (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
-| ELam  Γ'   _ _ _ _ _ cv e     => fun ite => WELam cv (strongExprToWeakExpr ftv fcv e ite)
-| ELet  Γ' _ _ _ _ _ ev e1 e2   => fun ite => WELet ev (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
+| ELam  Γ'   _ _ _ t _ cv e     => fun ite => WELam (weakExprVar cv (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e ite)
+| ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => WELet (weakExprVar ev (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
 | EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
 | EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
 | ECast Γ Δ ξ t1 t2 γ l e       => fun ite => WECast (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
@@ -117,14 +121,14 @@ match exp as E in Expr G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar)
   let t2' := typeToWeakType ftv σ₂ ite in
   let (cv,fcv') := next _ _ fcv (t1',t2') in WECoLam cv (strongExprToWeakExpr ftv fcv' e ite)
 end
-with exprLetRec2WeakExprLetRec {Γ}{Δ}{ξ}{lev}{vars}
+with exprLetRec2WeakExprLetRec {Γ}{Δ}{ξ}{τ}{vars}
   (ftv:Fresh Kind                (fun _ => WeakTypeVar))
   (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
-  (elrb:@ELetRecBindings WeakExprVar _ Γ Δ ξ lev vars)
+  (elrb:@ELetRecBindings _ CoreVarEqDecidable Γ Δ ξ τ vars)
   : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> Tree ??(WeakExprVar * WeakExpr) :=
 match elrb as E in ELetRecBindings G D X L V
    return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> Tree ??(WeakExprVar * WeakExpr) with
 | ELR_nil    _ _ _ _           => fun ite => []
-| ELR_leaf   _ _ _ _ cv v e    => fun ite => [(v,(strongExprToWeakExpr ftv fcv e ite))]
+| ELR_leaf   _ _ _ t cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv t ite)),(strongExprToWeakExpr ftv fcv e ite))]
 | ELR_branch _ _ _ _ _ _ b1 b2 => fun ite => (exprLetRec2WeakExprLetRec ftv fcv b1 ite),, (exprLetRec2WeakExprLetRec ftv fcv b2 ite)
 end.

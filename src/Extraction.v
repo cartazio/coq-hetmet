@@ -77,10 +77,14 @@ Section core2proof.
 
   (* We need to be able to resolve unbound exprvars, but we can be sure their types will have no
    * free tyvars in them *)
-  Definition ξ (wev:WeakExprVar) : LeveledHaskType Γ ★ :=
-    match weakTypeToType' φ wev ★ with
-      | Error s => fail ("Error in top-level xi: " +++ s)
-      | OK    t => t @@ nil
+  Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
+    match coreVarToWeakVar cv with
+      | WExprVar wev => match weakTypeToType' φ wev ★ with
+                          | Error s => fail ("Error in top-level xi: " +++ s)
+                          | OK    t => t @@ nil
+                        end
+      | WTypeVar _   => fail "top-level xi got a type variable"
+      | WCoerVar _   => fail "top-level xi got a coercion variable"
     end.
 
   Definition header : string :=

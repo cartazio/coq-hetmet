@@ -120,9 +120,7 @@ Definition compare_weakTypes (w1 w2:WeakType) :=
     then true
     else false.
 
-(* Coq's "decide equality" can't cope here; we have to cheat for now *)
-Axiom compare_weakTypes_axiom : forall w1 w2, if compare_weakTypes w1 w2 then w1=w2 else not (w1=w2).
-
+(*
 Instance EqDecidableWeakType : EqDecidable WeakType.
   apply Build_EqDecidable.
   intros.
@@ -133,6 +131,7 @@ Instance EqDecidableWeakType : EqDecidable WeakType.
   left; auto.
   right; auto.
   Defined.
+*)
 
 Instance WeakTypeToString : ToString WeakType :=
   { toString := coreTypeToString ○ weakTypeToCoreType }.

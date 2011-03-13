@@ -58,6 +58,7 @@ Variable tyFunResultKind : CoreTyCon -> Kind. Extract Inlined Constant tyFunResu
 Definition tyFunKind (tc:TyFun) : ((list Kind) * Kind) :=
   ((map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc)) , (tyFunResultKind tc)).
 
+(*
 (* EqDecidable instances for all of the above *)
 Instance WeakCoerVarEqDecidable : EqDecidable WeakCoerVar.
   apply Build_EqDecidable.
@@ -96,8 +97,7 @@ Instance WeakVarEqDecidable : EqDecidable WeakVar.
      left; auto.
      right; intro X; apply n; inversion X; auto.
   Defined.
-
-
+*)
 
 Instance WeakVarToString : ToString WeakVar :=
   { toString := fun x => toString (weakVarToCoreVar x) }.
