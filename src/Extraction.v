@@ -58,8 +58,7 @@ Extract Constant shift  => "shiftAscii".
 Unset Extraction Optimize.
 Unset Extraction AutoInline.
 
-Axiom fail : forall {A}, string -> A. 
-  Extract Inlined Constant fail => "Prelude.error".
+Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
 
 Section core2proof.
   Context (ce:@CoreExpr CoreVar).
@@ -69,22 +68,22 @@ Section core2proof.
   Definition Δ : CoercionEnv Γ := nil.
 
   Definition φ : TyVarResolver Γ :=
-    fun cv => (fun TV env => fail "unbound tyvar").
+    fun cv => (fun TV env => Prelude_error "unbound tyvar").
     (*fun tv => error ("tried to get the representative of an unbound tyvar:" +++ (getCoreVarOccString tv)).*)
 
   Definition ψ : CoreVar->HaskCoVar nil Δ
-    := fun cv => fail ("tried to get the representative of an unbound covar!" (*+++ (getTypeVarOccString cv)*)).
+    := fun cv => Prelude_error ("tried to get the representative of an unbound covar!" (*+++ (getTypeVarOccString cv)*)).
 
   (* We need to be able to resolve unbound exprvars, but we can be sure their types will have no
    * free tyvars in them *)
   Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
     match coreVarToWeakVar cv with
       | WExprVar wev => match weakTypeToType' φ wev ★ with
-                          | Error s => fail ("Error in top-level xi: " +++ s)
+                          | Error s => Prelude_error ("Error in top-level xi: " +++ s)
                           | OK    t => t @@ nil
                         end
-      | WTypeVar _   => fail "top-level xi got a type variable"
-      | WCoerVar _   => fail "top-level xi got a coercion variable"
+      | WTypeVar _   => Prelude_error "top-level xi got a type variable"
+      | WCoerVar _   => Prelude_error "top-level xi got a coercion variable"
     end.
 
   Definition header : string :=
@@ -107,17 +106,17 @@ Section core2proof.
 
   Definition handleExpr (ce:@CoreExpr CoreVar) : string :=
     match coreExprToWeakExpr ce with
-      | Error s => fail ("unable to convert GHC Core expression into Coq HaskWeak expression due to:\n  "+++s)
+      | Error s => Prelude_error ("unable to convert GHC Core expression into Coq HaskWeak expression due to:\n  "+++s)
       | OK we   =>  match weakTypeOfWeakExpr we >>= fun t => weakTypeToType φ t with
-                      | Error s => fail ("unable to calculate HaskType of a HaskWeak expression because: " +++ s)
+                      | Error s => Prelude_error ("unable to calculate HaskType of a HaskWeak expression because: " +++ s)
                       | OK τ    => match τ with
                                      | haskTypeOfSomeKind ★  τ' =>
                                        match weakExprToStrongExpr Γ Δ φ ψ ξ τ' nil (*(makeClosedExpression*) we (* ) *) with
-                                         | Error s => fail ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
+                                         | Error s => Prelude_error ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
                                          | OK e'   => eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')+++"$$"+++eol
                                        end
                                      | haskTypeOfSomeKind κ τ' =>
-                                       fail ("encountered 'expression' of kind "+++κ+++" at top level (type "+++τ'
+                                       Prelude_error ("encountered 'expression' of kind "+++κ+++" at top level (type "+++τ'
                                               +++"); shouldn't happen")
                                    end
                     end
