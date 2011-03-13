@@ -31,40 +31,35 @@ Variable trustMeCoercion           : CoreCoercion.
 Variable coreCoercionsAreReallyTypes : CoreCoercion -> CoreType.
   Extract Inlined Constant coreCoercionsAreReallyTypes => "(\x -> x)".
 
-(* a dummy variable which is never referenced but needed for a binder *)
-Variable dummyVariable : CoreVar.
-  (* FIXME this doesn't actually work *)
-  Extract Inlined Constant dummyVariable => "(Prelude.error ""dummyVariable"")".
-
 Section HaskWeakToCore.
 
   (* the CoreVar for the "magic" bracket/escape identifiers must be created from within one of the monads *)
   Context (hetmet_brak_var : CoreVar).
   Context (hetmet_esc_var  : CoreVar).
 
-  (* FIXME: do something more intelligent here *)
   Definition weakCoercionToCoreCoercion : WeakCoercion -> CoreCoercion :=
     fun _ => trustMeCoercion.
 
-  Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
+  Fixpoint weakExprToCoreExpr (f:Fresh unit (fun _ => WeakExprVar)) (me:WeakExpr) : @CoreExpr CoreVar :=
   match me with
   | WEVar   (weakExprVar v _)            => CoreEVar  v
   | WELit   lit                          => CoreELit  lit
-  | WEApp   e1 e2                        => CoreEApp     (weakExprToCoreExpr e1) (weakExprToCoreExpr e2)
-  | WETyApp e t                          => CoreEApp     (weakExprToCoreExpr e ) (CoreEType (weakTypeToCoreType t))
-  | WECoApp e co                         => CoreEApp     (weakExprToCoreExpr e )
+  | WEApp   e1 e2                        => CoreEApp     (weakExprToCoreExpr f e1) (weakExprToCoreExpr f e2)
+  | WETyApp e t                          => CoreEApp     (weakExprToCoreExpr f e ) (CoreEType (weakTypeToCoreType t))
+  | WECoApp e co                         => CoreEApp     (weakExprToCoreExpr f e )
                                                            (CoreEType (coreCoercionsAreReallyTypes (weakCoercionToCoreCoercion co)))
-  | WENote  n e                          => CoreENote n  (weakExprToCoreExpr e )
-  | WELam   (weakExprVar ev _  ) e       => CoreELam  ev (weakExprToCoreExpr e )
-  | WETyLam (weakTypeVar tv _  ) e       => CoreELam  tv (weakExprToCoreExpr e )
-  | WECoLam (weakCoerVar cv _ _) e       => CoreELam  cv (weakExprToCoreExpr e )
-  | WECast  e co                         => CoreECast    (weakExprToCoreExpr e ) (weakCoercionToCoreCoercion co)
+  | WENote  n e                          => CoreENote n  (weakExprToCoreExpr f e )
+  | WELam   (weakExprVar ev _  ) e       => CoreELam  ev (weakExprToCoreExpr f e )
+  | WETyLam (weakTypeVar tv _  ) e       => CoreELam  tv (weakExprToCoreExpr f e )
+  | WECoLam (weakCoerVar cv _ _ _) e     => CoreELam  cv (weakExprToCoreExpr f e )
+  | WECast  e co                         => CoreECast    (weakExprToCoreExpr f e ) (weakCoercionToCoreCoercion co)
   | WEBrak  (weakTypeVar ec _) e t       => CoreEApp  (CoreEApp (CoreEVar hetmet_brak_var)
                                                            (CoreEType (TyVarTy ec))) (CoreEType (weakTypeToCoreType t))
   | WEEsc   (weakTypeVar ec _) e t       => CoreEApp  (CoreEApp (CoreEVar hetmet_esc_var)
                                                            (CoreEType (TyVarTy ec))) (CoreEType (weakTypeToCoreType t))
-  | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr ve))  (weakExprToCoreExpr e)
-  | WECase  e tbranches tc types alts    => CoreECase (weakExprToCoreExpr e) dummyVariable (weakTypeToCoreType tbranches)
+  | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr f ve))  (weakExprToCoreExpr f e)
+  | WECase  e tbranches tc types alts    => let (v,f') := next _ _ f tt  in
+                                            CoreECase (weakExprToCoreExpr f' e) v (weakTypeToCoreType tbranches)
                                               (sortAlts ((
                                                 fix mkCaseBranches (alts:Tree 
                                                   ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
@@ -77,17 +72,17 @@ Section HaskWeakToCore.
                                                         (map (fun v:WeakTypeVar => weakVarToCoreVar v) tvars)
                                                         (map (fun v:WeakCoerVar => weakVarToCoreVar v) cvars))
                                                       (map (fun v:WeakExprVar => weakVarToCoreVar v) evars))
-                                                      (weakExprToCoreExpr e))::nil
+                                                      (weakExprToCoreExpr f' e))::nil
                                                 end
                                               ) alts))
   | WELetRec mlr e                       => CoreELet (CoreRec
                                                ((fix mkLetBindings (mlr:Tree ??(WeakExprVar * WeakExpr)) :=
                                                  match mlr with
                                                    | T_Leaf None                        => nil
-                                                   | T_Leaf (Some (weakExprVar cv _,e)) => (cv,(weakExprToCoreExpr e))::nil
+                                                   | T_Leaf (Some (weakExprVar cv _,e)) => (cv,(weakExprToCoreExpr f e))::nil
                                                    | T_Branch b1 b2                     => app (mkLetBindings b1) (mkLetBindings b2)
                                                  end) mlr))
-                                               (weakExprToCoreExpr e)
+                                               (weakExprToCoreExpr f e)
   end.
 
 End HaskWeakToCore.

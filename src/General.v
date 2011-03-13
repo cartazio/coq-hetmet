@@ -615,6 +615,17 @@ Lemma extensionality_composes : forall t1 t2 t3 (f f':t1->t2) (g g':t2->t3),
 
 
 
+
+
+CoInductive Fresh A T :=
+{ next  : forall a:A, (T a * Fresh A T)
+; split : Fresh A T * Fresh A T
+}.
+
+
+
+
+
 Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 
 

@@ -18,10 +18,17 @@ Require Import HaskWeak.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 
-CoInductive Fresh A T :=
-{ next  : forall a:A, (T a * Fresh A T)
-; split : Fresh A T * Fresh A T
-}.
+Fixpoint mfresh (f:Fresh Kind (fun _ => WeakTypeVar))(lk:list Kind){Γ}(ite:IList _ (fun _ => WeakTypeVar) Γ)
+  : (Fresh Kind (fun _ => WeakTypeVar)) * ((vec WeakTypeVar (length lk)) * (IList _ (fun _ => WeakTypeVar) (app lk Γ))) :=
+  match lk as LK return (Fresh Kind (fun _ => WeakTypeVar)) * ((vec WeakTypeVar (length LK)) *
+                          (IList _ (fun _ => WeakTypeVar) (app LK Γ))) with
+  | nil    => (f,(vec_nil,ite))
+  | k::lk' =>
+    let (f',varsite') := mfresh f lk' ite
+    in  let (vars,ite') := varsite'
+    in  let (v,f'') := next _ _ f' k
+    in (f'',((v:::vars),v::::ite'))
+  end.
 
 Fixpoint rawHaskTypeToWeakType (f:Fresh Kind (fun _ => WeakTypeVar)){κ}(rht:RawHaskType (fun _ => WeakTypeVar) κ)
  {struct rht} : WeakType :=
@@ -52,10 +59,7 @@ Definition typeToWeakType (f:Fresh Kind (fun _ => WeakTypeVar))
 Variable unsafeCoerce           : WeakCoercion.    Extract Inlined Constant unsafeCoerce => "Coercion.unsafeCoerce".
 
 Definition strongCoercionToWeakCoercion {Γ}{Δ}{ck}(τ:HaskCoercion Γ Δ ck)(φ:InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ)
-  : WeakCoercion.
-  unfold HaskCoercion in τ.
-  admit.
-  Defined.
+  : WeakCoercion := unsafeCoerce.
 
 (* This can be used to turn HaskStrong's with arbitrary expression variables into HaskStrong's which use WeakExprVar's
  * for their variables; those can subsequently be passed to the following function (strongExprToWeakExpr) *)
@@ -67,9 +71,6 @@ Definition reindexStrongExpr {VV}{HH}{eqVV:EqDecidable VV}{eqHH:EqDecidable HH}
 
 Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
   := tv::::ite.
-
-Definition unlev {Γ}{κ}(lht:LeveledHaskType Γ κ) :=
-  match lht with t@@l => t end.
 
 Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
   (ftv:Fresh Kind                (fun _ => WeakTypeVar))
@@ -89,14 +90,14 @@ match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTyp
 | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv τ ite)
 | ELetRec _ _ _ _ _ vars elrb e =>fun ite=>WELetRec (exprLetRec2WeakExprLetRec ftv fcv elrb ite)(strongExprToWeakExpr ftv fcv e ite)
 | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => WECoApp (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
-| ECase Γ Δ ξ l tc tbranches sac atypes e alts =>
+| ECase Γ Δ ξ l tc tbranches atypes e alts =>
   fun ite => WECase
     (strongExprToWeakExpr ftv fcv e ite)
     (@typeToWeakType ftv Γ _ tbranches ite)
     tc
     (ilist_to_list (@ilmap _ _ (fun _ => WeakType) _ (fun _ t => typeToWeakType ftv t ite) atypes))
     ((fix caseBranches
-      (tree:Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc sac atypes
+      (tree:Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc atypes
                             & Expr (sac_Γ scb Γ)
                                    (sac_Δ scb Γ atypes (weakCK'' Δ))
                                    (update_ξ (weakLT'○ξ) (vec2list (vec_map
@@ -106,11 +107,15 @@ match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTyp
       match tree with
         | T_Leaf None     => []
         | T_Leaf (Some x) => let (scb,e) := x in
-          (*[(sac_altcon scb,
-            nil, (* FIXME *)
-            nil, (* FIXME *)
-            (*map (fun t => typeToWeakType ftv t ite') (vec2list (sac_types scb))*)nil, (* FIXME *)
-            strongExprToWeakExpr ftv fcv e (weakITE' ite))]*) []
+          let (ftv',evarsite') := mfresh ftv _ ite in
+          let fcv' :=  fcv in
+            let (evars,ite') := evarsite' in
+            [(sac_altcon scb,
+              vec2list evars,
+              nil (*FIXME*),
+              map (fun vt => weakExprVar (fst vt) (typeToWeakType ftv' (snd vt) ite')) (vec2list (scbwv_varstypes scb)),
+              strongExprToWeakExpr ftv' fcv' e ite'
+            )]
         | T_Branch b1 b2  => (caseBranches b1),,(caseBranches b2)
       end
     ) alts)
@@ -129,6 +134,6 @@ with exprLetRec2WeakExprLetRec {Γ}{Δ}{ξ}{τ}{vars}
 match elrb as E in ELetRecBindings G D X L V
    return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> Tree ??(WeakExprVar * WeakExpr) with
 | ELR_nil    _ _ _ _           => fun ite => []
-| ELR_leaf   _ _ _ t cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv t ite)),(strongExprToWeakExpr ftv fcv e ite))]
+| ELR_leaf   _ _ ξ' cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv (unlev (ξ' v)) ite)),(strongExprToWeakExpr ftv fcv e ite))]
 | ELR_branch _ _ _ _ _ _ b1 b2 => fun ite => (exprLetRec2WeakExprLetRec ftv fcv b1 ite),, (exprLetRec2WeakExprLetRec ftv fcv b2 ite)
 end.

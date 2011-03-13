@@ -9,11 +9,11 @@ Require Import Coq.Lists.List.
 Require Import General.
 Require Import HaskKinds.
 Require Import HaskCoreLiterals.
-Require Import HaskCoreTypes.  (* FIXME *)
-Require Import HaskCoreVars.   (* FIXME *)
+Require Import HaskCoreTypes.
+Require Import HaskCoreVars.
 Require Import HaskWeakTypes.
-Require Import HaskWeakVars.   (* FIXME *)
-Require Import HaskCoreToWeak. (* FIXME *)
+Require Import HaskWeakVars.
+Require Import HaskCoreToWeak.
 
 Variable dataConTyCon      : CoreDataCon -> TyCon.         Extract Inlined Constant dataConTyCon      => "DataCon.dataConTyCon".
 Variable dataConExVars_    : CoreDataCon -> list CoreVar.  Extract Inlined Constant dataConExVars_    => "DataCon.dataConExTyVars".
@@ -175,6 +175,7 @@ Inductive HaskTypeOfSomeKind (Γ:TypeEnv) :=
 Definition HaskCoercion Γ Δ (hk:HaskCoercionKind Γ) := forall TV CV (ite:@InstantiatedTypeEnv TV Γ),
     @InstantiatedCoercionEnv TV CV Γ Δ -> @RawHaskCoer TV CV (hk TV ite).
 Inductive  LeveledHaskType (Γ:TypeEnv) κ := mkLeveledHaskType : HaskType Γ κ -> HaskLevel Γ -> LeveledHaskType Γ κ.
+
 Definition FreshHaskTyVar {Γ}(κ:Kind) : HaskTyVar (κ::Γ) κ := fun TV env => ilist_head env.
 Definition HaskTAll {Γ}(κ:Kind)(σ:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV ★) : HaskType Γ ★
   := fun TV env => TAll κ (σ TV env).
@@ -216,6 +217,8 @@ Notation "t @@  l" := (@mkLeveledHaskType _ _ t l) (at level 20).
 Notation "t @@@ l" := (mapOptionTree (fun t' => t' @@ l) t) (at level 20).
 Notation "'<[' a '|-' t ']>'" := (@HaskBrak _ a t).
 
+Definition unlev {Γ}{κ}(lht:LeveledHaskType Γ κ) :=
+  match lht with t@@l => t end.
 
 
 
@@ -311,11 +314,15 @@ Definition weakCK' {Γ}{κ}(hck:HaskCoercionKind Γ) : HaskCoercionKind (app κ 
   apply weakCK.
   apply IHκ.
   Defined.
+(*
 Definition weakCK'' {Γ}{κ}(hck:list (HaskCoercionKind Γ)) : list (HaskCoercionKind (app κ Γ)) :=
   match κ as K return list (HaskCoercionKind (app K Γ)) with
   | nil => hck
   | _   => map weakCK' hck
   end.
+*)
+Definition weakCK'' {Γ}{κ}(hck:list (HaskCoercionKind Γ)) : list (HaskCoercionKind (app κ Γ)) :=
+  map weakCK' hck.
 Definition weakCV {Γ}{Δ}{κ}(cv':HaskCoVar Γ Δ) : HaskCoVar (κ::Γ) (weakCE Δ) :=
   fun TV CV ite ice => (cv' TV CV (weakITE ite) (weakICE ice)).
 Definition weakF {Γ:TypeEnv}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV κ₂) : 
@@ -351,7 +358,7 @@ Record StrongAltCon {tc:TyCon} :=
 ; sac_numExprVars :  nat
 ; sac_ekinds      :  vec Kind sac_numExTyVars
 ; sac_kinds       := app (tyConKind tc) (vec2list sac_ekinds)
-; sac_Γ           := fun Γ => app (tyConKind tc) Γ
+; sac_Γ           := fun Γ => app (vec2list sac_ekinds) Γ
 ; sac_coercions   :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskCoercionKind (sac_Γ Γ)) sac_numCoerVars
 ; sac_types       :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskType (sac_Γ Γ) ★) sac_numExprVars
 ; sac_Δ           := fun    Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)) Δ => app (vec2list (sac_coercions Γ atypes)) Δ

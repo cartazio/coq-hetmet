@@ -119,11 +119,11 @@ Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
                         end
     | WELam   (weakExprVar ev vt) e => weakTypeOfWeakExpr e >>= fun t' => OK (WAppTy (WAppTy WFunTyCon vt) t')
     | WETyLam tv e => weakTypeOfWeakExpr e >>= fun t' => OK (WForAllTy tv t')
-    | WECoLam (weakCoerVar cv φ₁ φ₂) e => weakTypeOfWeakExpr e >>= fun t' => OK (WCoFunTy φ₁ φ₂ t')
+    | WECoLam (weakCoerVar cv _ φ₁ φ₂) e => weakTypeOfWeakExpr e >>= fun t' => OK (WCoFunTy φ₁ φ₂ t')
     | WELet   ev ve e            => weakTypeOfWeakExpr e
     | WELetRec rb e              => weakTypeOfWeakExpr e
     | WENote  n e                => weakTypeOfWeakExpr e
-    | WECast  e (weakCoercion t1 t2 _) => OK t2
+    | WECast  e (weakCoercion _ t1 t2 _) => OK t2
     | WECase  scrutinee tbranches tc type_params alts => OK tbranches
 
     (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)

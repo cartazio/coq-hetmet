@@ -102,7 +102,7 @@ Definition coreCoercionToWeakCoercion (cc:CoreCoercion) : ???WeakCoercion :=
   let (t1,t2) := coreCoercionKind cc
   in  coreTypeToWeakType t1 >>= fun t1' =>
     coreTypeToWeakType t2 >>= fun t2' =>
-    OK (weakCoercion t1' t2' cc).
+    OK (weakCoercion (kindOfCoreType t1) t1' t2' cc).
 
 Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
   match ce with

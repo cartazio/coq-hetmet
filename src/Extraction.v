@@ -78,7 +78,7 @@ Section core2proof.
    * free tyvars in them *)
   Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
     match coreVarToWeakVar cv with
-      | WExprVar wev => match weakTypeToType' φ wev ★ with
+      | WExprVar wev => match weakTypeToType'' φ wev ★ with
                           | Error s => Prelude_error ("Error in top-level xi: " +++ s)
                           | OK    t => t @@ nil
                         end

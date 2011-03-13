@@ -20,8 +20,8 @@ Section HaskStrong.
 
   (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
 
-  Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{sac:@StrongAltCon tc}{atypes:IList _ (HaskType Γ) (tyConKind sac)} :=
-  { scbwv_sac       := sac
+  Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:IList _ (HaskType Γ) (tyConKind tc)} :=
+  { scbwv_sac       :  @StrongAltCon tc
   ; scbwv_exprvars  :  vec VV (sac_numExprVars scbwv_sac)
   ; scbwv_varstypes := vec_zip scbwv_exprvars (sac_types scbwv_sac Γ atypes)
   ; scbwv_ξ         := fun ξ lev =>  update_ξ (weakLT'○ξ) (vec2list
@@ -48,9 +48,9 @@ Section HaskStrong.
     Expr Γ Δ ξ (σ₁ ∼∼ σ₂ ⇒ σ @@ l)            -> Expr Γ Δ ξ (σ        @@l)
   | ETyLam : ∀ Γ Δ ξ κ σ l,
     Expr (κ::Γ) (weakCE Δ) (weakLT○ξ) (HaskTApp (weakF σ) (FreshHaskTyVar _)@@(weakL l))-> Expr Γ Δ ξ (HaskTAll κ σ @@ l)
-  | ECase    : forall Γ Δ ξ l tc tbranches sac atypes,
+  | ECase    : forall Γ Δ ξ l tc tbranches atypes,
                Expr Γ Δ ξ (caseType tc atypes @@ l) ->
-               Tree ??{ scb : StrongCaseBranchWithVVs tc sac atypes
+               Tree ??{ scb : StrongCaseBranchWithVVs tc atypes
                             & Expr (sac_Γ scb Γ)
                                    (sac_Δ scb Γ atypes (weakCK'' Δ))
                                    (scbwv_ξ scb ξ l)
@@ -65,7 +65,7 @@ Section HaskStrong.
   (* can't avoid having an additional inductive: it is a tree of Expr's, each of whose ξ depends on the type of the entire tree *)
   with ELetRecBindings : ∀ Γ, CoercionEnv Γ -> (VV -> LeveledHaskType Γ ★) -> HaskLevel Γ -> Tree ??(VV*HaskType Γ ★) -> Type :=
   | ELR_nil    : ∀ Γ Δ ξ l  ,                                                                 ELetRecBindings Γ Δ ξ l []
-  | ELR_leaf   : ∀ Γ Δ ξ t l v,                                        Expr Γ Δ ξ (t @@ l) -> ELetRecBindings Γ Δ ξ l [(v,t)]
+  | ELR_leaf   : ∀ Γ Δ ξ l v,                                Expr Γ Δ ξ (unlev (ξ v) @@ l) -> ELetRecBindings Γ Δ ξ l [(v,unlev (ξ v))]
   | ELR_branch : ∀ Γ Δ ξ l t1 t2, ELetRecBindings Γ Δ ξ l t1 -> ELetRecBindings Γ Δ ξ l t2 -> ELetRecBindings Γ Δ ξ l (t1,,t2)
   .
 

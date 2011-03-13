@@ -14,10 +14,10 @@ Require Import HaskCoreTypes.
 Require Import HaskWeakTypes.
 
 (* TO DO: finish this *)
-Inductive WeakCoercion : Type := weakCoercion : WeakType -> WeakType -> CoreCoercion -> WeakCoercion.
+Inductive WeakCoercion : Type := weakCoercion : Kind -> WeakType -> WeakType -> CoreCoercion -> WeakCoercion.
 
 (* a WeakCoerVar just wraps a CoreVar and tags it with the pair of types amongst which it coerces *)
-Inductive WeakCoerVar := weakCoerVar : CoreVar -> WeakType -> WeakType -> WeakCoerVar.
+Inductive WeakCoerVar := weakCoerVar : CoreVar -> Kind -> WeakType -> WeakType -> WeakCoerVar.
 
 (* a WeakExprVar just wraps a CoreVar and tags it with the type of its value *)
 Inductive WeakExprVar := weakExprVar : CoreVar -> WeakType -> WeakExprVar.
@@ -37,9 +37,9 @@ Definition weakTypeVarToKind (tv:WeakTypeVar) : Kind :=
 
 Definition weakVarToCoreVar (wv:WeakVar) : CoreVar :=
   match wv with
-  | WExprVar (weakExprVar v _   ) => v
-  | WTypeVar (weakTypeVar v _   ) => v
-  | WCoerVar (weakCoerVar v _ _ ) => v
+  | WExprVar (weakExprVar v _    ) => v
+  | WTypeVar (weakTypeVar v _    ) => v
+  | WCoerVar (weakCoerVar v _ _ _) => v
  end.
  Coercion weakVarToCoreVar : WeakVar >-> CoreVar.
 
