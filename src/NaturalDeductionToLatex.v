@@ -9,10 +9,6 @@ Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import NaturalDeduction.
 
-(* string stuff *)
-Variable eol : string.
-Extract Constant eol  => "'\n':[]".
-
 Section ToLatex.
 
   Context {Judgment : Type}.

@@ -629,6 +629,10 @@ CoInductive Fresh A T :=
 Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 
 
+(* string stuff *)
+Variable eol : string.
+Extract Constant eol  => "'\n':[]".
+
 
 (* the Error monad *)
 Inductive OrError (T:Type) :=
