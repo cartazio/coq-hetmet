@@ -649,6 +649,18 @@ Definition orErrorBind {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrError Q) :=
   end.
 Notation "a >>= b" := (@orErrorBind _ a _ b) (at level 20).
 
+Open Scope string_scope.
+Definition orErrorBindWithMessage {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrError Q) err_msg :=
+  match oe with
+    | Error s => Error (err_msg +++ eol +++ "  " +++ s)
+    | OK    t => f t
+  end.
+
+Notation "a >>=[ S ] b" := (@orErrorBindWithMessage _ a _ b S) (at level 20).
+
+Definition addErrorMessage s {T} (x:OrError T) :=
+  x >>=[ s ] (fun y => OK y).
+
 Inductive Indexed {T:Type}(f:T -> Type) : ???T -> Type :=
 | Indexed_Error : forall error_message:string, Indexed f (Error error_message)
 | Indexed_OK    : forall t, f t -> Indexed f (OK t)
