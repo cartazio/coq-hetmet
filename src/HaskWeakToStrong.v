@@ -465,10 +465,10 @@ Definition weakExprToStrongExpr : forall
                                                     τ' _ e >>= fun e' =>
                                                    castExpr "WELam" _ (ELam Γ Δ ξ tv _ _ ev e')
 
-    | WEBrak  ec e tbody                => weakExprToStrongExpr Γ Δ φ ψ ξ τ ((φ (`ec))::lev) e >>= fun e' =>
+    | WEBrak  _ ec e tbody              => weakExprToStrongExpr Γ Δ φ ψ ξ τ ((φ (`ec))::lev) e >>= fun e' =>
                                              castExpr "WEBrak" _ (EBrak _ _ _ (φ (`ec)) _ lev e')
 
-    | WEEsc   ec e tbody                => weakTypeToType'' φ tbody ★ >>= fun tbody' =>
+    | WEEsc   _ ec e tbody              => weakTypeToType'' φ tbody ★ >>= fun tbody' =>
                                            match lev with
                                              | nil       => Error "ill-leveled escapification"
                                              | ec'::lev' => weakExprToStrongExpr Γ Δ φ ψ ξ (<[ φ (`ec) |- tbody' ]>) lev e

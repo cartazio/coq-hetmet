@@ -53,10 +53,18 @@ Section HaskWeakToCore.
   | WETyLam (weakTypeVar tv _  ) e       => CoreELam  tv (weakExprToCoreExpr f e )
   | WECoLam (weakCoerVar cv _ _ _) e     => CoreELam  cv (weakExprToCoreExpr f e )
   | WECast  e co                         => CoreECast    (weakExprToCoreExpr f e ) (weakCoercionToCoreCoercion co)
-  | WEBrak  (weakTypeVar ec _) e t       => CoreEApp  (CoreEApp (CoreEVar hetmet_brak_var)
-                                                           (CoreEType (TyVarTy ec))) (CoreEType (weakTypeToCoreType t))
-  | WEEsc   (weakTypeVar ec _) e t       => CoreEApp  (CoreEApp (CoreEVar hetmet_esc_var)
-                                                           (CoreEType (TyVarTy ec))) (CoreEType (weakTypeToCoreType t))
+  | WEBrak  v (weakTypeVar ec _) e t     => fold_left CoreEApp
+                                                   ((CoreEType (TyVarTy ec))::
+                                                     (CoreEType (weakTypeToCoreType t))::
+                                                     (weakExprToCoreExpr f e)::
+                                                     nil)
+                                                   (CoreEVar v)
+  | WEEsc   v (weakTypeVar ec _) e t     => fold_left CoreEApp
+                                                   ((CoreEType (TyVarTy ec))::
+                                                     (CoreEType (weakTypeToCoreType t))::
+                                                     (weakExprToCoreExpr f e)::
+                                                     nil)
+                                                   (CoreEVar v)
   | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr f ve))  (weakExprToCoreExpr f e)
   | WECase  e tbranches tc types alts    => let (v,f') := next _ _ f tt  in
                                             CoreECase (weakExprToCoreExpr f' e) v (weakTypeToCoreType tbranches)

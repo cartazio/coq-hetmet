@@ -28,11 +28,12 @@ Inductive WeakExpr :=
 | WETyLam     : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
 | WECoLam     : WeakCoerVar                     -> WeakExpr                  -> WeakExpr
 
-(* the WeakType argument in WEBrak/WEEsc is used only when going back    *)
-(* from Weak to Core; it lets us dodge a possibly-failing type           *)
-(* calculation                                                           *)
-| WEBrak      : WeakTypeVar                     -> WeakExpr  -> WeakType     -> WeakExpr
-| WEEsc       : WeakTypeVar                     -> WeakExpr  -> WeakType     -> WeakExpr
+(* The WeakType argument in WEBrak/WEEsc is used only when going back      *)
+(* from Weak to Core; it lets us dodge a possibly-failing type             *)
+(* calculation.  The CoreVar argument is the GlobalVar for the hetmet_brak *)
+(* or hetmet_esc identifier                                                *)
+| WEBrak      : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
+| WEEsc       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 
 (* note that HaskWeak "Case" does not bind a variable; coreExprToWeakExpr adds a let-binder *)
 | WECase      : forall (scrutinee:WeakExpr)
@@ -127,8 +128,8 @@ Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
     | WECase  scrutinee tbranches tc type_params alts => OK tbranches
 
     (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)
-    | WEBrak  ec e _ => weakTypeOfWeakExpr e >>= fun t' => OK (WCodeTy ec t')
-    | WEEsc   ec e _ => weakTypeOfWeakExpr e >>= fun t' =>
+    | WEBrak _ ec e _ => weakTypeOfWeakExpr e >>= fun t' => OK (WCodeTy ec t')
+    | WEEsc  _ ec e _ => weakTypeOfWeakExpr e >>= fun t' =>
       match t' with
         | (WAppTy (WAppTy WCodeTyCon (WTyVarTy ec')) t'') =>
           if eqd_dec ec ec' then OK t''

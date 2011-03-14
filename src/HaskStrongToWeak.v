@@ -72,6 +72,12 @@ Definition reindexStrongExpr {VV}{HH}{eqVV:EqDecidable VV}{eqHH:EqDecidable HH}
 Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
   := tv::::ite.
 
+Section strongExprToWeakExpr.
+
+  Context (hetmet_brak : CoreVar).
+  Context (hetmet_esc  : CoreVar).
+Axiom FIXME : forall {t}, t.
+
 Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
   (ftv:Fresh Kind                (fun _ => WeakTypeVar))
   (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
@@ -83,8 +89,8 @@ match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTyp
 | EApp  Γ' _ _ _ _ _ e1 e2      => fun ite => WEApp (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
 | ELam  Γ'   _ _ _ t _ cv e     => fun ite => WELam (weakExprVar cv (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e ite)
 | ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => WELet (weakExprVar ev (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
-| EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
-| EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
+| EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  hetmet_esc (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
+| EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak hetmet_brak (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
 | ECast Γ Δ ξ t1 t2 γ l e       => fun ite => WECast (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
 | ENote _ _ _ _ n e             => fun ite => WENote n (strongExprToWeakExpr ftv fcv e ite)
 | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv τ ite)
@@ -137,3 +143,4 @@ match elrb as E in ELetRecBindings G D X L V
 | ELR_leaf   _ _ ξ' cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv (unlev (ξ' v)) ite)),(strongExprToWeakExpr ftv fcv e ite))]
 | ELR_branch _ _ _ _ _ _ b1 b2 => fun ite => (exprLetRec2WeakExprLetRec ftv fcv b1 ite),, (exprLetRec2WeakExprLetRec ftv fcv b2 ite)
 end.
+End strongExprToWeakExpr.

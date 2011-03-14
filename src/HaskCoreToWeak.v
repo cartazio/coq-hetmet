@@ -75,24 +75,24 @@ Variable coreViewDeep : CoreType -> CoreType.  Extract Inlined Constant coreView
 Definition coreTypeToWeakType t := coreTypeToWeakType' (coreViewDeep t).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
-Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakTypeVar * CoreType) :=
+Definition isBrak (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_brak_name (coreVarCoreName v) then
-      match coreVarToWeakVar v with
+      match coreVarToWeakVar ec with
         | WExprVar _  => None
-        | WTypeVar tv => Some (tv,tbody)
+        | WTypeVar tv => Some (v,tv,tbody)
         | WCoerVar _  => None
       end else None
   | _ => None
 end.
-Definition isEsc (ce:@CoreExpr CoreVar) : ??(WeakTypeVar * CoreType) :=
+Definition isEsc (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_esc_name (coreVarCoreName v) then
-      match coreVarToWeakVar v with
+      match coreVarToWeakVar ec with
         | WExprVar _  => None
-        | WTypeVar tv => Some (tv,tbody)
+        | WTypeVar tv => Some (v,tv,tbody)
         | WCoerVar _  => None
       end else None
   | _ => None
@@ -120,15 +120,15 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                           end
 
     | CoreEApp   e1 e2 => match isBrak e1 with
-                            | Some (tv,t) =>
+                            | Some (v,tv,t) =>
                               coreExprToWeakExpr e2 >>= fun e' =>
                                 coreTypeToWeakType t >>= fun t' =>
-                                OK (WEBrak tv e' t')
+                                OK (WEBrak v tv e' t')
                             | None    => match isEsc e1 with
-                                           | Some (tv,t) =>
+                                           | Some (v,tv,t) =>
                                              coreExprToWeakExpr e2 >>= fun e' =>
                                                coreTypeToWeakType t >>= fun t' =>
-                                                 OK (WEEsc tv e' t')
+                                                 OK (WEEsc v tv e' t')
                                            | None    => coreExprToWeakExpr e1 >>= fun e1' =>
                                              match e2 with
                                                | CoreEType t => 
