@@ -20,7 +20,7 @@ Variable mkCoreLet : @CoreBind CoreVar -> @CoreExpr CoreVar -> @CoreExpr CoreVar
   Extract Inlined Constant mkCoreLet => "MkCore.mkCoreLet".
 
 Variable sortAlts  : forall {a}{b}, list (@triple AltCon a b) -> list (@triple AltCon a b).
-  Extract Inlined Constant mkCoreLet => "sortAlts".
+  Extract Inlined Constant sortAlts => "sortAlts".
   Implicit Arguments sortAlts [[a][b]].
 
 Variable trustMeCoercion           : CoreCoercion.
