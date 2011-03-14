@@ -104,22 +104,24 @@ Section core2proof.
     eol+++"\end{document}"+++
     eol.
 
+  Definition handleExpr' (ce:@CoreExpr CoreVar) : ???string :=
+    addErrorMessage ("input CoreSyn: " +++ ce)
+    (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
+      coreExprToWeakExpr ce >>= fun we =>
+        addErrorMessage ("WeakExpr: " +++ we)
+          ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
+            ((weakTypeOfWeakExpr we) >>= fun t =>
+              (addErrorMessage ("WeakType: " +++ t)
+                ((weakTypeToType'' φ t ★) >>= fun τ =>
+                  addErrorMessage ("HaskType: " +++ τ)
+                  ((weakExprToStrongExpr Γ Δ φ ψ ξ τ nil we) >>= fun e =>
+                    OK (eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e)+++"$$"+++eol)
+                  )))))))).
+
   Definition handleExpr (ce:@CoreExpr CoreVar) : string :=
-    match coreExprToWeakExpr ce with
-      | Error s => Prelude_error ("unable to convert GHC Core expression into Coq HaskWeak expression due to:\n  "+++s)
-      | OK we   =>  match weakTypeOfWeakExpr we >>= fun t => weakTypeToType φ t with
-                      | Error s => Prelude_error ("unable to calculate HaskType of a HaskWeak expression because: " +++ s)
-                      | OK τ    => match τ with
-                                     | haskTypeOfSomeKind ★  τ' =>
-                                       match weakExprToStrongExpr Γ Δ φ ψ ξ τ' nil (*(makeClosedExpression*) we (* ) *) with
-                                         | Error s => Prelude_error ("unable to convert HaskWeak to HaskStrong due to:\n  "+++s)
-                                         | OK e'   => eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e')+++"$$"+++eol
-                                       end
-                                     | haskTypeOfSomeKind κ τ' =>
-                                       Prelude_error ("encountered 'expression' of kind "+++κ+++" at top level (type "+++τ'
-                                              +++"); shouldn't happen")
-                                   end
-                    end
+    match handleExpr' ce with
+      | OK x => x
+      | Error s => Prelude_error s
     end.
 
   Definition handleBind (bind:@CoreBind CoreVar) : string :=

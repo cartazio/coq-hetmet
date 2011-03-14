@@ -88,5 +88,7 @@ Definition weakCoercionToCoreCoercion : WeakCoercion -> CoreCoercion :=
   end.
 
 
+Instance weakExprToString : ToString WeakExpr  :=
+  { toString := fun we => toString (weakExprToCoreExpr we) }.
 
 
