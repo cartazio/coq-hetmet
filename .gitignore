@@ -1,2 +1,5 @@
+examples/tutorial.coqpass
+examples/tutorial.tex
+examples/tutorial.pdf
 build/
 build/**
