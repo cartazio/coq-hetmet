@@ -22,6 +22,8 @@ import qualified CoreSyn
 import qualified CoreUtils
 import qualified Class
 import qualified Data.Char 
+import qualified Data.List
+import qualified Data.Ord
 import qualified Data.Typeable
 import Data.Bits ((.&.), shiftL, (.|.))
 import Prelude ( (++), (+), (==), Show, show, Char, (.) )
@@ -46,8 +48,8 @@ errOrFail (Error s) = Prelude.error s
 getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]
 getTyConTyVars tc = if TyCon.isFunTyCon tc then [] else if TyCon.isPrimTyCon tc then [] else TyCon.tyConTyVars tc
 
-sortAlts :: [(CoreSyn.AltCon,a,b)] -> [(CoreSyn.AltCon,a,b)]
-sortAlts x = x -- FIXME
+sortAlts :: [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)] -> [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)]
+sortAlts x = Data.List.sortBy (\(a1,_,_) -> \(a2,_,_) -> Data.Ord.compare a1 a2) x
 
 -- to do: this could be moved into Coq
 coreVarToWeakVar :: Var.Var -> WeakVar
