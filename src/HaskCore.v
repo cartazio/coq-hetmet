@@ -48,4 +48,7 @@ Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant he
 (* the magic wired-in name for the modal type elimination form *)
 Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
 
+Variable coreExprToString : @CoreExpr CoreVar -> string.  Extract Inlined Constant coreExprToString => "outputableToString".
 
+Instance CoreExprToString : ToString (@CoreExpr CoreVar) :=
+  { toString := coreExprToString }.
