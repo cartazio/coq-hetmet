@@ -97,6 +97,7 @@ Definition normalizeWeakType (wt:WeakType) : WeakType := wt.
 Fixpoint weakTypeToCoreType' (wt:WeakType) : CoreType :=
   match wt with
     | WTyVarTy  (weakTypeVar v _)     => TyVarTy v
+    | WAppTy (WAppTy WFunTyCon t1) t2 => FunTy (weakTypeToCoreType' t1) (weakTypeToCoreType' t2)
     | WAppTy  t1 t2                   => match (weakTypeToCoreType' t1) with
                                            | TyConApp tc tys => TyConApp tc (app tys ((weakTypeToCoreType' t2)::nil))
                                            | t1'             => AppTy t1' (weakTypeToCoreType' t2)
