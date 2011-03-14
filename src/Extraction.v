@@ -68,11 +68,11 @@ Section core2proof.
   Definition Δ : CoercionEnv Γ := nil.
 
   Definition φ : TyVarResolver Γ :=
-    fun cv => (fun TV env => Prelude_error "unbound tyvar").
+    fun cv => Error ("unbound tyvar: " +++ (cv:CoreVar)).
     (*fun tv => error ("tried to get the representative of an unbound tyvar:" +++ (getCoreVarOccString tv)).*)
 
-  Definition ψ : CoreVar->HaskCoVar nil Δ
-    := fun cv => Prelude_error ("tried to get the representative of an unbound covar!" (*+++ (getTypeVarOccString cv)*)).
+  Definition ψ : CoVarResolver Γ Δ :=
+    fun cv => Error ("tried to get the representative of an unbound covar!" (*+++ (getTypeVarOccString cv)*)).
 
   (* We need to be able to resolve unbound exprvars, but we can be sure their types will have no
    * free tyvars in them *)

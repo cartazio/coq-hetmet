@@ -12,6 +12,8 @@ Require Import Coq.Init.Specif.
 Require Import HaskKinds.
 Require Import HaskCoreLiterals.
 Require Import HaskCoreVars.
+Require Import HaskCoreTypes.
+Require Import HaskCore.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
@@ -56,11 +58,6 @@ Definition typeToWeakType (f:Fresh Kind (fun _ => WeakTypeVar))
   {Γ}{κ}(τ:HaskType Γ κ)(φ:InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ) : WeakType :=
   rawHaskTypeToWeakType f (τ _ φ).
 
-Variable unsafeCoerce           : WeakCoercion.    Extract Inlined Constant unsafeCoerce => "Coercion.unsafeCoerce".
-
-Definition strongCoercionToWeakCoercion {Γ}{Δ}{ck}(τ:HaskCoercion Γ Δ ck)(φ:InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ)
-  : WeakCoercion := unsafeCoerce.
-
 (* This can be used to turn HaskStrong's with arbitrary expression variables into HaskStrong's which use WeakExprVar's
  * for their variables; those can subsequently be passed to the following function (strongExprToWeakExpr) *)
 (*
@@ -91,11 +88,14 @@ match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTyp
 | ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => WELet (weakExprVar ev (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
 | EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  hetmet_esc (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
 | EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak hetmet_brak (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
-| ECast Γ Δ ξ t1 t2 γ l e       => fun ite => WECast (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
 | ENote _ _ _ _ n e             => fun ite => WENote n (strongExprToWeakExpr ftv fcv e ite)
 | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv τ ite)
 | ELetRec _ _ _ _ _ vars elrb e =>fun ite=>WELetRec (exprLetRec2WeakExprLetRec ftv fcv elrb ite)(strongExprToWeakExpr ftv fcv e ite)
-| ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => WECoApp (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
+| ECast Γ Δ ξ t1 t2 γ l e       => fun ite => FIXME
+(* WECast (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)*)
+
+| ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => FIXME
+(* WECoApp (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)*)
 | ECase Γ Δ ξ l tc tbranches atypes e alts =>
   fun ite => WECase
     FIXME

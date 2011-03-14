@@ -14,6 +14,7 @@ Require Import HaskCoreLiterals.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
+Require Import HaskWeakToCore.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskCoreTypes.
@@ -21,15 +22,15 @@ Require Import HaskCoreVars.
 Require Import HaskCoreToWeak.
 
 Open Scope string_scope.
-Definition TyVarResolver Γ   := forall wt:WeakTypeVar, HaskTyVar Γ wt.
-Definition CoVarResolver Γ Δ := forall wt:WeakCoerVar, HaskCoVar Γ Δ.
+Definition TyVarResolver Γ   := forall wt:WeakTypeVar, ???(HaskTyVar Γ wt).
+Definition CoVarResolver Γ Δ := forall wt:WeakCoerVar, ???(HaskCoVar Γ Δ).
 
 Definition upφ {Γ}(tv:WeakTypeVar)(φ:TyVarResolver Γ) : TyVarResolver ((tv:Kind)::Γ).
   unfold TyVarResolver.
   refine (fun tv' =>
     if eqd_dec tv tv' 
-    then let fresh := @FreshHaskTyVar Γ tv in _
-    else fun TV ite => φ tv' TV (weakITE ite)).
+    then let fresh := @FreshHaskTyVar Γ tv in OK _
+    else φ tv' >>= fun tv'' => OK (fun TV ite => tv'' TV (weakITE ite))).
   rewrite <- _H; apply fresh.
   Defined.
 
@@ -71,8 +72,7 @@ Definition substφ {Γ:TypeEnv}(lk:list Kind)(θ:IList _ (fun κ => HaskType Γ 
 Record StrongAltConPlusJunk {tc:TyCon} :=
 { sacpj_sac : @StrongAltCon tc
 ; sacpj_φ   : forall Γ          (φ:TyVarResolver Γ  ),  (TyVarResolver (sac_Γ sacpj_sac Γ))
-; sacpj_ψ   : forall Γ Δ atypes (ψ:WeakCoerVar -> HaskCoVar Γ Δ),
-                (WeakCoerVar -> HaskCoVar _ (sac_Δ sacpj_sac Γ atypes (weakCK'' Δ)))
+; sacpj_ψ   : forall Γ Δ atypes (ψ:CoVarResolver Γ Δ), CoVarResolver _ (sac_Δ sacpj_sac Γ atypes (weakCK'' Δ))
 }.
 Implicit Arguments StrongAltConPlusJunk [ ].
 Coercion sacpj_sac : StrongAltConPlusJunk >-> StrongAltCon. 
@@ -123,9 +123,9 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     | WClassP   c lt    => let case_WClassP := tt   in Error "weakTypeToType: WClassP not implemented"
     | WIParam _ ty      => let case_WIParam := tt   in Error "weakTypeToType: WIParam not implemented"
     | WAppTy  t1 t2     => let case_WAppTy := tt    in weakTypeToType _ φ t1 >>= fun t1' => weakTypeToType _ φ t2 >>= fun t2' => _
-    | WTyVarTy  v       => let case_WTyVarTy := tt  in _
+    | WTyVarTy  v       => let case_WTyVarTy := tt  in φ v >>= fun v' => _
     | WForAllTy wtv t   => let case_WForAllTy := tt in weakTypeToType _ (upφ wtv φ) t >>= fun t => _
-    | WCodeTy ec tbody  => let case_WCodeTy := tt   in weakTypeToType _ φ tbody >>= fun tbody' => _
+    | WCodeTy ec tbody  => let case_WCodeTy := tt   in weakTypeToType _ φ tbody >>= fun tbody' => φ (@fixkind ★ ec) >>= fun ec' => _
     | WCoFunTy t1 t2 t3 => let case_WCoFunTy := tt  in
       weakTypeToType _ φ t1 >>= fun t1' =>
       weakTypeToType _ φ t2 >>= fun t2' =>
@@ -150,7 +150,7 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
 
   destruct case_WTyVarTy.
     apply OK.
-    exact (haskTypeOfSomeKind (fun TV env => TVar (φ v TV env))).
+    exact (haskTypeOfSomeKind (fun TV env => TVar (v' TV env))).
 
   destruct case_WAppTy.
     destruct t1' as  [k1' t1'].
@@ -187,7 +187,7 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     eapply haskTypeOfSomeKind.
     unfold HaskType; intros.
     apply TCode.
-    apply (TVar (φ (@fixkind ★ ec) TV X)).
+    apply (TVar (ec' TV X)).
     subst.
     apply h.
     apply X.
@@ -312,8 +312,9 @@ Lemma weakCV' : forall {Γ}{Δ} Γ',
 Definition mkStrongAltConPlusJunk : StrongAltConPlusJunk tc.
     refine 
      {| sacpj_sac     := mkStrongAltCon
-      ; sacpj_φ       := fun Γ φ => (fun htv => weakV' (φ htv))
-      ; sacpj_ψ       := fun Γ Δ avars ψ => (fun htv => _ (weakCV' (vec2list (sac_ekinds mkStrongAltCon)) (ψ htv)))
+      ; sacpj_φ       := fun Γ φ => (fun htv => φ htv >>= fun htv' => OK (weakV' htv'))
+      ; sacpj_ψ       :=
+      fun Γ Δ avars ψ => (fun htv => ψ htv >>= fun htv' => OK (_ (weakCV' (vec2list (sac_ekinds mkStrongAltCon)) htv')))
       |}.
     intro.
     unfold sac_Γ.
@@ -371,12 +372,14 @@ Definition weakExprVarToWeakType : WeakExprVar -> WeakType :=
 
 Variable weakCoercionToHaskCoercion : forall Γ Δ κ, WeakCoercion -> HaskCoercion Γ Δ κ.
 
-Definition weakψ {Γ}{Δ:CoercionEnv Γ} {κ}(ψ:WeakCoerVar -> HaskCoVar Γ Δ) :
-  WeakCoerVar -> HaskCoVar Γ (κ::Δ).
+Definition weakψ {Γ}{Δ:CoercionEnv Γ} {κ}(ψ:WeakCoerVar -> ???(HaskCoVar Γ Δ)) :
+  WeakCoerVar -> ???(HaskCoVar Γ (κ::Δ)).
   intros.
+  refine (ψ X >>= _).
   unfold HaskCoVar.
   intros.
-  apply (ψ X TV CV env).
+  apply OK.
+  intros.
   inversion cenv; auto.
   Defined.
 
@@ -455,27 +458,30 @@ Definition weakExprToStrongExpr : forall
     (we:WeakExpr) : ???(@Expr _ CoreVarEqDecidable Γ Δ ξ (τ @@ lev) )  :=
     match we with
 
-    | WEVar   v                         => castExpr "WEVar" (τ @@ lev) (EVar Γ Δ ξ v)
+    | WEVar   v                         => castExpr ("WEVar "+++(v:CoreVar)) (τ @@ lev) (EVar Γ Δ ξ v)
 
-    | WELit   lit                       => castExpr "WELit" (τ @@ lev) (ELit Γ Δ ξ lit lev)
+    | WELit   lit                       => castExpr ("WELit "+++lit) (τ @@ lev) (ELit Γ Δ ξ lit lev)
 
-    | WELam   ev e                      => weakTypeToType'' φ ev ★ >>= fun tv =>
-                                             weakTypeOfWeakExpr e >>= fun t =>
-                                               weakTypeToType'' φ t ★ >>= fun τ' =>
-                                                 weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ (((ev:CoreVar),tv@@lev)::nil))
-                                                    τ' _ e >>= fun e' =>
-                                                   castExpr "WELam" _ (ELam Γ Δ ξ tv _ _ ev e')
+    | WELam   ev ebody                  => weakTypeToType'' φ ev ★ >>= fun tv =>
+                                             weakTypeOfWeakExpr ebody >>= fun tbody =>
+                                               weakTypeToType'' φ tbody ★ >>= fun tbody' =>
+                                                 let ξ' := update_ξ ξ (((ev:CoreVar),tv@@lev)::nil) in
+                                                   weakExprToStrongExpr Γ Δ φ ψ ξ' tbody' lev ebody >>= fun ebody' =>
+                                                     castExpr "WELam" (τ@@lev) (ELam Γ Δ ξ tv tbody' lev ev ebody')
 
-    | WEBrak  _ ec e tbody              => weakExprToStrongExpr Γ Δ φ ψ ξ τ ((φ (`ec))::lev) e >>= fun e' =>
-                                             castExpr "WEBrak" _ (EBrak _ _ _ (φ (`ec)) _ lev e')
+    | WEBrak  _ ec e tbody              => φ (`ec) >>= fun ec' =>
+                                             weakTypeToType'' φ tbody ★ >>= fun tbody' =>
+                                               weakExprToStrongExpr Γ Δ φ ψ ξ tbody' ((ec')::lev) e >>= fun e' =>
+                                                 castExpr "WEBrak" (τ@@lev) (EBrak Γ Δ ξ ec' tbody' lev e')
 
-    | WEEsc   _ ec e tbody              => weakTypeToType'' φ tbody ★ >>= fun tbody' =>
+    | WEEsc   _ ec e tbody              => φ ec >>= fun ec'' =>
+                                           weakTypeToType'' φ tbody ★ >>= fun tbody' =>
                                            match lev with
                                              | nil       => Error "ill-leveled escapification"
-                                             | ec'::lev' => weakExprToStrongExpr Γ Δ φ ψ ξ (<[ φ (`ec) |- tbody' ]>) lev e
-                                               >>= fun e' =>
-                                                              castExpr "WEEsc" (τ@@lev) (EEsc _ _ _ (φ (`ec)) _ lev e')
+                                             | ec'::lev' => weakExprToStrongExpr Γ Δ φ ψ ξ (<[ ec' |- tbody' ]>) lev' e
+                                               >>= fun e' => castExpr "WEEsc" (τ@@lev) (EEsc Γ Δ ξ ec' tbody' lev' e')
                                            end
+
     | WENote  n e                       => weakExprToStrongExpr Γ Δ φ ψ ξ τ lev e >>= fun e' => OK (ENote _ _ _ _ n e')
 
     | WELet   v ve  ebody               => weakTypeToType'' φ v ★  >>= fun tv =>
@@ -493,7 +499,8 @@ Definition weakExprToStrongExpr : forall
     | WETyLam tv e                      => let φ' := upφ tv φ in
                                              weakTypeOfWeakExpr e >>= fun te =>
                                                weakTypeToType'' φ' te ★ >>= fun τ' =>
-                                                 weakExprToStrongExpr _ (weakCE Δ) φ' (weakCV○ψ) (weakLT○ξ) τ' (weakL lev) e
+                                                 weakExprToStrongExpr _ (weakCE Δ) φ'
+                                                    (fun x => (ψ x) >>= fun y => OK (weakCV y)) (weakLT○ξ) τ' (weakL lev) e
                                                  >>= fun e' =>
                                                    castExpr "WETyLam1" _ e' >>= fun e'' =>
                                                      castExpr "WETyLam2" _ (ETyLam Γ Δ ξ tv (mkTAll' τ') lev e'')
@@ -504,13 +511,11 @@ Definition weakExprToStrongExpr : forall
                                                let φ' := upφ wtv φ in
                                                  weakTypeToType'' φ' te' ★ >>= fun te'' =>
                                                    weakExprToStrongExpr Γ Δ φ ψ ξ (mkTAll te'') lev e >>= fun e' =>
-                                                     weakTypeToType'' φ t wtv >>= fun t' =>
+                                                     weakTypeToType'' φ t (wtv:Kind) >>= fun t' =>
                                                        castExpr "WETyApp" _ (ETyApp Γ Δ wtv (mkTAll' te'') t' ξ lev e')
                                              | _                 => Error ("weakTypeToType: WETyApp body with type "+++te)
                                            end
 
-    (* I had all of these working before I switched to a Kind-indexed representation for types; it will take a day or two
-     * to get them back working again *)
     | WECoApp e co                     => weakTypeOfWeakExpr e >>= fun te =>
                                            match te with
                                              | WCoFunTy t1 t2 t3 =>
@@ -559,35 +564,37 @@ Definition weakExprToStrongExpr : forall
            weakExprToStrongExpr Γ Δ φ ψ ξ' τ lev e >>= fun e' =>       
              OK (ELetRec Γ Δ ξ lev τ _ binds' e')
 
-    | WECase vscrut e tbranches tc avars alts =>
-      mkAvars avars (tyConKind tc) φ >>= fun avars' =>
-      weakTypeToType'' φ tbranches ★  >>= fun tbranches' =>
-          let ξ' := update_ξ ξ (((vscrut:CoreVar), _ @@lev)::nil) in
-(fix mkTree (t:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
-     ??{scb
-       : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars'
-       &
-       Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))
-         (scbwv_ξ scb ξ' lev) (weakLT' (tbranches' @@  lev))}) := 
-        match t with
-          | T_Leaf None           => OK []
-          | T_Leaf (Some (ac,extyvars,coervars,exprvars,ebranch)) => 
-            mkStrongAltConPlusJunk' tc ac >>= fun sac =>
-              list2vecOrFail (map (fun ev:WeakExprVar => ev:CoreVar) exprvars) _ (fun _ _ => "WECase") >>= fun exprvars' =>
-                let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' in
-                  weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ) (sacpj_ψ sac _ _ avars' ψ)
-            (scbwv_ξ scb ξ' lev) (weakT' tbranches') (weakL' lev) ebranch >>= fun ebranch' =>
-            let case_case := tt in OK [ _ ]
-          | T_Branch b1 b2        =>
-            mkTree b1 >>= fun b1' =>
-              mkTree b2 >>= fun b2' =>
-                OK (b1',,b2')
-        end
-) alts >>= fun tree =>
-        weakExprToStrongExpr Γ Δ φ ψ ξ (caseType tc avars') lev e >>= fun e' =>
-          castExpr "ECaseScrut" _ (EVar Γ Δ ξ' vscrut) >>= fun evar =>
-            castExpr "ECase" _ (ECase Γ Δ ξ' lev tc tbranches' avars' evar tree) >>= fun ecase' =>
-              OK (ELet _ _ _ _ _ lev (vscrut:CoreVar) e' ecase')
+    | WECase vscrut ve tbranches tc avars alts =>
+        weakTypeToType'' φ (vscrut:WeakType) ★  >>= fun tv =>
+          weakExprToStrongExpr Γ Δ φ ψ ξ tv lev ve >>= fun ve' =>
+            let ξ' := update_ξ ξ (((vscrut:CoreVar),tv@@lev)::nil) in
+              mkAvars avars (tyConKind tc) φ >>= fun avars' =>
+                weakTypeToType'' φ tbranches ★  >>= fun tbranches' =>
+                  (fix mkTree (t:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
+                      ??{scb : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars' &
+                        Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ' lev)(weakLT' (tbranches' @@  lev))}) := 
+                    match t with
+                      | T_Leaf None           => OK []
+                      | T_Leaf (Some (ac,extyvars,coervars,exprvars,ebranch)) => 
+                        mkStrongAltConPlusJunk' tc ac >>= fun sac =>
+                          list2vecOrFail (map (fun ev:WeakExprVar => ev:CoreVar) exprvars) _ (fun _ _ => "WECase")
+                          >>= fun exprvars' =>
+                            let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' in
+                              weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ)
+                              (sacpj_ψ sac _ _ avars' ψ)
+                              (scbwv_ξ scb ξ' lev) (weakT' tbranches') (weakL' lev) ebranch >>= fun ebranch' =>
+                                let case_case := tt in OK [ _ ]
+                      | T_Branch b1 b2        =>
+                        mkTree b1 >>= fun b1' =>
+                          mkTree b2 >>= fun b2' =>
+                            OK (b1',,b2')
+                    end) alts >>= fun tree =>
+                  castExpr "ECaseScrut" _ (EVar Γ Δ ξ' vscrut) >>= fun escrut =>
+                      castExpr "ECase" _ (ECase Γ Δ ξ' lev tc tbranches' avars' escrut tree)
+                        >>= fun ecase' => OK (ELet _ _ _ tv _ lev (vscrut:CoreVar) ve' ecase')
+
+
+
     end)).
 
     destruct case_some.
@@ -604,8 +611,8 @@ Definition weakExprToStrongExpr : forall
       apply e1.
 
     destruct case_case.
-      clear mkTree t o p e p0 p1 p2 alts weakExprToStrongExpr ebranch.
       exists scb.
       apply ebranch'.
+
     Defined.
 
