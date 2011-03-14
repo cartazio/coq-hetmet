@@ -39,16 +39,5 @@ Extract Inductive CoreExpr =>
 Extract Inductive CoreBind =>
   "CoreSyn.Bind" [ "CoreSyn.NonRec" "CoreSyn.Rec" ].
 
-(* extracts the Name from a CoreVar *)
-Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
-
-(* the magic wired-in name for the modal type introduction form *)
-Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant hetmet_brak_name => "PrelNames.hetmet_brak_name".
-
-(* the magic wired-in name for the modal type elimination form *)
-Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
-
 Variable coreExprToString : @CoreExpr CoreVar -> string.  Extract Inlined Constant coreExprToString => "outputableToString".
-
-Instance CoreExprToString : ToString (@CoreExpr CoreVar) :=
-  { toString := coreExprToString }.
+Instance CoreExprToString : ToString (@CoreExpr CoreVar) := { toString := coreExprToString }.

@@ -15,8 +15,19 @@ Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
 
-Axiom    tycons_distinct       : ~(ArrowTyCon=ModalBoxTyCon).
-Variable tyConOrTyFun          : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun      => "tyConOrTyFun".
+Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
+Variable coreViewDeep : CoreType  -> CoreType.        Extract Inlined Constant coreViewDeep => "coreViewDeep".
+Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
+  Extract Inlined Constant coreCoercionToWeakCoercion => "coreCoercionToWeakCoercion".
+
+(* extracts the Name from a CoreVar *)
+Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
+
+(* the magic wired-in name for the modal type introduction form *)
+Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant hetmet_brak_name => "PrelNames.hetmet_brak_name".
+
+(* the magic wired-in name for the modal type elimination form *)
+Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
 
 Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   match ct with
@@ -71,8 +82,7 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   | PredTy (EqPred _ _)   => Error "hit a bare EqPred"
   end.
 
-Variable coreViewDeep : CoreType -> CoreType.  Extract Inlined Constant coreViewDeep => "coreViewDeep".
-Definition coreTypeToWeakType t := coreTypeToWeakType' (coreViewDeep t).
+Fixpoint coreTypeToWeakType t := addErrorMessage "coreTypeToWeakType" (coreTypeToWeakType' (coreViewDeep t)).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
@@ -86,6 +96,7 @@ match ce with
       end else None
   | _ => None
 end.
+
 Definition isEsc (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
@@ -97,15 +108,6 @@ match ce with
       end else None
   | _ => None
 end.
-
-Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
-  Extract Inlined Constant coreCoercionToWeakCoercion => "coreCoercionToWeakCoercion".
-(*
-  let (t1,t2) := coreCoercionKind cc
-  in  coreTypeToWeakType t1 >>= fun t1' =>
-        coreTypeToWeakType t2 >>= fun t2' =>
-          OK (WCoUnsafe t1' t2').
-*)
 
 (* if this is a (WAppTy (WAppTy ... (WTyCon tc) .. ) .. ), return (tc,[...]) *)
 Fixpoint expectTyConApp (wt:WeakType)(acc:list WeakType) : ???(TyCon * list WeakType) :=

@@ -44,7 +44,7 @@ Extract Inductive HaskLiteral => "Literal.Literal"
 Extract Inductive HaskFunctionOrData =>
   "BasicTypes.FunctionOrData" [ "BasicTypes.IsFunction" "BasicTypes.IsData" ].
 
-Variable haskLiteralToString  : HaskLiteral -> string.    Extract Inlined Constant haskLiteralToString     => "outputableToString".
+Variable haskLiteralToString : HaskLiteral -> string.    Extract Inlined Constant haskLiteralToString     => "outputableToString".
 Instance HaskLiteralToString : ToString HaskLiteral := { toString := haskLiteralToString }.
 
 (* because Haskell's 3-tuples (triples) are distinct from both ((x,y),z) and (x,(y,z)), we need a new type: *)
