@@ -91,10 +91,10 @@ Section core2proof.
     "\usepackage{amsmath}"+++eol+++
     "\usepackage{amssymb}"+++eol+++
     "\usepackage{proof}"+++eol+++
-    "\usepackage{mathpartir}"+++eol+++
-    "\usepackage{trfrac}"+++eol+++
+    "\usepackage{mathpartir}   % http://cristal.inria.fr/~remy/latex/"+++eol+++
+    "\usepackage{trfrac}       % http://www.utdallas.edu/~hamlen/trfrac.sty"+++eol+++
     "\def\code#1#2{\Box_{#1} #2}"+++eol+++
-    "\usepackage[paperwidth=20in,centering]{geometry}"+++eol+++
+    "\usepackage[paperwidth=200in,centering]{geometry}"+++eol+++
     "\usepackage[displaymath,tightpage,active]{preview}"+++eol+++
     "\begin{document}"+++eol+++
     "\begin{preview}"+++eol.
