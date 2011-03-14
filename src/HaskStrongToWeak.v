@@ -69,79 +69,80 @@ Definition reindexStrongExpr {VV}{HH}{eqVV:EqDecidable VV}{eqHH:EqDecidable HH}
 Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
   := tv::::ite.
 
+Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
+
 Section strongExprToWeakExpr.
 
   Context (hetmet_brak : CoreVar).
   Context (hetmet_esc  : CoreVar).
-Axiom FIXME : forall {t}, t.
 
-Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
-  (ftv:Fresh Kind                (fun _ => WeakTypeVar))
-  (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
-  (exp:@Expr _ CoreVarEqDecidable Γ Δ ξ τ)
-  : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> WeakExpr :=
-match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> WeakExpr with
-| EVar  Γ' _ ξ' ev              => fun ite => WEVar (weakExprVar ev (@typeToWeakType ftv Γ' ★  (unlev (ξ' ev)) ite))
-| ELit  _ _ _ lit _             => fun ite => WELit lit
-| EApp  Γ' _ _ _ _ _ e1 e2      => fun ite => WEApp (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
-| ELam  Γ'   _ _ _ t _ cv e     => fun ite => WELam (weakExprVar cv (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e ite)
-| ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => WELet (weakExprVar ev (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv e1 ite) (strongExprToWeakExpr ftv fcv e2 ite)
-| EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  hetmet_esc (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
-| EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak hetmet_brak (ec _ ite) (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv t ite)
-| ENote _ _ _ _ n e             => fun ite => WENote n (strongExprToWeakExpr ftv fcv e ite)
-| ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv e ite) (typeToWeakType ftv τ ite)
-| ELetRec _ _ _ _ _ vars elrb e =>fun ite=>WELetRec (exprLetRec2WeakExprLetRec ftv fcv elrb ite)(strongExprToWeakExpr ftv fcv e ite)
-| ECast Γ Δ ξ t1 t2 γ l e       => fun ite => FIXME
-(* WECast (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)*)
-
-| ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => FIXME
-(* WECoApp (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)*)
-| ECase Γ Δ ξ l tc tbranches atypes e alts =>
-  fun ite => WECase
-    FIXME
-    (strongExprToWeakExpr ftv fcv e ite)
-    (@typeToWeakType ftv Γ _ tbranches ite)
-    tc
-    (ilist_to_list (@ilmap _ _ (fun _ => WeakType) _ (fun _ t => typeToWeakType ftv t ite) atypes))
-    ((fix caseBranches
-      (tree:Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc atypes
-                            & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
-                                   (update_ξ (weakLT'○ξ) (vec2list (vec_map
-                                     (fun x => ((fst x),(snd x @@ weakL' l))) (scbwv_varstypes scb))))
-                                   (weakLT' (tbranches@@l)) })
-      : Tree ??(AltCon * list WeakTypeVar * list WeakCoerVar * list WeakExprVar * WeakExpr) :=
-      match tree with
-        | T_Leaf None     => []
-        | T_Leaf (Some x) => let (scb,e) := x in
-          let (ftv',evarsite') := mfresh ftv _ ite in
-          let fcv' :=  fcv in
-            let (evars,ite') := evarsite' in
-            [(sac_altcon scb,
-              vec2list evars,
-              nil (*FIXME*),
-              map (fun vt => weakExprVar (fst vt) (typeToWeakType ftv' (snd vt) ite')) (vec2list (scbwv_varstypes scb)),
-              strongExprToWeakExpr ftv' fcv' e ite'
-            )]
-        | T_Branch b1 b2  => (caseBranches b1),,(caseBranches b2)
-      end
-    ) alts)
-| ETyLam _ _ _ k _ _ e          => fun ite =>
-  let (tv,ftv') := next _ _ ftv k in WETyLam tv (strongExprToWeakExpr ftv' fcv e (updateITE tv ite))
-| ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e => fun ite =>
-  let t1' := typeToWeakType ftv σ₁ ite in 
-  let t2' := typeToWeakType ftv σ₂ ite in
-  let (cv,fcv') := next _ _ fcv (t1',t2') in WECoLam cv (strongExprToWeakExpr ftv fcv' e ite)
-end
-with exprLetRec2WeakExprLetRec {Γ}{Δ}{ξ}{τ}{vars}
-  (ftv:Fresh Kind                (fun _ => WeakTypeVar))
-  (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
-  (elrb:@ELetRecBindings _ CoreVarEqDecidable Γ Δ ξ τ vars)
-  : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> Tree ??(WeakExprVar * WeakExpr) :=
-match elrb as E in ELetRecBindings G D X L V
-   return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> Tree ??(WeakExprVar * WeakExpr) with
-| ELR_nil    _ _ _ _           => fun ite => []
-| ELR_leaf   _ _ ξ' cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv (unlev (ξ' v)) ite)),(strongExprToWeakExpr ftv fcv e ite))]
-| ELR_branch _ _ _ _ _ _ b1 b2 => fun ite => (exprLetRec2WeakExprLetRec ftv fcv b1 ite),, (exprLetRec2WeakExprLetRec ftv fcv b2 ite)
-end.
+  Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
+    (ftv:Fresh Kind                (fun _ => WeakTypeVar))
+    (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
+    (fev:Fresh WeakType            (fun _ => WeakExprVar))
+    (exp:@Expr _ CoreVarEqDecidable Γ Δ ξ τ)
+    : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> WeakExpr :=
+  match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> WeakExpr with
+  | EVar  Γ' _ ξ' ev              => fun ite => WEVar (weakExprVar ev (@typeToWeakType ftv Γ' ★  (unlev (ξ' ev)) ite))
+  | ELit  _ _ _ lit _             => fun ite => WELit lit
+  | EApp  Γ' _ _ _ _ _ e1 e2      => fun ite => WEApp (strongExprToWeakExpr ftv fcv fev e1 ite) (strongExprToWeakExpr ftv fcv fev e2 ite)
+  | ELam  Γ'   _ _ _ t _ cv e     => fun ite => WELam (weakExprVar cv (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv fev e ite)
+  | ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => WELet (weakExprVar ev (typeToWeakType ftv t ite)) (strongExprToWeakExpr ftv fcv fev e1 ite) (strongExprToWeakExpr ftv fcv fev e2 ite)
+  | EEsc  Γ' _ _ ec t _ e         => fun ite => WEEsc  hetmet_esc (ec _ ite) (strongExprToWeakExpr ftv fcv fev e ite) (typeToWeakType ftv t ite)
+  | EBrak Γ' _ _ ec t _ e         => fun ite => WEBrak hetmet_brak (ec _ ite) (strongExprToWeakExpr ftv fcv fev e ite) (typeToWeakType ftv t ite)
+  | ENote _ _ _ _ n e             => fun ite => WENote n (strongExprToWeakExpr ftv fcv fev e ite)
+  | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv fev e ite) (typeToWeakType ftv τ ite)
+  | ELetRec _ _ _ _ _ vars elrb e => fun ite => WELetRec (exprLetRec2WeakExprLetRec ftv fcv fev elrb ite)(strongExprToWeakExpr ftv fcv fev e ite)
+  | ECast Γ Δ ξ t1 t2 γ l e       => fun ite => Prelude_error "FIXME: strongExprToWeakExpr.ECast not implemented"
+  | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => Prelude_error "FIXME: strongExprToWeakExpr.ECoApp not implemented"
+  | ECase Γ Δ ξ l tc tbranches atypes e alts => fun ite =>
+    let (ev,fev') := next _ _ fev (typeToWeakType ftv (unlev (caseType tc atypes @@ l)) ite) in
+     WECase
+      ev
+      (strongExprToWeakExpr ftv fcv fev' e ite)
+      (@typeToWeakType ftv Γ _ tbranches ite)
+      tc
+      (ilist_to_list (@ilmap _ _ (fun _ => WeakType) _ (fun _ t => typeToWeakType ftv t ite) atypes))
+      ((fix caseBranches
+        (tree:Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc atypes
+                              & Expr (sac_Γ scb Γ)
+                                     (sac_Δ scb Γ atypes (weakCK'' Δ))
+                                     (update_ξ (weakLT'○ξ) (vec2list (vec_map
+                                       (fun x => ((fst x),(snd x @@ weakL' l))) (scbwv_varstypes scb))))
+                                     (weakLT' (tbranches@@l)) })
+        : Tree ??(AltCon * list WeakTypeVar * list WeakCoerVar * list WeakExprVar * WeakExpr) :=
+        match tree with
+          | T_Leaf None     => []
+          | T_Leaf (Some x) => let (scb,e) := x in
+            let (ftv',evarsite') := mfresh ftv _ ite in
+            let fcv' :=  fcv in
+              let (evars,ite') := evarsite' in
+              [(sac_altcon scb,
+                vec2list evars,
+                nil (*FIXME*),
+                map (fun vt => weakExprVar (fst vt) (typeToWeakType ftv' (snd vt) ite')) (vec2list (scbwv_varstypes scb)),
+                strongExprToWeakExpr ftv' fcv' fev' e ite'
+              )]
+          | T_Branch b1 b2  => (caseBranches b1),,(caseBranches b2)
+        end
+      ) alts)
+  | ETyLam _ _ _ k _ _ e          => fun ite =>
+    let (tv,ftv') := next _ _ ftv k in WETyLam tv (strongExprToWeakExpr ftv' fcv fev e (updateITE tv ite))
+  | ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e => fun ite =>
+    let t1' := typeToWeakType ftv σ₁ ite in 
+    let t2' := typeToWeakType ftv σ₂ ite in
+    let (cv,fcv') := next _ _ fcv (t1',t2') in WECoLam cv (strongExprToWeakExpr ftv fcv' fev e ite)
+  end
+  with exprLetRec2WeakExprLetRec {Γ}{Δ}{ξ}{τ}{vars}
+    (ftv:Fresh Kind                (fun _ => WeakTypeVar))
+    (fcv:Fresh (WeakType*WeakType) (fun _ => WeakCoerVar))
+    (fev:Fresh WeakType            (fun _ => WeakExprVar))
+    (elrb:@ELetRecBindings _ CoreVarEqDecidable Γ Δ ξ τ vars)
+    : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ -> Tree ??(WeakExprVar * WeakExpr) :=
+  match elrb as E in ELetRecBindings G D X L V
+     return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> Tree ??(WeakExprVar * WeakExpr) with
+  | ELR_nil    _ _ _ _           => fun ite => []
+  | ELR_leaf   _ _ ξ' cv v e    => fun ite => [((weakExprVar v (typeToWeakType ftv (unlev (ξ' v)) ite)),(strongExprToWeakExpr ftv fcv fev e ite))]
+  | ELR_branch _ _ _ _ _ _ b1 b2 => fun ite => (exprLetRec2WeakExprLetRec ftv fcv fev b1 ite),, (exprLetRec2WeakExprLetRec ftv fcv fev b2 ite)
+  end.
 End strongExprToWeakExpr.

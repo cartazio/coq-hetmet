@@ -31,10 +31,10 @@ Variable mkUnsafeCoercion : CoreType -> CoreType -> CoreCoercion.
 Variable coreCoercionsAreReallyTypes : CoreCoercion -> CoreType.
   Extract Inlined Constant coreCoercionsAreReallyTypes => "(\x -> x)".
 
-  Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion :=
-    mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
+Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion :=
+  mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
 
-  Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
+Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   match me with
   | WEVar   (weakExprVar v _)            => CoreEVar  v
   | WELit   lit                          => CoreELit  lit

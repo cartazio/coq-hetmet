@@ -157,10 +157,11 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     apply (addErrorMessage "case_WAppTy").
     destruct t1' as  [k1' t1'].
     destruct t2' as [k2' t2'].
+    set ("tried to apply type "+++t1'+++" of kind "+++k1'+++" to type "+++t2'+++" of kind "+++k2') as err.
     destruct k1';
       try (matchThings k1'1 k2' "Kind mismatch in WAppTy: ";
         subst; apply OK; apply (haskTypeOfSomeKind (fun TV env => TApp (t1' TV env) (t2' TV env))));
-      apply (Error "Kind mismatch in WAppTy:: ").
+      apply (Error ("Kind mismatch in WAppTy: "+++err)).
    
   destruct case_weakTypeListToTypeList.
     apply (addErrorMessage "case_weakTypeListToTypeList").
