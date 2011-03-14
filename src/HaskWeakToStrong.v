@@ -501,6 +501,8 @@ Definition weakExprToStrongExpr : forall
                                                >>= fun e' => castExpr we "WEEsc" (τ@@lev) (EEsc Γ Δ ξ ec' tbody' lev' e')
                                            end
 
+    | WECSP   _ ec e tbody              => Error "FIXME: CSP not supported beyond HaskWeak stage"
+
     | WENote  n e                       => weakExprToStrongExpr Γ Δ φ ψ ξ τ lev e >>= fun e' => OK (ENote _ _ _ _ n e')
 
     | WELet   v ve  ebody               => weakTypeToTypeOfKind φ v ★  >>= fun tv =>

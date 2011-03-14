@@ -35,6 +35,7 @@ Inductive WeakExpr :=
 (* or hetmet_esc identifier                                                *)
 | WEBrak      : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 | WEEsc       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
+| WECSP       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 
 | WECase      : forall (vscrut:WeakExprVar)
                        (scrutinee:WeakExpr)

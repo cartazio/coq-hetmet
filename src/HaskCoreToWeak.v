@@ -23,11 +23,10 @@ Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
 (* extracts the Name from a CoreVar *)
 Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
 
-(* the magic wired-in name for the modal type introduction form *)
+(* the magic wired-in name for the modal type introduction/elimination forms *)
 Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant hetmet_brak_name => "PrelNames.hetmet_brak_name".
-
-(* the magic wired-in name for the modal type elimination form *)
 Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
+Variable hetmet_csp_name    : CoreName.              Extract Inlined Constant hetmet_csp_name  => "PrelNames.hetmet_csp_name".
 
 Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   match ct with
@@ -109,6 +108,18 @@ match ce with
   | _ => None
 end.
 
+Definition isCSP (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
+match ce with
+  | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
+    => if coreName_eq hetmet_csp_name (coreVarCoreName v) then
+      match coreVarToWeakVar ec with
+        | WExprVar _  => None
+        | WTypeVar tv => Some (v,tv,tbody)
+        | WCoerVar _  => None
+      end else None
+  | _ => None
+end.
+
 (* if this is a (WAppTy (WAppTy ... (WTyCon tc) .. ) .. ), return (tc,[...]) *)
 Fixpoint expectTyConApp (wt:WeakType)(acc:list WeakType) : ???(TyCon * list WeakType) :=
   match wt with
@@ -142,13 +153,20 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                                              coreExprToWeakExpr e2 >>= fun e' =>
                                                coreTypeToWeakType t >>= fun t' =>
                                                  OK (WEEsc v tv e' t')
-                                           | None    => coreExprToWeakExpr e1 >>= fun e1' =>
-                                             match e2 with
-                                               | CoreEType t => 
-                                                 coreTypeToWeakType t >>= fun t' =>
-                                                   OK (WETyApp e1' t')
-                                               | _           => coreExprToWeakExpr e2 >>= fun e2' => OK (WEApp e1' e2')
-                                             end
+                                           | None    => match isCSP e1 with
+                                                          | Some (v,tv,t) =>
+                                                            coreExprToWeakExpr e2 >>= fun e' =>
+                                                              coreTypeToWeakType t >>= fun t' =>
+                                                                OK (WECSP v tv e' t')
+                                                          | None    => coreExprToWeakExpr e1 >>= fun e1' =>
+                                                            match e2 with
+                                                              | CoreEType t => 
+                                                                coreTypeToWeakType t >>= fun t' =>
+                                                                  OK (WETyApp e1' t')
+                                                              | _           => coreExprToWeakExpr e2
+                                                                >>= fun e2' => OK (WEApp e1' e2')
+                                                            end
+                                                        end
                                          end
                           end
 

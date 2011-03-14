@@ -59,6 +59,12 @@ Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
                                                      (weakExprToCoreExpr e)::
                                                      nil)
                                                    (CoreEVar v)
+  | WECSP   v (weakTypeVar ec _) e t     => fold_left CoreEApp
+                                                   ((CoreEType (TyVarTy ec))::
+                                                     (CoreEType (weakTypeToCoreType t))::
+                                                     (weakExprToCoreExpr e)::
+                                                     nil)
+                                                   (CoreEVar v)
   | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr ve))  (weakExprToCoreExpr e)
   | WECase  vscrut e tbranches tc types alts  =>
                                             CoreECase (weakExprToCoreExpr e) vscrut (weakTypeToCoreType tbranches)
