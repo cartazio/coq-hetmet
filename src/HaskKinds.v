@@ -29,7 +29,7 @@ Fixpoint kindToString (k:Kind) : string :=
   | KindTypeFunction k1 k2       => "("+++kindToString k1+++")=>"+++kindToString k2
   | KindUnliftedType             => "#"
   | KindUnboxedTuple             => "(#)"
-  | KindArgType                  => "?"
+  | KindArgType                  => "??"
   | KindOpenType                 => "?"
   end.
 Instance KindToString : ToString Kind := { toString := kindToString }.
