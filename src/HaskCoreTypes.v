@@ -18,10 +18,8 @@ Variable Class_              : Type.                      Extract Inlined Consta
 Variable classTyCon          : Class_ -> CoreTyCon.       Extract Inlined Constant classTyCon            => "Class.classTyCon".
 Variable tyConToString       : CoreTyCon      -> string.  Extract Inlined Constant tyConToString         => "outputableToString".
 Variable dataConToString     : CoreDataCon-> string.      Extract Inlined Constant dataConToString       => "outputableToString".
-Variable CoreIPName          : Type -> Type.
-
-   Extract Constant CoreIPName "’a"        => "BasicTypes.IPName".
-   Extraction Inline CoreIPName.
+Variable CoreIPName          : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
+                                                          Extraction Inline CoreIPName.
 
 (* this exracts onto TypeRep.Type, on the nose *)
 Inductive CoreType :=
@@ -51,21 +49,18 @@ Variable TyCon           : Type.                         Extract Inlined Constan
 Variable TyFun           : Type.                         Extract Inlined Constant TyFun             => "TyCon.TyCon".
 
 (* GHC provides decision procedures for equality on its primitive types; we tell Coq to blindly trust them *)
-Variable coreTyCon_eq        : EqDecider CoreTyCon.       Extract Inlined Constant coreTyCon_eq          => "(==)".
-Variable tyCon_eq            : EqDecider TyCon.           Extract Inlined Constant tyCon_eq              => "(==)".
-Variable tyFun_eq            : EqDecider TyFun.           Extract Inlined Constant tyFun_eq              => "(==)".
-Variable dataCon_eq          : EqDecider CoreDataCon.     Extract Inlined Constant dataCon_eq            => "(==)".
-Variable coreName_eq         : EqDecider CoreName.        Extract Inlined Constant coreName_eq           => "(==)".
-Instance CoreTyConEqDecidable: EqDecidable CoreTyCon   := { eqd_dec := coreTyCon_eq }.
-Instance TyConEqDecidable    : EqDecidable TyCon       := { eqd_dec := tyCon_eq }.
-Instance TyFunEqDecidable    : EqDecidable TyFun       := { eqd_dec := tyFun_eq }.
-Instance DataConEqDecidable  : EqDecidable CoreDataCon := { eqd_dec := dataCon_eq }.
-Instance CoreNameEqDecidable : EqDecidable CoreName    := { eqd_dec := coreName_eq }.
-
-
-
-Instance CoreTypeToString : ToString CoreType := { toString := coreTypeToString }.
-Instance CoreNameToString : ToString CoreName := { toString := coreNameToString }.
-Instance CoreCoercionToString : ToString CoreCoercion := { toString := coreCoercionToString }.
-Instance CoreDataConToString : ToString CoreDataCon := { toString := dataConToString }.
-Instance CoreTyConToString : ToString CoreTyCon := { toString := tyConToString }.
+Variable coreTyCon_eq         : EqDecider CoreTyCon.       Extract Inlined Constant coreTyCon_eq          => "(==)".
+Variable tyCon_eq             : EqDecider TyCon.           Extract Inlined Constant tyCon_eq              => "(==)".
+Variable tyFun_eq             : EqDecider TyFun.           Extract Inlined Constant tyFun_eq              => "(==)".
+Variable dataCon_eq           : EqDecider CoreDataCon.     Extract Inlined Constant dataCon_eq            => "(==)".
+Variable coreName_eq          : EqDecider CoreName.        Extract Inlined Constant coreName_eq           => "(==)".
+Instance CoreTyConEqDecidable : EqDecidable CoreTyCon   := { eqd_dec := coreTyCon_eq }.
+Instance TyConEqDecidable     : EqDecidable TyCon       := { eqd_dec := tyCon_eq }.
+Instance TyFunEqDecidable     : EqDecidable TyFun       := { eqd_dec := tyFun_eq }.
+Instance DataConEqDecidable   : EqDecidable CoreDataCon := { eqd_dec := dataCon_eq }.
+Instance CoreNameEqDecidable  : EqDecidable CoreName    := { eqd_dec := coreName_eq }.
+Instance CoreTypeToString     : ToString CoreType       := { toString := coreTypeToString }.
+Instance CoreNameToString     : ToString CoreName       := { toString := coreNameToString }.
+Instance CoreCoercionToString : ToString CoreCoercion   := { toString := coreCoercionToString }.
+Instance CoreDataConToString  : ToString CoreDataCon    := { toString := dataConToString }.
+Instance CoreTyConToString    : ToString CoreTyCon      := { toString := tyConToString }.
