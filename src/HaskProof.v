@@ -40,8 +40,8 @@ Inductive UJudg (Γ:TypeEnv)(Δ:CoercionEnv Γ) :=
   Tree ??(LeveledHaskType Γ ★) ->
   UJudg Γ Δ.
   Notation "Γ >> Δ > a '|-' s" := (mkUJudg Γ Δ a s) (at level 52, Δ at level 50, a at level 52, s at level 50).
-  Notation "'ext_tree_left'"    := (fun ctx j => match j with mkUJudg t s => mkUJudg _ _ (ctx,,t)  s end).
-  Notation "'ext_tree_right'"   := (fun ctx j => match j with mkUJudg t s => mkUJudg _ _ (t,,ctx) s end).
+  Definition ext_tree_left  {Γ}{Δ}  := (fun ctx (j:UJudg Γ Δ) => match j with mkUJudg t s => mkUJudg Γ Δ (ctx,,t) s end).
+  Definition ext_tree_right {Γ}{Δ}  := (fun ctx (j:UJudg Γ Δ) => match j with mkUJudg t s => mkUJudg Γ Δ (t,,ctx) s end).
 
 (* we can turn a UJudg into a Judg by simply internalizing the index *)
 Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
