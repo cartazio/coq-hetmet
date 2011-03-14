@@ -40,11 +40,11 @@ Extract Inductive CoreType =>
 Extract Inductive PredType =>
    "TypeRep.PredType" [ "TypeRep.ClassP" "TypeRep.IParam" "TypeRep.EqPred" ].
 
-Variable coreTypeToString      : CoreType     -> string.    Extract Inlined Constant coreTypeToString       => "showType".
 Variable coreNameToString      : CoreName     -> string.    Extract Inlined Constant coreNameToString       => "outputableToString".
 Variable coreCoercionToString  : CoreCoercion -> string.    Extract Inlined Constant coreCoercionToString   => "outputableToString".
 Variable coreCoercionKind : CoreCoercion -> CoreType*CoreType. Extract Inlined Constant coreCoercionKind => "Coercion.coercionKind".
-Variable kindOfCoreType    : CoreType -> Kind.    Extract Inlined Constant kindOfCoreType => "(coreKindToKind . Coercion.typeKind)".
+Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Coercion.typeKind)".
+Variable coreTypeToString : CoreType -> string. Extract Inlined Constant coreTypeToString => "(outputableToString . coreViewDeep)".
 
 (* once again, we pull the trick of having multiple Coq types map to a single Haskell type to provide stronger typing *)
 Variable TyCon           : Type.                         Extract Inlined Constant TyCon             => "TyCon.TyCon".
@@ -56,8 +56,6 @@ Variable tyCon_eq            : EqDecider TyCon.           Extract Inlined Consta
 Variable tyFun_eq            : EqDecider TyFun.           Extract Inlined Constant tyFun_eq              => "(==)".
 Variable dataCon_eq          : EqDecider CoreDataCon.     Extract Inlined Constant dataCon_eq            => "(==)".
 Variable coreName_eq         : EqDecider CoreName.        Extract Inlined Constant coreName_eq           => "(==)".
-Variable coretype_eq_dec     : EqDecider CoreType.        Extract Inlined Constant coretype_eq_dec       => "checkTypeEquality".
-Instance CoreTypeEqDecidable : EqDecidable CoreType    := { eqd_dec := coretype_eq_dec }.
 Instance CoreTyConEqDecidable: EqDecidable CoreTyCon   := { eqd_dec := coreTyCon_eq }.
 Instance TyConEqDecidable    : EqDecidable TyCon       := { eqd_dec := tyCon_eq }.
 Instance TyFunEqDecidable    : EqDecidable TyFun       := { eqd_dec := tyFun_eq }.

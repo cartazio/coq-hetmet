@@ -12,7 +12,6 @@ Require Import HaskCoreLiterals.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 
-(* TO DO: mark the TyCon used for hetmet as a "type family" so GHC keeps it fully-applied-at-all-times *)
 Variable tyConToCoreTyCon : TyCon -> CoreTyCon.           Extract Inlined Constant tyConToCoreTyCon  => "(\x -> x)".
 Variable tyFunToCoreTyCon : TyFun -> CoreTyCon.           Extract Inlined Constant tyFunToCoreTyCon  => "(\x -> x)".
 Coercion tyConToCoreTyCon : TyCon >-> CoreTyCon.
@@ -88,60 +87,27 @@ match wc with
 | WCoUnsafe  t1 t2                   => (t1,t2)
 end.
 
-(* TO DO: write a proper EqDecidable instance for WeakType and then move the rest of this into HaskWeakToCore *)
 Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
 Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
 
-(* if this is a (WAppTy (WAppTy ... (WTyCon tc) .. ) .. ), return (tc,[...]) *)
-Fixpoint isTyConApp (wt:WeakType)(acc:list WeakType) : ??(TyCon * list WeakType) :=
-  match wt with
-    | WTyCon tc    => Some (tc,acc)
-    | WAppTy t1 t2 => isTyConApp t1 (t2::acc)
-    | _            => None
-  end.
-
-(* we try to normalize the representation of a type as much as possible before feeding it back to GHCs type-comparison function *)
-Definition normalizeWeakType (wt:WeakType) : WeakType := wt.
-
-Fixpoint weakTypeToCoreType' (wt:WeakType) : CoreType :=
+Fixpoint weakTypeToCoreType (wt:WeakType) : CoreType :=
   match wt with
     | WTyVarTy  (weakTypeVar v _)     => TyVarTy v
-    | WAppTy (WAppTy WFunTyCon t1) t2 => FunTy (weakTypeToCoreType' t1) (weakTypeToCoreType' t2)
-    | WAppTy  t1 t2                   => match (weakTypeToCoreType' t1) with
-                                           | TyConApp tc tys => TyConApp tc (app tys ((weakTypeToCoreType' t2)::nil))
-                                           | t1'             => AppTy t1' (weakTypeToCoreType' t2)
+    | WAppTy (WAppTy WFunTyCon t1) t2 => FunTy (weakTypeToCoreType t1) (weakTypeToCoreType t2)
+    | WAppTy  t1 t2                   => match (weakTypeToCoreType t1) with
+                                           | TyConApp tc tys => TyConApp tc (app tys ((weakTypeToCoreType t2)::nil))
+                                           | t1'             => AppTy t1' (weakTypeToCoreType t2)
                                          end
     | WTyCon    tc                    => TyConApp tc nil
-    | WTyFunApp tf lt                 => TyConApp tf (map weakTypeToCoreType' lt)
-    | WClassP c lt                    => PredTy (ClassP c (map weakTypeToCoreType' lt))
-    | WIParam n ty                    => PredTy (IParam n (weakTypeToCoreType' ty))
-    | WForAllTy (weakTypeVar wtv _) t => ForAllTy wtv (weakTypeToCoreType' t)
+    | WTyFunApp tf lt                 => TyConApp tf (map weakTypeToCoreType lt)
+    | WClassP c lt                    => PredTy (ClassP c (map weakTypeToCoreType lt))
+    | WIParam n ty                    => PredTy (IParam n (weakTypeToCoreType ty))
+    | WForAllTy (weakTypeVar wtv _) t => ForAllTy wtv (weakTypeToCoreType t)
     | WFunTyCon                       => TyConApp ArrowTyCon nil
-    | WCodeTy  (weakTypeVar ec _) t   => TyConApp ModalBoxTyCon ((TyVarTy ec)::(weakTypeToCoreType' t)::nil)
-    | WCoFunTy t1 t2 t3               => FunTy (PredTy (EqPred (weakTypeToCoreType' t1) (weakTypeToCoreType' t2)))
-                                            (weakTypeToCoreType' t3)
+    | WCodeTy  (weakTypeVar ec _) t   => TyConApp ModalBoxTyCon ((TyVarTy ec)::(weakTypeToCoreType t)::nil)
+    | WCoFunTy t1 t2 t3               => FunTy (PredTy (EqPred (weakTypeToCoreType t1) (weakTypeToCoreType t2)))
+                                            (weakTypeToCoreType t3)
   end.
-
-Definition weakTypeToCoreType (wt:WeakType) :=
-  weakTypeToCoreType' (normalizeWeakType wt).
-
-Definition compare_weakTypes (w1 w2:WeakType) :=
-  if coretype_eq_dec (weakTypeToCoreType w1) (weakTypeToCoreType w2)
-    then true
-    else false.
-
-(*
-Instance EqDecidableWeakType : EqDecidable WeakType.
-  apply Build_EqDecidable.
-  intros.
-  set (compare_weakTypes_axiom v1 v2) as x.
-  set (compare_weakTypes v1 v2) as y.
-  assert (y=compare_weakTypes v1 v2). reflexivity.
-  destruct y; rewrite <- H in x.
-  left; auto.
-  right; auto.
-  Defined.
-*)
 
 Instance WeakTypeToString : ToString WeakType :=
   { toString := coreTypeToString ○ weakTypeToCoreType }.

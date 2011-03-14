@@ -107,6 +107,15 @@ Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
           OK (WCoUnsafe t1' t2').
 *)
 
+(* if this is a (WAppTy (WAppTy ... (WTyCon tc) .. ) .. ), return (tc,[...]) *)
+Fixpoint expectTyConApp (wt:WeakType)(acc:list WeakType) : ???(TyCon * list WeakType) :=
+  match wt with
+    | WTyCon tc        => OK (tc,acc)
+    | WAppTy t1 t2     => expectTyConApp t1 (t2::acc)
+    | WTyFunApp tc tys => Error ("expectTyConApp encountered TyFunApp: " +++ wt)
+    | _                => Error ("expectTyConApp encountered " +++ wt)
+  end.
+
 Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
   match ce with
     | CoreELit   lit   => OK (WELit lit)
@@ -178,8 +187,7 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
         | WExprVar ev => 
         coreTypeToWeakType (coreTypeOfCoreExpr e) >>= fun te' =>
         coreExprToWeakExpr e >>= fun e' =>
-          (match isTyConApp te' nil with None => Error "expectTyConApp encountered strange type" | Some x => OK x end)
-             >>= fun tca =>
+          expectTyConApp te' nil >>= fun tca =>
             let (tc,lt) := tca in
           ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (@CoreExpr CoreVar)))
                 : ???(list (AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
