@@ -422,8 +422,7 @@ Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ l
     LetRecSubproofs Γ Δ ξ lev t2 b2 ->
     LetRecSubproofs Γ Δ ξ lev (t1,,t2) (ELR_branch _ _ _ _ _ _ b1 b2).
 
-Lemma cheat9 : forall Γ Δ ξ lev tree (branches:ELetRecBindings Γ Δ ξ lev tree),
-
+Lemma cheat1 : forall Γ Δ ξ lev tree (branches:ELetRecBindings Γ Δ ξ lev tree),
   eLetRecTypes branches =
     mapOptionTree  (update_ξ'' ξ tree lev)
     (mapOptionTree (@fst _ _) tree).
@@ -436,6 +435,24 @@ Lemma cheat9 : forall Γ Δ ξ lev tree (branches:ELetRecBindings Γ Δ ξ lev t
 admit.
 admit.
   Qed.
+Lemma cheat2 : forall Γ Δ ξ l tc tbranches atypes e alts',
+mapOptionTree ξ (expr2antecedent (ECase Γ Δ ξ l tc tbranches atypes e alts'))
+= 
+(*
+((mapOptionTreeAndFlatten
+(fun h => stripOutVars (vec2list (scbwv_exprvars (projT1 h)))
+                  (expr2antecedent (projT2 h))) alts'),,(expr2antecedent e)).
+*)
+((mapOptionTreeAndFlatten pcb_freevars
+           (mapOptionTree mkProofCaseBranch alts')),,mapOptionTree ξ  (expr2antecedent e)).
+admit.
+Qed.
+Lemma cheat3 : forall {A}{B}{f:A->B} l, unleaves (map f l) = mapOptionTree f (unleaves l).
+  admit.
+  Qed.
+Lemma cheat4 : forall {A}(t:list A), leaves (unleaves t) = t.
+admit.
+Qed.
 
 Lemma letRecSubproofsToND Γ Δ ξ lev tree branches
     : LetRecSubproofs Γ Δ ξ lev tree branches ->
@@ -449,10 +466,13 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches
   induction X; intros; simpl in *.
     apply nd_rule.
       apply REmptyGroup.
-    unfold mapOptionTree.
-      simpl.
-admit.
-(*      apply n.*)
+    set (ξ v) as q in *.
+      destruct q.
+      simpl in *.
+      assert (h0=lev).
+        admit.
+        rewrite H.
+      apply n.
     eapply nd_comp; [ idtac | eapply nd_rule; apply RBindingGroup ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod; auto.
@@ -512,39 +532,52 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     eapply nd_comp; [ idtac | eapply nd_rule; apply RBindingGroup ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod; auto.
-    rewrite cheat9 in q.
+    rewrite cheat1 in q.
     set (@update_twice_useless Γ ξ tree ((mapOptionTree (@fst _ _) tree)) lev) as zz.
     unfold update_ξ'' in *.
     rewrite <- zz in q.
     apply q.
   Defined.
 
-(*
-Lemma update_ξ_and_reapply : forall Γ ξ {T}(idx:Tree ??T)(types:ShapedTree (LeveledHaskType Γ) idx)(vars:ShapedTree VV idx),
-  unshape types = mapOptionTree (update_ξ''' ξ types vars) (unshape vars).
-admit.
-  Qed.
-*)
 
-Lemma cheat0 : forall Γ Δ ξ l tc tbranches atypes e alts',
-mapOptionTree ξ (expr2antecedent (ECase Γ Δ ξ l tc tbranches atypes e alts'))
-= 
-(*
-((mapOptionTreeAndFlatten
-(fun h => stripOutVars (vec2list (scbwv_exprvars (projT1 h)))
-                  (expr2antecedent (projT2 h))) alts'),,(expr2antecedent e)).
-*)
-((mapOptionTreeAndFlatten pcb_freevars
-           (mapOptionTree mkProofCaseBranch alts')),,mapOptionTree ξ  (expr2antecedent e)).
-admit.
-Defined.
-
-Lemma cheat1 : forall {A}{B}{f:A->B} l, unleaves (map f l) = mapOptionTree f (unleaves l).
+Lemma updating_stripped_tree_is_inert''' : forall Γ tc ξ l t atypes x,
+         mapOptionTree (scbwv_ξ(Γ:=Γ)(tc:=tc)(atypes:=atypes) x ξ l)
+           (stripOutVars (vec2list (scbwv_exprvars x)) t)
+             =
+         mapOptionTree (weakLT' ○ ξ)
+           (stripOutVars (vec2list (scbwv_exprvars x)) t).
   admit.
-  Defined.
-Lemma cheat2 : forall {A}(t:list A), leaves (unleaves t) = t.
+  Qed.
+
+
+Lemma updating_stripped_tree_is_inert'''' : forall Γ Δ ξ l tc atypes tbranches 
+(x:StrongCaseBranchWithVVs(Γ:=Γ) VV eqd_vv tc atypes)
+(e0:Expr (sac_Γ x Γ) (sac_Δ x Γ atypes (weakCK'' Δ)) 
+    (scbwv_ξ x ξ l) (weakT' tbranches @@  weakL' l)) ,
+mapOptionTree (weakLT' ○ ξ)
+        (stripOutVars (vec2list (scbwv_exprvars x)) (expr2antecedent e0)),,
+unleaves (vec2list (sac_types x Γ atypes)) @@@ weakL' l
+=
+mapOptionTree (weakLT' ○ ξ)
+        (stripOutVars (vec2list (scbwv_exprvars x)) (expr2antecedent e0)),,
+         mapOptionTree
+           (update_ξ (weakLT' ○ ξ)
+              (vec2list
+                 (vec_map
+                    (fun
+                       x0 : VV *
+                            HaskType
+                              (app (vec2list (sac_ekinds x)) Γ)
+                              ★ => ⟨fst x0, snd x0 @@  weakL' l ⟩)
+                    (vec_zip (scbwv_exprvars x)
+                       (sac_types x Γ atypes)))))
+           (unleaves (vec2list (scbwv_exprvars x)))
+.
 admit.
-Defined.
+Qed.
+
+
+
 
 Definition expr2proof  :
   forall Γ Δ ξ τ (e:Expr Γ Δ ξ τ),
@@ -556,34 +589,30 @@ Definition expr2proof  :
     | EVar     Γ Δ ξ ev                             => let case_EVar := tt in _
     | ELit     Γ Δ ξ lit lev                        => let case_ELit := tt in _
     | EApp     Γ Δ ξ t1 t2 lev e1 e2                => let case_EApp := tt in 
-      let e1' := expr2proof _ _ _ _ e1 in
-      let e2' := expr2proof _ _ _ _ e2 in _
-    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in 
-      let e' := expr2proof _ _ _ _ e in _
+                                                        (fun e1' e2' => _) (expr2proof _ _ _ _ e1) (expr2proof _ _ _ _ e2)
+    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in (fun e' => _) (expr2proof _ _ _ _ e)
     | ELet     Γ Δ ξ tv t      v lev ev ebody       => let case_ELet := tt in 
-      let pf_let := (expr2proof _ _ _ _ ev) in
-      let pf_body := (expr2proof _ _ _ _ ebody) in _
+                                                       (fun pf_let pf_body => _) (expr2proof _ _ _ _ ev) (expr2proof _ _ _ _ ebody) 
     | ELetRec  Γ Δ ξ lev t tree branches ebody      =>
-      let e' := expr2proof _ _ _ _ ebody in 
       let ξ' := update_ξ'' ξ tree lev in
-      let subproofs := ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
+      let case_ELetRec := tt in  (fun e' subproofs => _) (expr2proof _ _ _ _ ebody) 
+((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
         (branches':ELetRecBindings Γ'' Δ'' ξ'' lev'' tree')
         : LetRecSubproofs Γ'' Δ'' ξ'' lev'' tree' branches' :=
         match branches' as B in ELetRecBindings G D X L T return LetRecSubproofs G D X L T B with
-  | ELR_nil    Γ Δ ξ lev  => lrsp_nil _ _ _ _
-  | ELR_leaf   Γ Δ ξ l v e => lrsp_leaf Γ Δ ξ l v e (expr2proof _ _ _ _ e)
-  | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => lrsp_cons _ _ _ _ _ _ _ _ (subproofs _ _ _ _ _ b1) (subproofs _ _ _ _ _ b2)
+          | ELR_nil    Γ Δ ξ lev  => lrsp_nil _ _ _ _
+          | ELR_leaf   Γ Δ ξ l v e => lrsp_leaf Γ Δ ξ l v e (expr2proof _ _ _ _ e)
+          | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => lrsp_cons _ _ _ _ _ _ _ _ (subproofs _ _ _ _ _ b1) (subproofs _ _ _ _ _ b2)
         end
-        ) _ _ _ _ tree branches) in
-      let case_ELetRec := tt in  _
-    | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in let e' := expr2proof _ _ _ _ e in _
-    | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in let e' := expr2proof _ _ _ _ e in _
-    | ENote    Γ Δ ξ t n e                          => let case_ENote   := tt in let e' := expr2proof _ _ _ _ e in _
-    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in let e' := expr2proof _ _ _ _ e in _
-    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in let e' := expr2proof _ _ _ _ e in _
+        ) _ _ _ _ tree branches)
+    | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ENote    Γ Δ ξ t n e                          => let case_ENote   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
     | ECase    Γ Δ ξ l tc tbranches atypes e alts' => 
       let dcsp :=
         ((fix mkdcsp (alts:
@@ -596,11 +625,11 @@ Definition expr2proof  :
         match alts as ALTS return ND Rule [] (mapOptionTree (pcb_judg ○ mkProofCaseBranch) ALTS) with
           | T_Leaf None       => let case_nil := tt in _
           | T_Leaf (Some x)   => (fun ecb' => let case_leaf := tt in _) (expr2proof _ _ _ _ (projT2 x))
-          | T_Branch b1 b2   => let case_branch := tt in _
+          | T_Branch b1 b2   => let case_branch := tt in (fun b1' b2' => _) (mkdcsp b1) (mkdcsp b2)
         end) alts')
         in let case_ECase := tt in (fun e' => _) (expr2proof _ _ _ _ e)
     end
-); clear exp ξ' τ' Γ' Δ'.
+); clear exp ξ' τ' Γ' Δ' expr2proof; try clear mkdcsp.
 
     destruct case_EVar.
       apply nd_rule.
@@ -617,6 +646,8 @@ Definition expr2proof  :
       eapply nd_comp; [ idtac | eapply nd_rule; apply RApp ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod; auto.
+      apply e1'.
+      apply e2'.
 
     destruct case_ELam; intros.
       unfold mapOptionTree; simpl; fold (mapOptionTree ξ).
@@ -683,10 +714,21 @@ Definition expr2proof  :
       apply e'.
       auto.
 
+    destruct case_ECoLam; simpl in *; intros.
+      eapply nd_comp; [ idtac | eapply nd_rule; apply RAbsCo with (κ:=κ) ].
+      apply e'.
+
     destruct case_ECoApp; simpl in *; intros.
       eapply nd_comp; [ idtac | eapply nd_rule; apply (@RAppCo _ _ (mapOptionTree ξ (expr2antecedent e)) _ σ₁ σ₂ σ γ l) ].
       apply e'.
       auto.
+
+    destruct case_ETyLam; intros.
+      eapply nd_comp; [ idtac | eapply nd_rule; apply RAbsT ].
+      unfold mapOptionTree in e'.
+      rewrite mapOptionTree_compose in e'.
+      unfold mapOptionTree.
+      apply e'.
 
     destruct case_leaf.
       unfold pcb_judg.
@@ -697,67 +739,32 @@ Definition expr2proof  :
       (*(unleaves (vec2list (sac_types (projT1 x) Γ atypes)))*)
         _ _
       ))) as q.
-
-rewrite cheat2 in q.
-rewrite cheat1.
-unfold weakCK'' in q.
-simpl in q.
-admit.
-(*
-replace (mapOptionTree ((@weakLT' Γ (tyConKind tc) _) ○ ξ)
-        (stripOutVars (vec2list (scbwv_exprvars (projT1 x)))
-           (expr2antecedent (projT2 x))))
-with (mapOptionTree (scbwv_ξ (projT1 x) ξ l)
-              (stripOutVars (vec2list (scbwv_exprvars (projT1 x)))
-                 (expr2antecedent (projT2 x)))).
-rewrite <- cheat1 in q.
-rewrite vec2list_map_list2vec in q.
-unfold mapOptionTree.
-fold (@mapOptionTree (HaskType (app (tyConKind tc) Γ) ★)
- (LeveledHaskType (app (tyConKind tc) Γ) ★) (fun t' => t' @@ weakL' l)).
-admit.
-*)
-admit.
-
-(*
-assert (
-
-unleaves (vec2list (vec_map (scbwv_ξ (projT1 x) ξ l) (scbwv_exprvars (projT1 x))))
-=
-unleaves (vec2list (sac_types (projT1 x) Γ atypes)) @@@ weakL'(κ:=tyConKind tc) l).
-admit.
-Set Printing Implicit.
-idtac.
-rewrite <- H.
-
-      assert (unshape (scb_types alt) = (mapOptionTree (update_ξ''' (weakenX' ξ0) (scb_types alt) corevars) (unshape corevars))).
-      apply update_ξ_and_reapply.
-      rewrite H.
+      rewrite cheat4 in q.
+      rewrite cheat3.
+      unfold weakCK'' in q.
       simpl in q.
-      unfold mapOptionTree in q; simpl in q.
-      set (@updating_stripped_tree_is_inert''') as u.
-      unfold mapOptionTree in u.
-      rewrite u in q.
-      clear u H.
-      unfold weakenX' in *.
+      rewrite (updating_stripped_tree_is_inert''' Γ tc ξ l _ atypes  (projT1 x)) in q.
+      Ltac cheater Q :=
+       match goal with
+        [ Q:?Y |- ?Z ] =>
+         assert (Y=Z) end.
+      cheater q.
       admit.
-      unfold mapOptionTree in *.
-      replace
-        (@weakenT' _ (sac_ekinds alt) (coreTypeToType φ tbranches0))
-        with
-        (coreTypeToType (updatePhi φ (sac_evars alt)) tbranches0).
+      rewrite <- H.
+      clear H.
       apply q.
-      apply cheat.
-*)
+
+    destruct case_nil.
+      apply nd_id0.
 
     destruct case_branch.
       simpl; eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod.
-      apply (mkdcsp b1).
-      apply (mkdcsp b2).
+      apply b1'.
+      apply b2'.
 
     destruct case_ECase.
-      rewrite cheat0.
+      rewrite cheat2.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RCase ].
       eapply nd_comp; [ apply nd_llecnac | idtac ]; apply nd_prod.
       rewrite <- mapOptionTree_compose.
@@ -772,19 +779,7 @@ rewrite <- H.
       apply e'.
       apply subproofs.
 
-    (*
-    destruct case_ECoLam; simpl in *; intros.
-      eapply nd_comp; [ idtac | eapply nd_rule; apply RAbsCo with (κ:=κ) ].
-      apply e'.
-
-    destruct case_ETyLam; intros.
-      eapply nd_comp; [ idtac | eapply nd_rule; apply RAbsT ].
-      unfold mapOptionTree in e'.
-      rewrite mapOptionTree_compose in e'.
-      unfold mapOptionTree.
-      apply e'.
-     *)
-  Admitted.
+  Defined.
 
 End HaskStrongToProof.
 
