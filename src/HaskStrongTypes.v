@@ -13,6 +13,7 @@ Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
+Require Import HaskWeak.
 Require Import HaskCoreToWeak.
 
 Variable dataConTyCon      : CoreDataCon -> TyCon.         Extract Inlined Constant dataConTyCon      => "DataCon.dataConTyCon".

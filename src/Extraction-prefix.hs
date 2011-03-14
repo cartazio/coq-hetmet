@@ -19,10 +19,12 @@ import qualified FastString
 import qualified BasicTypes
 import qualified DataCon
 import qualified CoreSyn
+import qualified CoreUtils
 import qualified Class
 import qualified Data.Char 
+import qualified Data.Typeable
 import Data.Bits ((.&.), shiftL, (.|.))
-import Prelude ( (++), (+), (==), Show, show, Char )
+import Prelude ( (++), (+), (==), Show, show, Char, (.) )
 import qualified Prelude
 import qualified GHC.Base
 
@@ -44,11 +46,15 @@ errOrFail (Error s) = Prelude.error s
 getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]
 getTyConTyVars tc = if TyCon.isFunTyCon tc then [] else if TyCon.isPrimTyCon tc then [] else TyCon.tyConTyVars tc
 
+sortAlts :: [(CoreSyn.AltCon,a,b)] -> [(CoreSyn.AltCon,a,b)]
+sortAlts x = x -- FIXME
+
 -- to do: this could be moved into Coq
 coreVarToWeakVar :: Var.Var -> WeakVar
 coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
 coreVarToWeakVar v | Var.isTyVar v = WTypeVar (WeakTypeVar v (coreKindToKind (Var.varType v)))
-coreVarToWeakVar v | Var.isCoVar v = WCoerVar (WeakCoerVar v (Prelude.error "FIXME") (Prelude.error "FIXME"))
+coreVarToWeakVar v | Var.isCoVar v = WCoerVar (WeakCoerVar v (Prelude.error "FIXME") 
+                                                             (Prelude.error "FIXME") (Prelude.error "FIXME"))
 coreVarToWeakVar _                 =
    Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
 
@@ -80,7 +86,7 @@ coreKindToKind k =
   case Coercion.splitKindFunTy_maybe k of
       Prelude.Just (k1,k2) -> KindTypeFunction (coreKindToKind k1) (coreKindToKind k2)
       Prelude.Nothing -> 
-                      if      (Coercion.isLiftedTypeKind k)   then KindType
+                      if (Coercion.isLiftedTypeKind k)   then KindType
                  else if (Coercion.isUnliftedTypeKind k) then KindUnliftedType
                  else if (Coercion.isOpenTypeKind k)     then KindOpenType
                  else if (Coercion.isArgTypeKind k)      then KindArgType
@@ -113,3 +119,45 @@ coreViewDeep t =
       TypeRep.PredTy p         -> case Type.coreView t of
                                Prelude.Nothing     -> TypeRep.PredTy p
                                Prelude.Just    t'  -> t'
+
+-- FIXME: cotycon applications may be oversaturated
+coreCoercionToWeakCoercion :: Type.Type -> WeakCoercion
+coreCoercionToWeakCoercion c =
+ case c of
+  TypeRep.TyVarTy  v     -> WCoVar (WeakCoerVar v (Prelude.error "FIXME") (Prelude.error "FIXME") (Prelude.error "FIXME"))
+  TypeRep.AppTy    t1 t2 -> WCoApp   (coreCoercionToWeakCoercion t1) (coreCoercionToWeakCoercion t2)
+  TypeRep.TyConApp tc t  ->
+      case TyCon.isCoercionTyCon_maybe tc of
+        Prelude.Nothing -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got " (outputableToString c))
+        Prelude.Just (_, ctcd) ->
+            case (ctcd,t) of
+              (TyCon.CoTrans , [x,y]     ) -> WCoComp   (coreCoercionToWeakCoercion x) (coreCoercionToWeakCoercion y)
+              (TyCon.CoSym   , [x]       ) -> WCoSym    (coreCoercionToWeakCoercion x)
+              (TyCon.CoLeft  , [x]       ) -> WCoLeft   (coreCoercionToWeakCoercion x)
+              (TyCon.CoRight , [x]       ) -> WCoLeft   (coreCoercionToWeakCoercion x)
+-- FIXME      (TyCon.CoUnsafe, [t1, t2 ] ) -> WCoUnsafe (coreTypeToWeakType t1) (coreTypeToWeakType t2)
+              (TyCon.CoTrans , []        ) -> Prelude.error "CoTrans is not in post-publication-appendix SystemFC1"
+              (TyCon.CoCsel1 , []        ) -> Prelude.error "CoCsel1 is not in post-publication-appendix SystemFC1"
+              (TyCon.CoCsel2 , []        ) -> Prelude.error "CoCsel2 is not in post-publication-appendix SystemFC1"
+              (TyCon.CoCselR , []        ) -> Prelude.error "CoCselR is not in post-publication-appendix SystemFC1"
+              (TyCon.CoInst  , []        ) -> Prelude.error "CoInst  is not in post-publication-appendix SystemFC1"
+--              (TyCon.CoAxiom , []        ) -> Prelude.error "CoAxiom is not yet implemented (FIXME)"
+              _ -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got " (outputableToString c))
+  _ -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got " (outputableToString c))
+--  TypeRep.ForAllTy v t   -> WCoAll  (Prelude.error "FIXME") (coreTypeToWeakType t)
+-- FIXME   x y                                  -> WCoAppT    (coreCoercionToWeakCoercion x) (coreCoercionToWeakType y)
+--  CoreSyn.Type t                            -> WCoType   (coreTypeToWeakType t)
+
+{-
+weakCoercionToCoreCoercion :: CoreCoercion -> Type.Type
+| WCoVar     (weakCoerVar _ _ t1 t2) => (t1,t2)
+| WCoType    t                       => Prelude_error "FIXME WCoType"
+| WCoApp     c1 c2                   => Prelude_error "FIXME WCoApp"
+| WCoAppT    c t                     => Prelude_error "FIXME WCoAppT"
+| WCoAll     k f                     => Prelude_error "FIXME WCoAll"
+| WCoSym     c                       => let (t2,t1) := weakCoercionTypes c in (t1,t2)
+| WCoComp    c1 c2                   => Prelude_error "FIXME WCoComp"
+| WCoLeft    c                       => Prelude_error "FIXME WCoLeft"
+| WCoRight   c                       => Prelude_error "FIXME WCoRight"
+| WCoUnsafe  t1 t2                   => (t1,t2)
+-}

@@ -15,6 +15,7 @@ Require Import HaskCore.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
+Require Import HaskCoreToWeak.
 
 Variable mkCoreLet : @CoreBind CoreVar -> @CoreExpr CoreVar -> @CoreExpr CoreVar.
   Extract Inlined Constant mkCoreLet => "MkCore.mkCoreLet".
@@ -23,16 +24,15 @@ Variable sortAlts  : forall {a}{b}, list (@triple AltCon a b) -> list (@triple A
   Extract Inlined Constant sortAlts => "sortAlts".
   Implicit Arguments sortAlts [[a][b]].
 
-Variable trustMeCoercion           : CoreCoercion.
-  Extract Inlined Constant trustMeCoercion => "Coercion.unsafeCoerce".
+Variable mkUnsafeCoercion : CoreType -> CoreType -> CoreCoercion.
+    Extract Inlined Constant mkUnsafeCoercion => "Coercion.mkUnsafeCoercion".
 
 (* Coercion and Type are actually the same thing in GHC, but we don't tell Coq about that.  This lets us get around it. *)
 Variable coreCoercionsAreReallyTypes : CoreCoercion -> CoreType.
   Extract Inlined Constant coreCoercionsAreReallyTypes => "(\x -> x)".
 
-Definition weakCoercionToCoreCoercion : WeakCoercion -> CoreCoercion :=
-   fun _ => trustMeCoercion.
-
+  Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion :=
+    mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
 
   Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   match me with
@@ -87,8 +87,9 @@ Definition weakCoercionToCoreCoercion : WeakCoercion -> CoreCoercion :=
                                                (weakExprToCoreExpr e)
   end.
 
+Definition weakTypeOfWeakExpr (we:WeakExpr) : ???WeakType :=
+  coreTypeToWeakType (coreTypeOfCoreExpr (weakExprToCoreExpr we)).
 
 Instance weakExprToString : ToString WeakExpr  :=
   { toString := fun we => toString (weakExprToCoreExpr we) }.
-
 

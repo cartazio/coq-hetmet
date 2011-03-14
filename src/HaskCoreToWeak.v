@@ -14,7 +14,6 @@ Require Import HaskCore.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
-Require Import HaskWeakToCore.
 
 Axiom    tycons_distinct       : ~(ArrowTyCon=ModalBoxTyCon).
 Variable tyConOrTyFun          : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun      => "tyConOrTyFun".
@@ -44,7 +43,7 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                                     | WExprVar _  => Error "encountered expression variable in a modal box type"
                                     | WCoerVar _  => Error "encountered coercion variable in a modal box type"
                                   end
-                                | _                           => Error "mis-applied modal box tycon"
+                                | _                           => Error ("mis-applied modal box tycon: " +++ ct)
                               end
                          else let tc' := if eqd_dec tc ArrowTyCon
                                          then WFunTyCon
@@ -75,9 +74,6 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
 Variable coreViewDeep : CoreType -> CoreType.  Extract Inlined Constant coreViewDeep => "coreViewDeep".
 Definition coreTypeToWeakType t := coreTypeToWeakType' (coreViewDeep t).
 
-Definition weakTypeOfWeakExpr (we:WeakExpr) : ???WeakType :=
-  coreTypeToWeakType (coreTypeOfCoreExpr (weakExprToCoreExpr we)).
-
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
 match ce with
@@ -102,11 +98,14 @@ match ce with
   | _ => None
 end.
 
-Definition coreCoercionToWeakCoercion (cc:CoreCoercion) : ???WeakCoercion :=
+Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
+  Extract Inlined Constant coreCoercionToWeakCoercion => "coreCoercionToWeakCoercion".
+(*
   let (t1,t2) := coreCoercionKind cc
   in  coreTypeToWeakType t1 >>= fun t1' =>
-    coreTypeToWeakType t2 >>= fun t2' =>
-    OK (weakCoercion (kindOfCoreType t1) t1' t2' cc).
+        coreTypeToWeakType t2 >>= fun t2' =>
+          OK (WCoUnsafe t1' t2').
+*)
 
 Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
   match ce with
@@ -114,8 +113,7 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
     | CoreENote  n e   => coreExprToWeakExpr e >>= fun e' => OK (WENote n e')
     | CoreEType  t     => Error "encountered CoreEType in a position where an Expr should have been"
     | CoreECast  e co  => coreExprToWeakExpr e >>= fun e' =>
-                            coreCoercionToWeakCoercion co >>= fun co' =>
-                              OK (WECast e' co')
+                              OK (WECast e' (coreCoercionToWeakCoercion co))
 
     | CoreEVar   v     => match coreVarToWeakVar v with
                             | WExprVar ev => OK (WEVar ev)
@@ -178,8 +176,8 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
         | WTypeVar _  => Error "found a type variable in a case"
         | WCoerVar _  => Error "found a coercion variable in a case"
         | WExprVar ev => 
-      coreExprToWeakExpr e >>= fun e' =>
-        weakTypeOfWeakExpr e' >>= fun te' =>
+        coreTypeToWeakType (coreTypeOfCoreExpr e) >>= fun te' =>
+        coreExprToWeakExpr e >>= fun e' =>
           (match isTyConApp te' nil with None => Error "expectTyConApp encountered strange type" | Some x => OK x end)
              >>= fun tca =>
             let (tc,lt) := tca in

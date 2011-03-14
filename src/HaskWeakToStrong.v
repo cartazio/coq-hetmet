@@ -19,7 +19,6 @@ Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
-Require Import HaskCoreToWeak.
 
 Open Scope string_scope.
 Definition TyVarResolver Γ   := forall wt:WeakTypeVar, ???(HaskTyVar Γ wt).
@@ -559,7 +558,7 @@ Definition weakExprToStrongExpr : forall
                                                    weakExprToStrongExpr Γ (_ :: Δ) φ (weakψ ψ) ξ te' lev e >>= fun e' =>
                                                      castExpr we "WECoLam" _ (ECoLam Γ Δ cv te' t1' t2' ξ lev e')
 
-    | WECast  e co                      => let (_,t1,t2,_) := co in
+    | WECast  e co                      => let (t1,t2) := weakCoercionTypes co in
                                              weakTypeToType'' φ t1 ★ >>= fun t1' =>
                                                weakTypeToType'' φ t2 ★ >>= fun t2' =>
                                                    weakExprToStrongExpr Γ Δ φ ψ ξ t1' lev e >>= fun e' =>

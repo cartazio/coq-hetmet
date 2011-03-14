@@ -13,12 +13,6 @@ Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskWeakTypes.
 
-(* TO DO: finish this *)
-Inductive WeakCoercion : Type := weakCoercion : Kind -> WeakType -> WeakType -> CoreCoercion -> WeakCoercion.
-
-(* a WeakCoerVar just wraps a CoreVar and tags it with the pair of types amongst which it coerces *)
-Inductive WeakCoerVar := weakCoerVar : CoreVar -> Kind -> WeakType -> WeakType -> WeakCoerVar.
-
 (* a WeakExprVar just wraps a CoreVar and tags it with the type of its value *)
 Inductive WeakExprVar := weakExprVar : CoreVar -> WeakType -> WeakExprVar.
 

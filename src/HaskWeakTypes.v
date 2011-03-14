@@ -55,6 +55,39 @@ Instance WeakTypeVarEqDecidable : EqDecidable WeakTypeVar.
     right; intro; apply n; inversion H; subst; auto.
     Defined.
 
+(* a WeakCoerVar just wraps a CoreVar and tags it with the pair of types amongst which it coerces *)
+Inductive WeakCoerVar := weakCoerVar : CoreVar -> Kind -> WeakType -> WeakType -> WeakCoerVar.
+
+Inductive WeakCoercion : Type :=
+| WCoVar          : WeakCoerVar                                   -> WeakCoercion (* g      *)
+| WCoType         : WeakType                                      -> WeakCoercion (* τ      *)
+| WCoApp          : WeakCoercion -> WeakCoercion                  -> WeakCoercion (* γ γ    *)
+| WCoAppT         : WeakCoercion -> WeakType                      -> WeakCoercion (* γ@v    *)
+| WCoAll          : Kind  -> (WeakTypeVar -> WeakCoercion)        -> WeakCoercion (* ∀a:κ.γ *)
+| WCoSym          : WeakCoercion                                  -> WeakCoercion (* sym    *)
+| WCoComp         : WeakCoercion -> WeakCoercion                  -> WeakCoercion (* ◯      *)
+| WCoLeft         : WeakCoercion                                  -> WeakCoercion (* left   *)
+| WCoRight        : WeakCoercion                                  -> WeakCoercion (* right  *)
+| WCoUnsafe       : WeakType -> WeakType                          -> WeakCoercion (* unsafe *)
+(*| WCoCFApp        : ∀ n, CoFunConst n -> vec WeakCoercion n       -> WeakCoercion (* C   γⁿ *)*)
+(*| WCoTFApp        : ∀ n, TyFunConst n -> vec WeakCoercion n       -> WeakCoercion (* S_n γⁿ *)*)
+.
+
+Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
+Fixpoint weakCoercionTypes (wc:WeakCoercion) : WeakType * WeakType :=
+match wc with
+| WCoVar     (weakCoerVar _ _ t1 t2) => (t1,t2)
+| WCoType    t                       => Prelude_error "FIXME WCoType"
+| WCoApp     c1 c2                   => Prelude_error "FIXME WCoApp"
+| WCoAppT    c t                     => Prelude_error "FIXME WCoAppT"
+| WCoAll     k f                     => Prelude_error "FIXME WCoAll"
+| WCoSym     c                       => let (t2,t1) := weakCoercionTypes c in (t1,t2)
+| WCoComp    c1 c2                   => Prelude_error "FIXME WCoComp"
+| WCoLeft    c                       => Prelude_error "FIXME WCoLeft"
+| WCoRight   c                       => Prelude_error "FIXME WCoRight"
+| WCoUnsafe  t1 t2                   => (t1,t2)
+end.
+
 (* TO DO: write a proper EqDecidable instance for WeakType and then move the rest of this into HaskWeakToCore *)
 Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
 Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
