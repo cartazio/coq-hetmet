@@ -563,9 +563,9 @@ Fixpoint typeToString' (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat)
       end
     | TArrow => "(->)"
     | TAll   k f           => let alpha := "tv"+++n
-                              in "(forall "+++ alpha +++ "{:}"+++ k +++")"+++
+                              in "(forall "+++ alpha +++ ":"+++ k +++")"+++
                                    typeToString' false (S n) (f n)
-    | TCode  ec t          => "<["+++(typeToString' true n ec)+++"]>@"+++(typeToString' false n t)
+    | TCode  ec t          => "<["+++(typeToString' true n t)+++"]>@"+++(typeToString' false n ec)
     | TyFunApp   tfc lt    => tfc+++"_"+++n+++" ["+++(fold_left (fun x y => " \  "+++x+++y) (typeList2string false n lt) "")+++"]"
   end
   with typeList2string (needparens:bool)(n:nat){κ}(t:RawHaskTypeList κ) {struct t} : list string :=
