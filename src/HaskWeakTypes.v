@@ -67,30 +67,6 @@ Fixpoint isTyConApp (wt:WeakType)(acc:list WeakType) : ??(TyCon * list WeakType)
     | _            => None
   end.
 
-(* messy first-order NON-CAPTURE-AVOIDING substitution on WeakType's *)
-Fixpoint replaceWeakTypeVar (te:WeakType)(tv:WeakTypeVar)(tsubst:WeakType) : WeakType :=
-  match te with
-    | WTyVarTy  tv'            => if eqd_dec tv tv' then tsubst else te
-    | WAppTy  t1 t2            => WAppTy (replaceWeakTypeVar t1 tv tsubst) (replaceWeakTypeVar t2 tv tsubst)
-    | WForAllTy  tv' t         => if eqd_dec tv tv' then te else WForAllTy tv' (replaceWeakTypeVar t tv tsubst)
-    | WCoFunTy t1 t2 t         => WCoFunTy (replaceWeakTypeVar t1 tv tsubst)
-                                      (replaceWeakTypeVar t2 tv tsubst) (replaceWeakTypeVar t tv tsubst)
-    | WIParam ip ty  => WIParam ip (replaceWeakTypeVar ty tv tsubst)
-    | WClassP  c lt => WClassP c ((fix replaceCoreDistinctList (lt:list WeakType) :=
-      match lt with
-        | nil => nil
-        | h::t => (replaceWeakTypeVar h tv tsubst)::(replaceCoreDistinctList t)
-      end) lt)
-    | WTyFunApp tc lt => WTyFunApp tc ((fix replaceCoreDistinctList (lt:list WeakType) :=
-      match lt with
-        | nil => nil
-        | h::t => (replaceWeakTypeVar h tv tsubst)::(replaceCoreDistinctList t)
-      end) lt)
-    | WTyCon tc                => WTyCon tc
-    | WFunTyCon                => WFunTyCon
-    | WModalBoxTyCon           => WModalBoxTyCon
-  end.
-
 (* we try to normalize the representation of a type as much as possible before feeding it back to GHCs type-comparison function *)
 Definition normalizeWeakType (wt:WeakType) : WeakType := wt.
 

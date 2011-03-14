@@ -8,6 +8,7 @@ Require Import General.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskCoreLiterals.
+Require Import HaskCore.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCoreTypes.
@@ -98,43 +99,5 @@ Definition makeClosedExpression : WeakExpr -> WeakExpr :=
 Definition weakTypeOfLiteral (lit:HaskLiteral) : WeakType :=
   (WTyCon (haskLiteralToTyCon lit)).
 
-(* calculate the CoreType of a WeakExpr *)
-Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
-  match ce with
-    | WEVar   (weakExprVar v t) => OK t
-    | WELit   lit   => OK (weakTypeOfLiteral lit)
-    | WEApp   e1 e2 => weakTypeOfWeakExpr e1 >>= fun t' =>
-                       match t' with
-                         | (WAppTy (WAppTy WFunTyCon t1) t2) => OK t2
-                         | _ => Error ("found non-function type "+++t'+++" in EApp")
-                       end
-    | WETyApp e t    => weakTypeOfWeakExpr e >>= fun te =>
-                        match te with
-                          | WForAllTy v ct => OK (replaceWeakTypeVar ct v t)
-                          | _ => Error ("found non-forall type "+++te+++" in ETyApp")
-                        end
-    | WECoApp e co   => weakTypeOfWeakExpr e >>= fun te =>
-                        match te with
-                          | WCoFunTy t1 t2 t => OK t
-                          | _ => Error ("found non-coercion type "+++te+++" in ETyApp")
-                        end
-    | WELam   (weakExprVar ev vt) e => weakTypeOfWeakExpr e >>= fun t' => OK (WAppTy (WAppTy WFunTyCon vt) t')
-    | WETyLam tv e => weakTypeOfWeakExpr e >>= fun t' => OK (WForAllTy tv t')
-    | WECoLam (weakCoerVar cv _ φ₁ φ₂) e => weakTypeOfWeakExpr e >>= fun t' => OK (WCoFunTy φ₁ φ₂ t')
-    | WELet   ev ve e            => weakTypeOfWeakExpr e
-    | WELetRec rb e              => weakTypeOfWeakExpr e
-    | WENote  n e                => weakTypeOfWeakExpr e
-    | WECast  e (weakCoercion _ t1 t2 _) => OK t2
-    | WECase  vscrut scrutinee tbranches tc type_params alts => OK tbranches
-
-    (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)
-    | WEBrak _ ec e _ => weakTypeOfWeakExpr e >>= fun t' => OK (WCodeTy ec t')
-    | WEEsc  _ ec e _ => weakTypeOfWeakExpr e >>= fun t' =>
-      match t' with
-        | (WAppTy (WAppTy WCodeTyCon (WTyVarTy ec')) t'') =>
-          if eqd_dec ec ec' then OK t''
-            else Error "level mismatch in escapification"
-        | _ => Error "ill-typed escapification"
-      end
-  end.
-
+Variable coreTypeOfCoreExpr    : @CoreExpr CoreVar -> CoreType.
+  Extract Inlined Constant coreTypeOfCoreExpr => "CoreUtils.exprType".

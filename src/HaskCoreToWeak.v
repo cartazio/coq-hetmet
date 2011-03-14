@@ -14,6 +14,7 @@ Require Import HaskCore.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
+Require Import HaskWeakToCore.
 
 Axiom    tycons_distinct       : ~(ArrowTyCon=ModalBoxTyCon).
 Variable tyConOrTyFun          : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun      => "tyConOrTyFun".
@@ -73,6 +74,9 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
 
 Variable coreViewDeep : CoreType -> CoreType.  Extract Inlined Constant coreViewDeep => "coreViewDeep".
 Definition coreTypeToWeakType t := coreTypeToWeakType' (coreViewDeep t).
+
+Definition weakTypeOfWeakExpr (we:WeakExpr) : ???WeakType :=
+  coreTypeToWeakType (coreTypeOfCoreExpr (weakExprToCoreExpr we)).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=

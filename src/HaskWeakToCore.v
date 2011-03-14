@@ -15,7 +15,6 @@ Require Import HaskCore.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
-Require Import HaskCoreToWeak.
 
 Variable mkCoreLet : @CoreBind CoreVar -> @CoreExpr CoreVar -> @CoreExpr CoreVar.
   Extract Inlined Constant mkCoreLet => "MkCore.mkCoreLet".
