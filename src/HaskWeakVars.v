@@ -48,9 +48,11 @@ Definition tyConTyVars (tc:CoreTyCon) :=
   Opaque tyConTyVars.
 Definition tyConKind (tc:TyCon) : list Kind :=
   map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc).
-Variable tyFunResultKind : CoreTyCon -> Kind. Extract Inlined Constant tyFunResultKind => "tyFunResultKind".
+
+Variable rawTyFunKind : CoreTyCon -> Kind. Extract Inlined Constant rawTyFunKind => "(coreKindToKind . TyCon.tyConKind)".
+
 Definition tyFunKind (tc:TyFun) : ((list Kind) * Kind) :=
-  ((map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc)) , (tyFunResultKind tc)).
+  splitKind (rawTyFunKind tc).
 
 (*
 (* EqDecidable instances for all of the above *)
