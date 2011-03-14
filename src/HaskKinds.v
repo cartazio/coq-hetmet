@@ -50,3 +50,10 @@ Instance KindEqDecidable : EqDecidable Kind.
     destruct v2; try (right; intro q; inversion q; fail) ; left ; auto.
   Defined.
 
+(* splits a kind into a list of arguments and a result *)
+Fixpoint splitKind (k:Kind) : ((list Kind) * Kind) :=
+  match k with
+    | a ⇛ b => let (args,res) := splitKind b in ((a::args),res)
+    | _     => (nil, k)
+  end.
+
