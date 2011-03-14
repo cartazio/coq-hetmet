@@ -35,8 +35,8 @@ Inductive WeakExpr :=
 | WEBrak      : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 | WEEsc       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 
-(* note that HaskWeak "Case" does not bind a variable; coreExprToWeakExpr adds a let-binder *)
-| WECase      : forall (scrutinee:WeakExpr)
+| WECase      : forall (vscrut:WeakExprVar)
+                       (scrutinee:WeakExpr)
                        (tbranches:WeakType)
                        (tc:TyCon)
                        (type_params:list WeakType)
@@ -125,7 +125,7 @@ Fixpoint weakTypeOfWeakExpr (ce:WeakExpr) : ???WeakType :=
     | WELetRec rb e              => weakTypeOfWeakExpr e
     | WENote  n e                => weakTypeOfWeakExpr e
     | WECast  e (weakCoercion _ t1 t2 _) => OK t2
-    | WECase  scrutinee tbranches tc type_params alts => OK tbranches
+    | WECase  vscrut scrutinee tbranches tc type_params alts => OK tbranches
 
     (* note that we willfully ignore the type stashed in WEBrak/WEEsc here *)
     | WEBrak _ ec e _ => weakTypeOfWeakExpr e >>= fun t' => OK (WCodeTy ec t')

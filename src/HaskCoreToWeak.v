@@ -200,7 +200,10 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
           >>= fun branches =>
             coreExprToWeakExpr e >>= fun scrutinee =>
               coreTypeToWeakType tbranches >>= fun tbranches' =>
-                  OK (WELet ev scrutinee (WECase (WEVar ev) tbranches' tc lt (unleaves branches)))
+                  OK (WECase ev scrutinee tbranches' tc lt (unleaves branches))
       end
   end.
+
+
+
 

@@ -558,16 +558,16 @@ Definition weakExprToStrongExpr : forall
            weakExprToStrongExpr Γ Δ φ ψ ξ' τ lev e >>= fun e' =>       
              OK (ELetRec Γ Δ ξ lev τ _ binds' e')
 
-    | WECase  e tbranches tc avars alts =>
+    | WECase vscrut e tbranches tc avars alts =>
       mkAvars avars (tyConKind tc) φ >>= fun avars' =>
       weakTypeToType'' φ tbranches ★  >>= fun tbranches' =>
-        weakExprToStrongExpr Γ Δ φ ψ ξ (caseType tc avars') lev e >>= fun e' =>
+          let ξ' := update_ξ ξ (((vscrut:CoreVar), _ @@lev)::nil) in
 (fix mkTree (t:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
      ??{scb
        : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars'
        &
        Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))
-         (scbwv_ξ scb ξ lev) (weakLT' (tbranches' @@  lev))}) := 
+         (scbwv_ξ scb ξ' lev) (weakLT' (tbranches' @@  lev))}) := 
         match t with
           | T_Leaf None           => OK []
           | T_Leaf (Some (ac,extyvars,coervars,exprvars,ebranch)) => 
@@ -575,7 +575,7 @@ Definition weakExprToStrongExpr : forall
               list2vecOrFail (map (fun ev:WeakExprVar => ev:CoreVar) exprvars) _ (fun _ _ => "WECase") >>= fun exprvars' =>
                 let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' in
                   weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ) (sacpj_ψ sac _ _ avars' ψ)
-            (scbwv_ξ scb ξ lev) (weakT' tbranches') (weakL' lev) ebranch >>= fun ebranch' =>
+            (scbwv_ξ scb ξ' lev) (weakT' tbranches') (weakL' lev) ebranch >>= fun ebranch' =>
             let case_case := tt in OK [ _ ]
           | T_Branch b1 b2        =>
             mkTree b1 >>= fun b1' =>
@@ -583,7 +583,10 @@ Definition weakExprToStrongExpr : forall
                 OK (b1',,b2')
         end
 ) alts >>= fun tree =>
-          castExpr "ECase" _ (ECase Γ Δ ξ lev tc tbranches' avars' e' tree)
+        weakExprToStrongExpr Γ Δ φ ψ ξ (caseType tc avars') lev e >>= fun e' =>
+          castExpr "ECaseScrut" _ (EVar Γ Δ ξ' vscrut) >>= fun evar =>
+            castExpr "ECase" _ (ECase Γ Δ ξ' lev tc tbranches' avars' evar tree) >>= fun ecase' =>
+              OK (ELet _ _ _ _ _ lev (vscrut:CoreVar) e' ecase')
     end)).
 
     destruct case_some.
@@ -600,7 +603,7 @@ Definition weakExprToStrongExpr : forall
       apply e1.
 
     destruct case_case.
-      clear mkTree t o e' p e p0 p1 p2 alts weakExprToStrongExpr ebranch.
+      clear mkTree t o p e p0 p1 p2 alts weakExprToStrongExpr ebranch.
       exists scb.
       apply ebranch'.
     Defined.

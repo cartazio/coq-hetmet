@@ -98,6 +98,7 @@ match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTyp
 | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => WECoApp (strongExprToWeakExpr ftv fcv e ite) (strongCoercionToWeakCoercion γ ite)
 | ECase Γ Δ ξ l tc tbranches atypes e alts =>
   fun ite => WECase
+    FIXME
     (strongExprToWeakExpr ftv fcv e ite)
     (@typeToWeakType ftv Γ _ tbranches ite)
     tc
