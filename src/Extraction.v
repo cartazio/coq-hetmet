@@ -58,8 +58,6 @@ Extract Constant shift  => "shiftAscii".
 Unset Extraction Optimize.
 Unset Extraction AutoInline.
 
-Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
-
 Section core2proof.
   Context (ce:@CoreExpr CoreVar).
 
@@ -78,7 +76,7 @@ Section core2proof.
    * free tyvars in them *)
   Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
     match coreVarToWeakVar cv with
-      | WExprVar wev => match weakTypeToType'' φ wev ★ with
+      | WExprVar wev => match weakTypeToTypeOfKind φ wev ★ with
                           | Error s => Prelude_error ("Error in top-level xi: " +++ s)
                           | OK    t => t @@ nil
                         end
@@ -112,7 +110,7 @@ Section core2proof.
           ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
             ((weakTypeOfWeakExpr we) >>= fun t =>
               (addErrorMessage ("WeakType: " +++ t)
-                ((weakTypeToType'' φ t ★) >>= fun τ =>
+                ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
                   addErrorMessage ("HaskType: " +++ τ)
                   ((weakExprToStrongExpr Γ Δ φ ψ ξ τ nil we) >>= fun e =>
                     OK (eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e)+++"$$"+++eol)
