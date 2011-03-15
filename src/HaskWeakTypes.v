@@ -63,18 +63,17 @@ Inductive WeakCoercion : Type :=
 (*| WCoTFApp        : ∀ n, TyFunConst n -> vec WeakCoercion n       -> WeakCoercion (* S_n γⁿ *)*)
 .
 
-Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
 Fixpoint weakCoercionTypes (wc:WeakCoercion) : WeakType * WeakType :=
 match wc with
 | WCoVar     (weakCoerVar _ _ t1 t2) => (t1,t2)
-| WCoType    t                       => Prelude_error "FIXME WCoType"
-| WCoApp     c1 c2                   => Prelude_error "FIXME WCoApp"
-| WCoAppT    c t                     => Prelude_error "FIXME WCoAppT"
-| WCoAll     k f                     => Prelude_error "FIXME WCoAll"
+| WCoType    t                       => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
+| WCoApp     c1 c2                   => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
+| WCoAppT    c t                     => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
+| WCoAll     k f                     => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
 | WCoSym     c                       => let (t2,t1) := weakCoercionTypes c in (t1,t2)
-| WCoComp    c1 c2                   => Prelude_error "FIXME WCoComp"
-| WCoLeft    c                       => Prelude_error "FIXME WCoLeft"
-| WCoRight   c                       => Prelude_error "FIXME WCoRight"
+| WCoComp    c1 c2                   => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
+| WCoLeft    c                       => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
+| WCoRight   c                       => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
 | WCoUnsafe  t1 t2                   => (t1,t2)
 end.
 

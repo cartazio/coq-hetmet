@@ -85,13 +85,13 @@ sanitizeForLatex (c:x)   = c:(sanitizeForLatex x)
 coreKindToKind :: TypeRep.Kind -> Kind
 coreKindToKind k =
   case Coercion.splitKindFunTy_maybe k of
-      Prelude.Just (k1,k2) -> KindTypeFunction (coreKindToKind k1) (coreKindToKind k2)
+      Prelude.Just (k1,k2) -> KindArrow (coreKindToKind k1) (coreKindToKind k2)
       Prelude.Nothing -> 
-                      if (Coercion.isLiftedTypeKind k)   then KindType
-                 else if (Coercion.isUnliftedTypeKind k) then KindType
-                 else if (Coercion.isArgTypeKind k)      then KindType
-                 else if (Coercion.isUbxTupleKind k)     then KindType
-                 else if (Coercion.isOpenTypeKind k)     then KindType
+                      if (Coercion.isLiftedTypeKind k)   then KindStar
+                 else if (Coercion.isUnliftedTypeKind k) then KindStar
+                 else if (Coercion.isArgTypeKind k)      then KindStar
+                 else if (Coercion.isUbxTupleKind k)     then KindStar
+                 else if (Coercion.isOpenTypeKind k)     then KindStar
 --                 else if (Coercion.isUnliftedTypeKind k) then KindUnliftedType
 --                 else if (Coercion.isOpenTypeKind k)     then KindOpenType
 --                 else if (Coercion.isArgTypeKind k)      then KindArgType

@@ -67,7 +67,9 @@ Definition reindexStrongExpr {VV}{HH}{eqVV:EqDecidable VV}{eqHH:EqDecidable HH}
 Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
   := tv::::ite.
 
-Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
+Definition coercionToWeakCoercion : forall Γ Δ κ t1 t2 (γ:@HaskCoercion Γ Δ (@mkHaskCoercionKind Γ κ t1 t2)), WeakCoercion.
+  admit.
+  Defined.
 
 Section strongExprToWeakExpr.
 
@@ -91,8 +93,8 @@ Section strongExprToWeakExpr.
   | ENote _ _ _ _ n e             => fun ite => WENote n (strongExprToWeakExpr ftv fcv fev e ite)
   | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => WETyApp (strongExprToWeakExpr ftv fcv fev e ite) (typeToWeakType ftv τ ite)
   | ELetRec _ _ _ _ _ vars elrb e => fun ite => WELetRec (exprLetRec2WeakExprLetRec ftv fcv fev elrb ite)(strongExprToWeakExpr ftv fcv fev e ite)
-  | ECast Γ Δ ξ t1 t2 γ l e       => fun ite => Prelude_error "FIXME: strongExprToWeakExpr.ECast not implemented"
-  | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => fun ite => Prelude_error "FIXME: strongExprToWeakExpr.ECoApp not implemented"
+  | ECast Γ Δ ξ t1 t2 γ l e      => fun ite => WECast  (strongExprToWeakExpr ftv fcv fev e ite) (coercionToWeakCoercion _ _ _ _ _ γ)
+  | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e => fun ite => WECoApp (strongExprToWeakExpr ftv fcv fev e ite) (coercionToWeakCoercion _ _ _ _ _ γ)
   | ECase Γ Δ ξ l tc tbranches atypes e alts => fun ite =>
     let (ev,fev') := next _ _ fev (typeToWeakType ftv (unlev (caseType tc atypes @@ l)) ite) in
      WECase

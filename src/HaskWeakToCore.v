@@ -60,8 +60,10 @@ Fixpoint weakTypeToCoreType (wt:WeakType) : CoreType :=
                                             (weakTypeToCoreType t3)
   end.
 
-Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion :=
-  mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
+Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion.
+  admit.
+  Defined.
+  (*mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).*)
 
 Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   match me with
