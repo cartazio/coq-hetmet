@@ -74,7 +74,7 @@ Instance DataConEqDecidable : forall tc, EqDecidable (@DataCon tc).
   right; auto.
   Defined.
 
-Definition tyConKind' tc := fold_right KindTypeFunction ★ (tyConKind tc).
+Definition tyConKind' tc := fold_right KindArrow ★ (tyConKind tc).
 
 (* types prefixed with "Raw" are NOT binder-polymorphic; they have had their PHOAS parameter instantiated already *)
 Section Raw.
@@ -185,7 +185,7 @@ Definition HaskTApp {Γ}{κ}(σ:forall TV (env:@InstantiatedTypeEnv TV Γ), TV �
   := fun TV env => σ TV env (cv TV env).
 Definition HaskBrak {Γ}(v:HaskTyVar Γ ★)(t:HaskType Γ ★) : HaskType Γ ★:=
   fun TV env => @TCode TV (TVar (v TV env)) (t TV env).
-Definition HaskTCon {Γ}(tc:TyCon) : HaskType Γ (fold_right KindTypeFunction ★ (tyConKind tc))
+Definition HaskTCon {Γ}(tc:TyCon) : HaskType Γ (fold_right KindArrow ★ (tyConKind tc))
   := fun TV ite => TCon tc.
 Definition HaskAppT {Γ}{κ₁}{κ₂}(t1:HaskType Γ (κ₂⇛κ₁))(t2:HaskType Γ κ₂) : HaskType Γ κ₁ :=
   fun TV ite => TApp (t1 TV ite) (t2 TV ite).
@@ -336,11 +336,11 @@ Definition weakF {Γ:TypeEnv}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv T
 
 Fixpoint caseType0 {Γ}(lk:list Kind) :
   IList _ (HaskType Γ) lk ->
-  HaskType Γ (fold_right KindTypeFunction ★ lk) ->
+  HaskType Γ (fold_right KindArrow ★ lk) ->
   HaskType Γ ★ :=
   match lk as LK return
     IList _ (HaskType Γ) LK ->
-    HaskType Γ (fold_right KindTypeFunction ★ LK) ->
+    HaskType Γ (fold_right KindArrow ★ LK) ->
     HaskType Γ ★ 
   with
   | nil    => fun _     ht => ht

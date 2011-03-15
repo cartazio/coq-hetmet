@@ -14,19 +14,20 @@ Instance NatToStringInstance : ToString nat := { toString := natToString }.
 
 (* Figure 7: production κ, ι *)
 Inductive Kind : Type := 
-  | KindType          : Kind                      (* ★  - the kind of coercions and the kind of types inhabited by [boxed] values *)
-  | KindTypeFunction  : Kind  -> Kind  -> Kind    (* ⇛  - type-function-space; things of kind X⇛Y are NOT inhabited by expressions*)
+  | KindStar          : Kind                      (* ★  - the kind of coercions and the kind of types inhabited by [boxed] values *)
+  | KindArrow         : Kind  -> Kind  -> Kind    (* ⇛  - type-function-space; things of kind X⇛Y are NOT inhabited by expressions*)
   | KindUnliftedType  : Kind                      (* not in the paper - this is the kind of unboxed non-tuple types *)
   | KindUnboxedTuple  : Kind                      (* not in the paper - this is the kind of unboxed tuples *)
-  | KindArgType       : Kind                      (* not in the paper - this is the lub of KindType and KindUnliftedType *)
-  | KindOpenType      : Kind                      (* not in the paper - kind of all types (lifted, boxed, whatever) *).
+  | KindArgType       : Kind                      (* not in the paper - this is the lub of KindStar and KindUnliftedType *)
+  | KindOpenType      : Kind                      (* not in the paper - kind of all types (lifted, boxed, whatever) *)
+  .
 
 Open Scope string_scope.
 Fixpoint kindToString (k:Kind) : string :=
   match k with
-  | KindType                     => "*"
-  | KindTypeFunction KindType k2 => "*=>"+++kindToString k2
-  | KindTypeFunction k1 k2       => "("+++kindToString k1+++")=>"+++kindToString k2
+  | KindStar                     => "*"
+  | KindArrow KindStar k2        => "*=>"+++kindToString k2
+  | KindArrow k1 k2              => "("+++kindToString k1+++")=>"+++kindToString k2
   | KindUnliftedType             => "#"
   | KindUnboxedTuple             => "(#)"
   | KindArgType                  => "??"
@@ -34,8 +35,8 @@ Fixpoint kindToString (k:Kind) : string :=
   end.
 Instance KindToString : ToString Kind := { toString := kindToString }.
 
-Notation "'★'"   := KindType.
-Notation "a ⇛ b" := (KindTypeFunction a b).
+Notation "'★'"   := KindStar.
+Notation "a ⇛ b" := (KindArrow a b).
 
 Instance KindEqDecidable : EqDecidable Kind.
   apply Build_EqDecidable.
