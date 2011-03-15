@@ -26,9 +26,9 @@ Section ToLatex.
 
   Fixpoint kind2latex (k:Kind) : string :=
     match k with
-    | KindStar                     => "\star"
-    | KindArrow KindStar k2 => "\star\Rightarrow "+++kind2latex k2
-    | KindArrow k1 k2       => "("+++kind2latex k1+++")\Rightarrow "+++kind2latex k2
+    | ★                            => "\star"
+    | ★  ⇛ k2                      => "\star\Rightarrow "+++kind2latex k2
+    | k1 ⇛ k2                      => "("+++kind2latex k1+++")\Rightarrow "+++kind2latex k2
     | KindUnliftedType             => "\text{\tt{\#}}"
     | KindUnboxedTuple             => "\text{\tt{(\#)}}"
     | KindArgType                  => "\text{\tt{??}}"
