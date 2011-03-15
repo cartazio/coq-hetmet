@@ -8,17 +8,8 @@ Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreVars.
-Require Import HaskCoreTypes.
-
-Variable tyConToCoreTyCon : TyCon -> CoreTyCon.           Extract Inlined Constant tyConToCoreTyCon  => "(\x -> x)".
-Variable tyFunToCoreTyCon : TyFun -> CoreTyCon.           Extract Inlined Constant tyFunToCoreTyCon  => "(\x -> x)".
-Coercion tyConToCoreTyCon : TyCon >-> CoreTyCon.
-Coercion tyFunToCoreTyCon : TyFun >-> CoreTyCon.
-
-Instance TyConToString : ToString TyCon := { toString := tyConToString }.
-Instance TyFunToString : ToString TyFun := { toString := tyConToString }.
 
 (* a WeakTypeVar merely wraps a CoreVar and includes its Kind *)
 Inductive WeakTypeVar := weakTypeVar : CoreVar -> Kind -> WeakTypeVar.
@@ -87,28 +78,13 @@ match wc with
 | WCoUnsafe  t1 t2                   => (t1,t2)
 end.
 
-Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
-Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
 
-Fixpoint weakTypeToCoreType (wt:WeakType) : CoreType :=
-  match wt with
-    | WTyVarTy  (weakTypeVar v _)     => TyVarTy v
-    | WAppTy (WAppTy WFunTyCon t1) t2 => FunTy (weakTypeToCoreType t1) (weakTypeToCoreType t2)
-    | WAppTy  t1 t2                   => match (weakTypeToCoreType t1) with
-                                           | TyConApp tc tys => TyConApp tc (app tys ((weakTypeToCoreType t2)::nil))
-                                           | t1'             => AppTy t1' (weakTypeToCoreType t2)
-                                         end
-    | WTyCon    tc                    => TyConApp tc nil
-    | WTyFunApp tf lt                 => TyConApp tf (map weakTypeToCoreType lt)
-    | WClassP c lt                    => PredTy (ClassP c (map weakTypeToCoreType lt))
-    | WIParam n ty                    => PredTy (IParam n (weakTypeToCoreType ty))
-    | WForAllTy (weakTypeVar wtv _) t => ForAllTy wtv (weakTypeToCoreType t)
-    | WFunTyCon                       => TyConApp ArrowTyCon nil
-    | WCodeTy  (weakTypeVar ec _) t   => TyConApp ModalBoxTyCon ((TyVarTy ec)::(weakTypeToCoreType t)::nil)
-    | WCoFunTy t1 t2 t3               => FunTy (PredTy (EqPred (weakTypeToCoreType t1) (weakTypeToCoreType t2)))
-                                            (weakTypeToCoreType t3)
-  end.
+(* this is a trick to allow circular definitions, post-extraction *)
+Variable weakTypeToString : WeakType -> string.
+    Extract Inlined Constant weakTypeToString => "(coreTypeToString . weakTypeToCoreType)".
+Instance WeakTypeToString : ToString WeakType := { toString := weakTypeToString }.
 
-Instance WeakTypeToString : ToString WeakType :=
-  { toString := coreTypeToString ○ weakTypeToCoreType }.
-
+Variable tyConToCoreTyCon : TyCon  -> CoreTyCon.           Extract Inlined Constant tyConToCoreTyCon  => "(\x -> x)".
+Variable tyFunToCoreTyCon : TyFun  -> CoreTyCon.           Extract Inlined Constant tyFunToCoreTyCon  => "(\x -> x)".
+Coercion tyConToCoreTyCon : TyCon >-> CoreTyCon.
+Coercion tyFunToCoreTyCon : TyFun >-> CoreTyCon.

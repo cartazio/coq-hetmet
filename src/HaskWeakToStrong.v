@@ -10,14 +10,13 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
 Require Import HaskWeakToCore.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
-Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 
 Open Scope string_scope.
@@ -260,7 +259,7 @@ Definition weakTypeToType' {Γ} : IList Kind (HaskType Γ) (vec2list (tyConKinds
 
 Definition mkStrongAltCon : @StrongAltCon tc.
   refine
-   {| sac_altcon      := DataAlt dc
+   {| sac_altcon      := WeakDataAlt dc
     ; sac_numCoerVars := length (dataConCoerKinds dc)
     ; sac_numExprVars := length (dataConFieldTypes dc)
     ; sac_ekinds      := dataConExKinds dc
@@ -349,7 +348,7 @@ Definition mkStrongAltConPlusJunk : StrongAltConPlusJunk tc.
   
 End StrongAltCon.
 
-Definition mkStrongAltConPlusJunk' (tc : TyCon)(alt:AltCon) : ???(@StrongAltConPlusJunk tc).
+Definition mkStrongAltConPlusJunk' (tc : TyCon)(alt:WeakAltCon) : ???(@StrongAltConPlusJunk tc).
   destruct alt.
   set (c:DataCon _) as dc.
   set ((dataConTyCon c):TyCon) as tc' in *.
@@ -363,14 +362,14 @@ Definition mkStrongAltConPlusJunk' (tc : TyCon)(alt:AltCon) : ???(@StrongAltConP
 
   apply OK; refine {| sacpj_sac := {| 
                      sac_ekinds  := vec_nil ; sac_coercions := fun _ _ => vec_nil ; sac_types := fun _ _ => vec_nil
-                    ; sac_altcon := LitAlt h
+                    ; sac_altcon := WeakLitAlt h
                     |} |}.
             intro; intro φ; apply φ.
             intro; intro; intro; intro ψ. simpl. unfold sac_Γ; simpl. unfold sac_Δ; simpl.
             rewrite weakCK'_nil_inert. apply ψ.
   apply OK; refine {| sacpj_sac := {| 
                      sac_ekinds := vec_nil ; sac_coercions := fun _ _ => vec_nil ; sac_types := fun _ _ => vec_nil
-                      ; sac_altcon := DEFAULT |} |}.
+                      ; sac_altcon := WeakDEFAULT |} |}.
             intro; intro φ; apply φ.
             intro; intro; intro; intro ψ. simpl. unfold sac_Γ; simpl. unfold sac_Δ; simpl.
             rewrite weakCK'_nil_inert. apply ψ.
@@ -591,7 +590,7 @@ Definition weakExprToStrongExpr : forall
             let ξ' := update_ξ ξ (((vscrut:CoreVar),tv@@lev)::nil) in
               mkAvars avars (tyConKind tc) φ >>= fun avars' =>
                 weakTypeToTypeOfKind φ tbranches ★  >>= fun tbranches' =>
-                  (fix mkTree (t:Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
+                  (fix mkTree (t:Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
                       ??{scb : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars' &
                         Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ' lev)(weakLT' (tbranches' @@  lev))}) := 
                     match t with

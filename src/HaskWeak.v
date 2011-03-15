@@ -7,13 +7,14 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
-Require Import HaskCore.
-Require Import HaskCoreVars.
-Require Import HaskCoreTypes.
-Require Import HaskCoreTypes.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
+
+Inductive WeakAltCon :=
+| WeakDataAlt : CoreDataCon  -> WeakAltCon
+| WeakLitAlt  : HaskLiteral  -> WeakAltCon
+| WeakDEFAULT :                 WeakAltCon.
 
 Inductive WeakExpr :=
 | WEVar       : WeakExprVar                                                  -> WeakExpr
@@ -33,20 +34,18 @@ Inductive WeakExpr :=
 (* from Weak to Core; it lets us dodge a possibly-failing type             *)
 (* calculation.  The CoreVar argument is the GlobalVar for the hetmet_brak *)
 (* or hetmet_esc identifier                                                *)
-| WEBrak      : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
-| WEEsc       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
-| WECSP       : CoreVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
+| WEBrak      : WeakExprVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
+| WEEsc       : WeakExprVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
+| WECSP       : WeakExprVar -> WeakTypeVar          -> WeakExpr  -> WeakType     -> WeakExpr
 
 | WECase      : forall (vscrut:WeakExprVar)
                        (scrutinee:WeakExpr)
                        (tbranches:WeakType)
                        (tc:TyCon)
                        (type_params:list WeakType)
-                       (alts : Tree ??(AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)),
+                       (alts : Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)),
                        WeakExpr.
 
 Definition weakTypeOfLiteral (lit:HaskLiteral) : WeakType :=
   (WTyCon (haskLiteralToTyCon lit)).
 
-Variable coreTypeOfCoreExpr    : @CoreExpr CoreVar -> CoreType.
-  Extract Inlined Constant coreTypeOfCoreExpr => "CoreUtils.exprType".

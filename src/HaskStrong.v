@@ -8,10 +8,10 @@ Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskWeakVars.
 Require Import HaskCoreTypes.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
+Require Import HaskWeakVars.
 
 Section HaskStrong.
 

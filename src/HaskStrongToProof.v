@@ -12,7 +12,6 @@ Require Import Coq.Init.Specif.
 Require Import HaskKinds.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
-Require Import HaskWeakVars.
 Require Import HaskProof.
 
 Section HaskStrongToProof.
@@ -782,17 +781,4 @@ Definition expr2proof  :
   Defined.
 
 End HaskStrongToProof.
-
-(*
-
-(* Figure 7, production "decl"; actually not used in this formalization *)
-Inductive Decl :=.
-| DeclDataType     : forall tc:TyCon,      (forall dc:DataCon tc, DataConDecl dc)      -> Decl
-| DeclTypeFunction : forall n t l,         TypeFunctionDecl n t l                      -> Decl
-| DeclAxiom        : forall n ccon vk TV,  @AxiomDecl        n ccon vk  TV             -> Decl.
-
-(* Figure 1, production "pgm" *)
-Inductive Pgm Γ Δ :=
-  mkPgm : forall (τ:HaskType Γ), list Decl -> ND Rule [] [Γ>Δ> [] |- [τ @@nil]] -> Pgm Γ Δ.
-*)
 

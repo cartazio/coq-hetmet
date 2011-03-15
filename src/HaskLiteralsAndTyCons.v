@@ -1,5 +1,5 @@
 (*********************************************************************************************************************************)
-(* HaskCoreLiterals: representation of compile-time constants (literals)                                                             *)
+(* HaskLiteralsAndTyCons: representation of compile-time constants (literals)                                                    *)
 (*********************************************************************************************************************************)
 
 Generalizable All Variables.
@@ -7,7 +7,12 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import HaskKinds.
-Require Import HaskCoreTypes.
+
+Variable CoreDataCon     : Type.                      Extract Inlined Constant CoreDataCon          => "DataCon.DataCon".
+
+(* once again, we pull the trick of having multiple Coq types map to a single Haskell type to provide stronger typing *)
+Variable TyCon           : Type.                      Extract Inlined Constant TyCon                => "TyCon.TyCon".
+Variable TyFun           : Type.                      Extract Inlined Constant TyFun                => "TyCon.TyCon".
 
 (* Since GHC is written in Haskell, compile-time Haskell constants are represented using Haskell (Prelude) types *)
 Variable HaskInt                 : Type.      Extract Inlined Constant HaskInt             => "Prelude.Int".
@@ -15,6 +20,11 @@ Variable HaskChar                : Type.      Extract Inlined Constant HaskChar 
 Variable HaskFastString          : Type.      Extract Inlined Constant HaskFastString      => "FastString.FastString".
 Variable HaskInteger             : Type.      Extract Inlined Constant HaskInteger         => "Prelude.Integer".
 Variable HaskRational            : Type.      Extract Inlined Constant HaskRational        => "Prelude.Rational".
+
+Variable CoreName            : Type.                      Extract Inlined Constant CoreName              => "Name.Name".
+Variable Class_              : Type.                      Extract Inlined Constant Class_                => "Class.Class".
+Variable CoreIPName          : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
+                                                          Extraction Inline CoreIPName.
 
 (* This type extracts exactly onto GHC's Literal.Literal type *)
 Inductive HaskLiteral :=
@@ -47,19 +57,6 @@ Extract Inductive HaskFunctionOrData =>
 Variable haskLiteralToString : HaskLiteral -> string.    Extract Inlined Constant haskLiteralToString     => "outputableToString".
 Instance HaskLiteralToString : ToString HaskLiteral := { toString := haskLiteralToString }.
 
-(* because Haskell's 3-tuples (triples) are distinct from both ((x,y),z) and (x,(y,z)), we need a new type: *)
-Inductive triple {A B C:Type} :=
-| mkTriple : A -> B -> C -> triple.
-Notation "a ** b ** c" := (mkTriple a b c) (at level 20).
-Extract Inductive triple => "(,,)" [ "(,,)" ].
-
-Inductive AltCon :=
-| DataAlt : CoreDataCon -> AltCon
-| LitAlt  : HaskLiteral -> AltCon
-| DEFAULT :                AltCon.
-Extract Inductive AltCon =>
-  "CoreSyn.AltCon" [ "CoreSyn.DataAlt" "CoreSyn.LitAlt" "CoreSyn.DEFAULT" ].
-
 (* the TyCons for each of the literals above *)
 Variable addrPrimTyCon       : TyCon.   Extract Inlined Constant addrPrimTyCon   => "TysPrim.addrPrimTyCon".
 Variable intPrimTyCon        : TyCon.   Extract Inlined Constant intPrimTyCon    => "TysPrim.intPrimTyCon".
@@ -84,3 +81,8 @@ match lit with
   | HaskMachDouble _    => doublePrimTyCon
   | HaskMachLabel _ _ _ => addrPrimTyCon
 end.
+
+Variable tyConToString   : TyCon   -> string.     Extract Inlined Constant tyConToString         => "outputableToString".
+Variable tyFunToString   : TyFun   -> string.     Extract Inlined Constant tyFunToString         => "outputableToString".
+Instance TyConToString   : ToString TyCon := { toString := tyConToString }.
+Instance TyFunToString   : ToString TyFun := { toString := tyFunToString }.

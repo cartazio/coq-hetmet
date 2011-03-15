@@ -9,17 +9,12 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskCoreVars.
+Require Import HaskLiteralsAndTyCons.
 
-Variable CoreTyCon           : Type.                      Extract Inlined Constant CoreTyCon             => "TyCon.TyCon".
-Variable CoreDataCon         : Type.                      Extract Inlined Constant CoreDataCon           => "DataCon.DataCon".
-Variable CoreName            : Type.                      Extract Inlined Constant CoreName              => "Name.Name".
 Variable CoreCoercion        : Type.                      Extract Inlined Constant CoreCoercion          => "Coercion.Coercion".
-Variable Class_              : Type.                      Extract Inlined Constant Class_                => "Class.Class".
 Variable classTyCon          : Class_ -> CoreTyCon.       Extract Inlined Constant classTyCon            => "Class.classTyCon".
-Variable tyConToString       : CoreTyCon      -> string.  Extract Inlined Constant tyConToString         => "outputableToString".
-Variable dataConToString     : CoreDataCon-> string.      Extract Inlined Constant dataConToString       => "outputableToString".
-Variable CoreIPName          : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
-                                                          Extraction Inline CoreIPName.
+Variable coreTyConToString   : CoreTyCon   -> string.     Extract Inlined Constant coreTyConToString     => "outputableToString".
+Variable coreDataConToString : CoreDataCon -> string.     Extract Inlined Constant coreDataConToString   => "outputableToString".
 
 (* this exracts onto TypeRep.Type, on the nose *)
 Inductive CoreType :=
@@ -44,10 +39,6 @@ Variable coreCoercionKind : CoreCoercion -> CoreType*CoreType. Extract Inlined C
 Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Coercion.typeKind)".
 Variable coreTypeToString : CoreType -> string. Extract Inlined Constant coreTypeToString => "(outputableToString . coreViewDeep)".
 
-(* once again, we pull the trick of having multiple Coq types map to a single Haskell type to provide stronger typing *)
-Variable TyCon           : Type.                         Extract Inlined Constant TyCon             => "TyCon.TyCon".
-Variable TyFun           : Type.                         Extract Inlined Constant TyFun             => "TyCon.TyCon".
-
 (* GHC provides decision procedures for equality on its primitive types; we tell Coq to blindly trust them *)
 Variable coreTyCon_eq         : EqDecider CoreTyCon.       Extract Inlined Constant coreTyCon_eq          => "(==)".
 Variable tyCon_eq             : EqDecider TyCon.           Extract Inlined Constant tyCon_eq              => "(==)".
@@ -62,5 +53,6 @@ Instance CoreNameEqDecidable  : EqDecidable CoreName    := { eqd_dec := coreName
 Instance CoreTypeToString     : ToString CoreType       := { toString := coreTypeToString }.
 Instance CoreNameToString     : ToString CoreName       := { toString := coreNameToString }.
 Instance CoreCoercionToString : ToString CoreCoercion   := { toString := coreCoercionToString }.
-Instance CoreDataConToString  : ToString CoreDataCon    := { toString := dataConToString }.
-Instance CoreTyConToString    : ToString CoreTyCon      := { toString := tyConToString }.
+Instance CoreDataConToString  : ToString CoreDataCon    := { toString := coreDataConToString }.
+Instance CoreTyConToString    : ToString CoreTyCon      := { toString := coreTyConToString }.
+

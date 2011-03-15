@@ -12,7 +12,7 @@ Require Import NaturalDeduction.
 Require Import NaturalDeductionToLatex.
 
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCore.

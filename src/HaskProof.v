@@ -14,7 +14,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskCoreTypes.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
 
 (* A judgment consists of an environment shape (Γ and Δ) and a pair of trees of leveled types (the antecedent and succedent) valid

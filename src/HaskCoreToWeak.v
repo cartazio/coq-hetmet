@@ -7,13 +7,16 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCore.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
+
+Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
+Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
 
 Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
 Variable coreViewDeep : CoreType  -> CoreType.        Extract Inlined Constant coreViewDeep => "coreViewDeep".
@@ -84,37 +87,46 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
 Fixpoint coreTypeToWeakType t := addErrorMessage "coreTypeToWeakType" (coreTypeToWeakType' (coreViewDeep t)).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
-Definition isBrak (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
+Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_brak_name (coreVarCoreName v) then
       match coreVarToWeakVar ec with
         | WExprVar _  => None
-        | WTypeVar tv => Some (v,tv,tbody)
         | WCoerVar _  => None
+        | WTypeVar tv => match coreVarToWeakVar v with
+                           | WExprVar v' => Some (v',tv,tbody)
+                           | _ => None
+                         end
       end else None
   | _ => None
 end.
 
-Definition isEsc (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
+Definition isEsc (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_esc_name (coreVarCoreName v) then
       match coreVarToWeakVar ec with
         | WExprVar _  => None
-        | WTypeVar tv => Some (v,tv,tbody)
+        | WTypeVar tv => match coreVarToWeakVar v with
+                           | WExprVar v' => Some (v',tv,tbody)
+                           | _ => None
+                         end
         | WCoerVar _  => None
       end else None
   | _ => None
 end.
 
-Definition isCSP (ce:@CoreExpr CoreVar) : ??(CoreVar * WeakTypeVar * CoreType) :=
+Definition isCSP (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_csp_name (coreVarCoreName v) then
       match coreVarToWeakVar ec with
         | WExprVar _  => None
-        | WTypeVar tv => Some (v,tv,tbody)
+        | WTypeVar tv => match coreVarToWeakVar v with
+                           | WExprVar v' => Some (v',tv,tbody)
+                           | _ => None
+                         end
         | WCoerVar _  => None
       end else None
   | _ => None
@@ -209,18 +221,18 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
         coreExprToWeakExpr e >>= fun e' =>
           expectTyConApp te' nil >>= fun tca =>
             let (tc,lt) := tca in
-          ((fix mkBranches (branches: list (@triple AltCon (list CoreVar) (@CoreExpr CoreVar)))
-                : ???(list (AltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
+          ((fix mkBranches (branches: list (@triple CoreAltCon (list CoreVar) (@CoreExpr CoreVar)))
+                : ???(list (WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
             match branches with
               | nil => OK nil
               | (mkTriple alt vars e)::rest =>
                   mkBranches rest >>= fun rest' => 
                     coreExprToWeakExpr e >>= fun e' => 
                     match alt with
-                      | DEFAULT                => OK ((DEFAULT,nil,nil,nil,e')::rest')
-                      | LitAlt lit             => OK ((LitAlt lit,nil,nil,nil,e')::rest')
+                      | DEFAULT                => OK ((WeakDEFAULT,nil,nil,nil,e')::rest')
+                      | LitAlt lit             => OK ((WeakLitAlt lit,nil,nil,nil,e')::rest')
                       | DataAlt dc             => let vars := map coreVarToWeakVar vars in
-                        OK (((DataAlt dc),
+                        OK (((WeakDataAlt dc),
                         (General.filter (map (fun x => match x with WTypeVar v => Some v | _ => None end) vars)),
                         (General.filter (map (fun x => match x with WCoerVar v => Some v | _ => None end) vars)),
                         (General.filter (map (fun x => match x with WExprVar v => Some v | _ => None end) vars)),

@@ -10,15 +10,13 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
-Require Import HaskCoreVars.
-Require Import HaskCoreTypes.
-Require Import HaskCore.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
+Require Import HaskCoreVars.
 
 Fixpoint mfresh (f:Fresh Kind (fun _ => WeakTypeVar))(lk:list Kind){Γ}(ite:IList _ (fun _ => WeakTypeVar) Γ)
   : (Fresh Kind (fun _ => WeakTypeVar)) * ((vec WeakTypeVar (length lk)) * (IList _ (fun _ => WeakTypeVar) (app lk Γ))) :=
@@ -73,8 +71,8 @@ Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Pre
 
 Section strongExprToWeakExpr.
 
-  Context (hetmet_brak : CoreVar).
-  Context (hetmet_esc  : CoreVar).
+  Context (hetmet_brak : WeakExprVar).
+  Context (hetmet_esc  : WeakExprVar).
 
   Fixpoint strongExprToWeakExpr {Γ}{Δ}{ξ}{τ}
     (ftv:Fresh Kind                (fun _ => WeakTypeVar))
@@ -110,7 +108,7 @@ Section strongExprToWeakExpr.
                                      (update_ξ (weakLT'○ξ) (vec2list (vec_map
                                        (fun x => ((fst x),(snd x @@ weakL' l))) (scbwv_varstypes scb))))
                                      (weakLT' (tbranches@@l)) })
-        : Tree ??(AltCon * list WeakTypeVar * list WeakCoerVar * list WeakExprVar * WeakExpr) :=
+        : Tree ??(WeakAltCon * list WeakTypeVar * list WeakCoerVar * list WeakExprVar * WeakExpr) :=
         match tree with
           | T_Leaf None     => []
           | T_Leaf (Some x) => let (scb,e) := x in

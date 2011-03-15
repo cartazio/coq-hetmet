@@ -8,7 +8,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import General.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 Require Import HaskWeakTypes.
@@ -353,7 +353,7 @@ Definition caseType {Γ}(tc:TyCon)(atypes:IList _ (HaskType Γ) (tyConKind tc)) 
 (* like a GHC DataCon, but using PHOAS representation for types and coercions *)
 Record StrongAltCon {tc:TyCon} :=
 { sac_tc          := tc
-; sac_altcon      :  AltCon
+; sac_altcon      :  WeakAltCon
 ; sac_numExTyVars :  nat
 ; sac_numCoerVars :  nat
 ; sac_numExprVars :  nat
@@ -365,7 +365,7 @@ Record StrongAltCon {tc:TyCon} :=
 ; sac_Δ           := fun    Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)) Δ => app (vec2list (sac_coercions Γ atypes)) Δ
 }.
 Coercion sac_tc     : StrongAltCon >-> TyCon.
-Coercion sac_altcon : StrongAltCon >-> AltCon.
+Coercion sac_altcon : StrongAltCon >-> WeakAltCon.
   
 
 Definition kindOfType {Γ}{κ}(ht:@HaskType Γ κ) : ???Kind := OK κ.

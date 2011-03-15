@@ -7,7 +7,7 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import HaskKinds.
-Require Import HaskCoreLiterals.
+Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 
@@ -18,7 +18,7 @@ Inductive CoreExpr {b:Type} :=
 | CoreEApp   : CoreExpr        ->  CoreExpr     -> CoreExpr
 | CoreELam   : b               ->  CoreExpr     -> CoreExpr
 | CoreELet   : CoreBind        ->  CoreExpr     -> CoreExpr
-| CoreECase  : CoreExpr   -> b ->  CoreType     -> list (@triple AltCon (list b) CoreExpr) -> CoreExpr
+| CoreECase  : CoreExpr   -> b ->  CoreType     -> list (@triple CoreAltCon (list b) CoreExpr) -> CoreExpr
 | CoreECast  : CoreExpr        ->  CoreCoercion -> CoreExpr
 | CoreENote  : Note            ->  CoreExpr     -> CoreExpr
 | CoreEType  : CoreType                         -> CoreExpr
@@ -41,3 +41,6 @@ Extract Inductive CoreBind =>
 
 Variable coreExprToString : @CoreExpr CoreVar -> string.  Extract Inlined Constant coreExprToString => "outputableToString".
 Instance CoreExprToString : ToString (@CoreExpr CoreVar) := { toString := coreExprToString }.
+
+Variable coreTypeOfCoreExpr    : @CoreExpr CoreVar -> CoreType.
+  Extract Inlined Constant coreTypeOfCoreExpr => "CoreUtils.exprType".
