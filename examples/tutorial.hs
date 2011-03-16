@@ -1,9 +1,10 @@
-{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types #-}
+{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds #-}
 module GArrowsTutorial
 where
 import Data.Bits
+import Data.Bool (not)
 import GHC.HetMet.CodeTypes hiding ((-))
-import Prelude (undefined, ($), (==), fromInteger, Bool(..), Int, (-), negate, mod, (*), (+), Char, (||), (&&))
+import GHC.HetMet.GArrow
 
 -- The best way to understand heterogeneous metaprogramming and
 -- generalized arrows is to play around with this file, poking at the
@@ -92,7 +93,108 @@ compose_code x y = <[ \z -> ~~y (~~x z) ]>
 
 no_shadowing_here = \x -> <[ \x -> ~~x ]>
 
--- the rest of this file contains a bunch of example programs:
+-- Lastly, you can wrap code-brackets around an identifier in a
+-- top-level, let, or where binding.  Notice how GHC doesn't complain
+-- here about defining an identifier twice!
+
+foo       =    \x         -> x+1
+<[ foo ]> = <[ \(x::Bool) -> x   ]>
+
+-- Now you can use foo (the second one!) inside code-brackets:
+
+bar x = <[ foo ~~x ]>
+
+bar :: forall g. <[Bool]>@g -> <[Bool]>@g
+
+-- In fact, the identifiers have completely unrelated types.  Which
+-- brings up another important point: types are ALWAYS assigned
+-- "relative to" depth zero.  So although we imagine "foo" existing at
+-- depth-one, its type is quite firmly established as <[ Bool -> Bool ]>
+
+-- It has to be this way -- to see why, consider a term which is more
+-- polymorphic than "foo":
+
+<[ foo' ]> = <[ \x -> x ]>
+
+-- Its type is:
+
+<[ foo' ]> :: forall a g . <[ a -> a ]>@g
+
+-- ...and there's no way to express the g-polymorphism entirely from
+-- within the brackets.
+
+-- So why does all of this matter?  Mainly so that we can continue to use .  We'd like
+-- the "+" operator to work "as expected" -- in other words, we'd like
+-- people to be able to write things like
+
+increment_at_level1 = <[ \x -> x + 1 ]>
+
+-- However, in unmodified haskell an identifier like (+) may have only
+-- one type.  In this case that type is:
+--
+--     (+) :: Num a => a -> a -> a
+--
+-- Now, we could simply decree that when (+) appears inside code
+-- brackets, an "implicit ~~" is inserted, so the desugared expression
+-- is:
+--
+--    increment_at_level1 = <[ \x -> ~~(+) x 1 ]> 
+--
+-- unfortunately this isn't going to work for guest languages that
+-- don't have higher-order functions.  Haskell uses curried arguments
+-- because it has higher-order functions, but in a first-order guest
+-- language a more sensible type for (+) would be:
+--
+--    (+) :: Num a => (a,a) -> a
+-- 
+-- ... or even something less polymorphic, like
+--
+--    (+) :: (Int,Int) -> Int
+--
+-- so to maintain flexibility, we allow an identifier to have
+-- different types at different syntactic depths; this way type
+-- choices made for Haskell don't get imposed on guest languages that
+-- are missing some of its features.
+-- 
+-- In hindsight, what we REALLY want is for increment_at_level1 to
+-- be desugared like this (much like the Arrow (|...|) syntax):
+--
+--   increment_at_level1 = <[ \x -> ~~( <[x]> + <[1]> ) ]>
+--
+-- ... because then we can declare
+--
+--   instance Num a => Num <[a]> where ...
+--
+-- or just
+--
+--   instance Num <[Int]> where ...
+--
+-- unfortunately there's a major problem: knowing how to do this sort
+-- of desugaring requires knowing the *arity* of a function.  For
+-- symbols we can kludge it by checking Haskell's parsing rules (there
+-- are only a handful of unary symbols; all others are binary), but
+-- this is crude and won't work at all for non-symbol identifiers.
+-- And we can look at a type like x->y->z and say "oh, that's a
+-- two-argument function", but sometimes GHC doesn't know the complete
+-- type of an identifier in the midst of unification (i.e. "x has type
+-- Int->a for some a, where a could be Int or Int->Int"), so guessing
+-- the arity from the type cannot be done during parsing, which is
+-- when we need to do this.
+--
+-- Okay, I think that's more or less a brain dump of why I changed the
+-- scoping rules and the problems with the other solutions I tried.
+--
+-- I am very interested in hearing any suggestions on better ways of
+-- dealing with this, so long as you can still use operators like (+)
+-- in guest languages without higher-order functions.
+--
+
+
+
+
+
+
+-- The rest of this file contains a bunch of example programs:
 -- exponentiation, dot-product, a bunch of classic MetaML idioms, and
 -- a translation of Nanevski+Pfenning's two-stage regex matcher.
 
@@ -167,11 +269,12 @@ dotproduct' v1 v2 =
 -- by that particular vector.  If there are zeroes or ones in the
 -- original vector, we will emit code which is faster than a one-level
 -- dot product.
-dotproduct'' :: forall g.
-                GuestLanguageAdd         g Int =>
-                GuestLanguageMult        g Int =>
-                GuestLanguageFromInteger g Int =>
-                [Int] -> <[ [Int] -> Int ]>@g
+
+--dotproduct'' :: forall g.
+--                GuestLanguageAdd         g Int =>
+--                GuestLanguageMult        g Int =>
+--                GuestLanguageFromInteger g Int =>
+--                [Int] -> <[ [Int] -> Int ]>@g
 dotproduct'' v1 =
   case v1 of
     []     -> <[ \v2 -> 0 ]>
@@ -181,9 +284,10 @@ dotproduct'' v1 =
     (1:ax) -> <[ \v2 -> case v2 of
                           []     -> 0
                           (b:bx) -> b + ~~(dotproduct'' ax) bx ]>
+
     (a:ax) -> <[ \v2 -> case v2 of
                           []     -> 0
-                          (b:bx) -> %%a * b + ~~(dotproduct'' ax) bx ]>
+                          (b:bx) -> ~~(guestIntegerLiteral a) * b + ~~(dotproduct'' ax) bx ]>
 
 
 
@@ -231,7 +335,6 @@ close x = ClosedCode x
 
 run_closed :: ClosedCode a -> a
 run_closed = undefined
-
 
 
 
@@ -284,6 +387,7 @@ staged_accept ::
     Regex
     -> forall c s.
          GuestStream c s =>
+         GuestCharLiteral c =>
          GuestLanguageBool c =>
          GuestEqChar c =>
          <[ s -> Bool ]>@c
@@ -311,22 +415,21 @@ staged_accept (Star e) k         =
 staged_accept (Const c) k        =
     <[ \s -> if gs_empty s 
              then false
-             else (gs_head s) == %%c && ~~k (gs_tail s) ]>
-{-
- this type won't work unless the case for (Star e) is commented out;
- see loop above
-      Regex
-      -> (forall c s.
-          GuestStream c s =>
-          GuestLanguageBool c =>
-          GuestEqChar c =>
-          []_c (s -> Bool))
-     -> (forall c s.
-          GuestStream c s =>
-          GuestLanguageBool c =>
-          GuestEqChar c =>
-          []_c (s -> Bool))
--}
+             else (gs_head s) == ~~(guestCharLiteral c) && ~~k (gs_tail s) ]>
+
+-- this type won't work unless the case for (Star e) is commented out;
+-- see loop above
+--      Regex
+--      -> (forall c s.
+--          GuestStream c s =>
+--          GuestLanguageBool c =>
+--          GuestEqChar c =>
+--          <[s -> Bool]>@c)
+--     -> (forall c s.
+--          GuestStream c s =>
+--          GuestLanguageBool c =>
+--          GuestEqChar c =>
+--          <[s -> Bool]>@c)
 
 
 
@@ -395,7 +498,3 @@ instance GArrowLiteral GArrowVerilog (,) where
 
 
 
--- is there an official place to import this from so I don't have to write it myself?
-
-ifThenElse True  a _ = a
-ifThenElse False _ b = b
