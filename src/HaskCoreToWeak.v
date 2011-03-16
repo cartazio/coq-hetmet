@@ -218,9 +218,8 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
         | WCoerVar _  => Error "found a coercion variable in a case"
         | WExprVar ev => 
         coreTypeToWeakType (coreTypeOfCoreExpr e) >>= fun te' =>
-        coreExprToWeakExpr e >>= fun e' =>
           expectTyConApp te' nil >>= fun tca =>
-            let (tc,lt) := tca in
+            let (tc,lt) := tca:(TyCon * list WeakType) in
           ((fix mkBranches (branches: list (@triple CoreAltCon (list CoreVar) (@CoreExpr CoreVar)))
                 : ???(list (WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
             match branches with

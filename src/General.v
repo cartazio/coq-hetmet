@@ -633,6 +633,12 @@ Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 Variable eol : string.
 Extract Constant eol  => "'\n':[]".
 
+Class Monad {T:Type->Type} :=
+{ returnM : forall {a},     a -> T a
+; bindM   : forall {a}{b},  T a -> (a -> T b) -> T b
+}.
+Implicit Arguments Monad [ ].
+Notation "a >>>= b" := (@bindM _ _ _ _ a b) (at level 50, left associativity).
 
 (* the Error monad *)
 Inductive OrError (T:Type) :=
@@ -709,3 +715,5 @@ Lemma list2vecOrFail {T}(l:list T)(n:nat)(error_message:nat->nat->string) : ???(
     rewrite e in v; apply OK; apply v.
     apply (Error (error_message (length l) n)).
     Defined.
+
+
