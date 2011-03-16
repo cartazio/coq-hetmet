@@ -47,8 +47,13 @@ getTyConTyVars tc =
        then []
        else TyCon.tyConTyVars tc
 
+cmpAlts :: (CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var) -> (CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var) -> Data.Ord.Ordering
+cmpAlts (CoreSyn.DEFAULT,_,_) _   = Data.Ord.LT
+cmpAlts _ (CoreSyn.DEFAULT,_,_)   = Data.Ord.GT
+cmpAlts (a1,_,_) (a2,_,_)         = Data.Ord.compare a2 a1
+
 sortAlts :: [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)] -> [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)]
-sortAlts x = Data.List.sortBy (\(a1,_,_) -> \(a2,_,_) -> Data.Ord.compare a1 a2) x
+sortAlts x = Data.List.sortBy (\a b -> if a `CoreSyn.ltAlt` b then Data.Ord.LT else Data.Ord.GT) x
 
 -- to do: this could be moved into Coq
 coreVarToWeakVar :: Var.Var -> WeakVar
