@@ -16,6 +16,7 @@ Require Import HaskKinds.
 Require Import HaskCoreTypes.
 Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
+Require Import HaskWeakVars.
 
 (* A judgment consists of an environment shape (Γ and Δ) and a pair of trees of leveled types (the antecedent and succedent) valid
  * in any context of that shape.  Notice that the succedent contains a tree of types rather than a single type; think
@@ -90,6 +91,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 (* SystemFC rules *)
 | RVar    : ∀ Γ Δ σ       l,                          Rule [                                 ]   [Γ>Δ> [σ@@l]   |- [σ          @@l]]
+| RGlobal : ∀ Γ Δ τ       l,   WeakExprVar ->         Rule [                                 ]   [Γ>Δ>     []   |- [τ          @@l]]
 | RLam    : forall Γ Δ Σ (tx:HaskType Γ ★) te l,      Rule [Γ>Δ> Σ,,[tx@@l]|- [te@@l]        ]   [Γ>Δ>    Σ     |- [tx--->te   @@l]]
 | RCast   : forall Γ Δ Σ (σ₁ σ₂:HaskType Γ ★) l,
 HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->

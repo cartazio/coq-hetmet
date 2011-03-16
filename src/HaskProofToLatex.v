@@ -174,6 +174,7 @@ Section ToLatex.
       | RNote         _ _ _             => "Note"
       | RLit          _ _ _ _           => "Lit"
       | RVar          _ _ _ _           => "Var"
+      | RGlobal       _ _ _ _ _         => "Global"
       | RLam          _ _ _ _ _ _       => "Abs"
       | RCast         _ _ _ _ _ _ _     => "Cast"
       | RAbsT         _ _ _ _ _ _       => "AbsT"

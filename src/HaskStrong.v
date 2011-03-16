@@ -31,6 +31,10 @@ Section HaskStrong.
   Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.
 
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ ★) -> LeveledHaskType Γ ★ -> Type :=
+
+  (* an "EGlobal" is any variable which is free in the expression which was passed to -fcoqpass (ie bound outside it) *)
+  | EGlobal: ∀ Γ Δ ξ t,       WeakExprVar ->                                                         Expr Γ Δ ξ t
+
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
   | ELit   : ∀ Γ Δ ξ lit   l,                                                                        Expr Γ Δ ξ (literalType lit@@l)
   | EApp   : ∀ Γ Δ ξ t1 t2 l,        Expr Γ Δ ξ (t2--->t1 @@ l)   -> Expr Γ Δ ξ (t2 @@ l)         -> Expr Γ Δ ξ (t1 @@ l)
