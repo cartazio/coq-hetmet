@@ -95,8 +95,8 @@ Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
                                                      nil)
                                                    (CoreEVar v)
   | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr ve))  (weakExprToCoreExpr e)
-  | WECase  vscrut e tbranches tc types alts  =>
-                                            CoreECase (weakExprToCoreExpr e) vscrut (weakTypeToCoreType tbranches)
+  | WECase  vscrut escrut tbranches tc types alts  =>
+                                            CoreECase (weakExprToCoreExpr escrut) vscrut (weakTypeToCoreType tbranches)
                                               (sortAlts ((
                                                 fix mkCaseBranches (alts:Tree 
                                                   ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
