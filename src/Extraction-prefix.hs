@@ -1,11 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds  #-}
 module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
+import qualified Unique
+import qualified UniqSupply
 import qualified MkCore
 import qualified TysWiredIn
 import qualified TysPrim
 import qualified Outputable
 import qualified PrelNames
+import qualified OccName
 import qualified Name
 import qualified Literal
 import qualified Type
@@ -81,6 +84,11 @@ sanitizeForLatex ('_':x) = "\\_"++(sanitizeForLatex x)
 sanitizeForLatex ('$':x) = "\\$"++(sanitizeForLatex x)
 sanitizeForLatex ('#':x) = "\\#"++(sanitizeForLatex x)
 sanitizeForLatex (c:x)   = c:(sanitizeForLatex x)
+
+kindToCoreKind :: Kind -> TypeRep.Kind
+kindToCoreKind KindStar          = TypeRep.liftedTypeKind
+kindToCoreKind (KindArrow k1 k2) = Coercion.mkArrowKind (kindToCoreKind k1) (kindToCoreKind k2)
+kindToCoreKind _                 = Prelude.error "kindToCoreKind does not know how to handle that"
 
 coreKindToKind :: TypeRep.Kind -> Kind
 coreKindToKind k =

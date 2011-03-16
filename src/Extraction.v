@@ -25,7 +25,7 @@ Require Import HaskProof.
 Require Import HaskCoreToWeak.
 Require Import HaskWeakToStrong.
 Require Import HaskStrongToProof.
-Require Import HaskProofToStrong.
+(*Require Import HaskProofToStrong.*)
 Require Import HaskProofToLatex.
 Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
@@ -58,6 +58,17 @@ Extract Constant shift  => "shiftAscii".
 Unset Extraction Optimize.
 Unset Extraction AutoInline.
 
+
+Variable Name : Type.  Extract Inlined Constant Name => "Name.Name".
+Variable mkSystemName : Unique -> string -> nat -> Name.
+  Extract Inlined Constant mkSystemName => "(\u s d -> Name.mkSystemName u (OccName.mkOccName (OccName.varNameDepth (nat2int d)) s))".
+Variable mkTyVar : Name -> Kind -> CoreVar.
+  Extract Inlined Constant mkTyVar => "(\n k -> Var.mkTyVar n (kindToCoreKind k))".
+Variable mkCoVar : Name -> CoreType -> CoreType -> CoreVar.
+  Extract Inlined Constant mkCoVar => "(\n t1 t2 -> Var.mkCoVar n (Coercion.mkCoKind t1 t2))".
+Variable mkExVar : Name -> CoreType -> CoreVar.
+  Extract Inlined Constant mkExVar => "Id.mkLocalId".
+
 Section core2proof.
   Context (ce:@CoreExpr CoreVar).
 
@@ -84,6 +95,9 @@ Section core2proof.
       | WCoerVar _   => Prelude_error "top-level xi got a coercion variable"
     end.
 
+
+  (* core-to-string (-dcoqpass) *)
+
   Definition header : string :=
     "\documentclass[9pt]{article}"+++eol+++
     "\usepackage{amsmath}"+++eol+++
@@ -102,7 +116,7 @@ Section core2proof.
     eol+++"\end{document}"+++
     eol.
 
-  Definition handleExpr' (ce:@CoreExpr CoreVar) : ???string :=
+  Definition coreToStringExpr' (ce:@CoreExpr CoreVar) : ???string :=
     addErrorMessage ("input CoreSyn: " +++ ce)
     (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
       coreExprToWeakExpr ce >>= fun we =>
@@ -112,29 +126,90 @@ Section core2proof.
               (addErrorMessage ("WeakType: " +++ t)
                 ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
                   addErrorMessage ("HaskType: " +++ τ)
-                  ((weakExprToStrongExpr Γ Δ φ ψ ξ τ nil we) >>= fun e =>
+                  ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
                     OK (eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e)+++"$$"+++eol)
                   )))))))).
 
-  Definition handleExpr (ce:@CoreExpr CoreVar) : string :=
-    match handleExpr' ce with
+  Definition coreToStringExpr (ce:@CoreExpr CoreVar) : string :=
+    match coreToStringExpr' ce with
       | OK x => x
       | Error s => Prelude_error s
     end.
 
-  Definition handleBind (bind:@CoreBind CoreVar) : string :=
-    match bind with
-      | CoreNonRec _ e => handleExpr e
-      | CoreRec    lbe => fold_left (fun x y => x+++eol+++eol+++y) (map (fun x => handleExpr (snd x)) lbe) ""
+  Definition coreToStringBind (binds:@CoreBind CoreVar) : string :=
+    match binds with
+      | CoreNonRec _ e => coreToStringExpr e
+      | CoreRec    lbe => fold_left (fun x y => x+++eol+++eol+++y) (map (fun x => coreToStringExpr (snd x)) lbe) ""
     end.
 
   Definition coqPassCoreToString (lbinds:list (@CoreBind CoreVar)) : string :=
     header +++
-    (fold_left (fun x y => x+++eol+++eol+++y) (map handleBind lbinds) "")
+    (fold_left (fun x y => x+++eol+++eol+++y) (map coreToStringBind lbinds) "")
     +++ footer.
 
-  Definition coqPassCoreToCore (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
-    lbinds.
+
+  (* core-to-core (-fcoqpass) *)
+  Section CoreToCore.
+
+    Definition mkWeakTypeVar (u:Unique)(k:Kind)                 : WeakTypeVar :=
+      weakTypeVar (mkTyVar (mkSystemName u "tv" O) k) k.
+    Definition mkWeakCoerVar (u:Unique)(k:Kind)(t1 t2:WeakType) : WeakCoerVar :=
+      weakCoerVar (mkCoVar (mkSystemName u "cv" O) (weakTypeToCoreType t1) (weakTypeToCoreType t2)) k t1 t2.
+    Definition mkWeakExprVar (u:Unique)(t:WeakType)             : WeakExprVar :=
+      weakExprVar (mkExVar (mkSystemName u "ev" O) (weakTypeToCoreType t)) t.
+
+    Context (hetmet_brak  : WeakExprVar).
+    Context (hetmet_esc   : WeakExprVar).
+    Context (uniqueSupply : UniqSupply).
+
+    Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
+      addErrorMessage ("input CoreSyn: " +++ ce)
+      (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
+        coreExprToWeakExpr ce >>= fun we =>
+          addErrorMessage ("WeakExpr: " +++ we)
+            ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
+              ((weakTypeOfWeakExpr we) >>= fun t =>
+                (addErrorMessage ("WeakType: " +++ t)
+                  ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
+
+                    ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
+                      (* insert HaskStrong-to-HaskStrong manipulations here *)
+                      strongExprToWeakExpr hetmet_brak hetmet_esc mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply e INil
+                      >>= fun q => OK (weakExprToCoreExpr q)
+(*
+                    OK (weakExprToCoreExpr we)
+*)
+                    )))))))).
+
+    Definition coreToCoreExpr (ce:@CoreExpr CoreVar) : (@CoreExpr CoreVar) :=
+      match coreToCoreExpr' ce with
+        | OK x    => x
+        | Error s => Prelude_error s
+      end.
+  
+    Definition coreToCoreBind (binds:@CoreBind CoreVar) : @CoreBind CoreVar :=
+      match binds with
+        | CoreNonRec v e => CoreNonRec v (coreToCoreExpr e)
+        | CoreRec    lbe => CoreRec (map (fun ve => match ve with (v,e) => (v,coreToCoreExpr e) end) lbe)
+      end.
+  
+    Definition coqPassCoreToCore' (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
+      map coreToCoreBind lbinds.
+
+  End CoreToCore.
+
+  Definition coqPassCoreToCore
+    (hetmet_brak  : CoreVar)
+    (hetmet_esc   : CoreVar)
+    (uniqueSupply : UniqSupply)
+    (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
+    match coreVarToWeakVar hetmet_brak with
+      | WExprVar hetmet_brak' => match coreVarToWeakVar hetmet_esc with
+                                   | WExprVar hetmet_esc' => coqPassCoreToCore' hetmet_brak' hetmet_esc' uniqueSupply lbinds
+                                   | _ => Prelude_error "IMPOSSIBLE"
+                                 end
+      | _ => Prelude_error "IMPOSSIBLE"
+    end.
 
 End core2proof.
 
