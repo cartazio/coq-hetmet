@@ -1,6 +1,6 @@
 coqc     := coqc -noglob
-coqfiles := $(shell find src -name \*.v)
-allfiles := $(coqfiles) $(shell find src -name \*.hs)
+coqfiles := $(shell find src -name \*.v  | grep -v \\\#)
+allfiles := $(coqfiles) $(shell find src -name \*.hs | grep -v \\\#)
 
 default: build/CoqPass.hs
 
