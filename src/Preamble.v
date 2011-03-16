@@ -109,6 +109,7 @@ Delimit Scope garrow_scope  with garrow.
 Notation "f ○ g"    := (fun x => f(g(x))).
 Notation "?? T"     := (option T).
 Notation "a && b"   := (if a then b else false).
+Notation "a || b"   := (if a then true else b).
 
 (* these are handy since Coq's pattern matching syntax isn't integrated with its abstraction binders (like Haskell and ML) *)
 Notation "'⟨' x ',' y '⟩'" := ((x,y)) (at level 100).

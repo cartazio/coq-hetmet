@@ -467,6 +467,55 @@ Fixpoint update_ig (ig:CoreVar -> bool) (vars:list CoreVar) : CoreVar -> bool :=
             else update_ig ig vars' v'
   end.
 
+(* does the specified variable occur free in the expression? *)
+Fixpoint doesWeakVarOccur (wev:WeakExprVar)(me:WeakExpr) : bool :=
+  match me with
+    | WELit    _        => false
+    | WEVar    cv       => if eqd_dec (wev:CoreVar) (cv:CoreVar) then true else false
+    | WECast   e co     =>                            doesWeakVarOccur wev e
+    | WENote   n e      =>                            doesWeakVarOccur wev e
+    | WETyApp  e t      =>                            doesWeakVarOccur wev e
+    | WECoApp  e co     =>                            doesWeakVarOccur wev e
+    | WEBrak _ ec e _   =>                            doesWeakVarOccur wev e
+    | WEEsc  _ ec e _   =>                            doesWeakVarOccur wev e
+    | WECSP  _ ec e _   =>                            doesWeakVarOccur wev e
+    | WELet    cv e1 e2 => doesWeakVarOccur wev e1 || (if eqd_dec (wev:CoreVar) (cv:CoreVar)then false else doesWeakVarOccur wev e2)
+    | WEApp    e1 e2    => doesWeakVarOccur wev e1 || doesWeakVarOccur wev e2
+    | WELam    cv e     => if eqd_dec (wev:CoreVar) (cv:CoreVar) then false else doesWeakVarOccur wev e
+    | WETyLam  cv e     => doesWeakVarOccur wev e
+    | WECoLam  cv e     => doesWeakVarOccur wev e
+    | WECase vscrut escrut tbranches tc avars alts =>
+      doesWeakVarOccur wev escrut ||
+      if eqd_dec (wev:CoreVar) (vscrut:CoreVar) then false else
+        ((fix doesWeakVarOccurAlts alts {struct alts} : bool :=
+          match alts with
+            | T_Leaf  None                                         => false
+            | T_Leaf (Some (WeakDEFAULT,_,_,_,e))                      => doesWeakVarOccur wev e
+            | T_Leaf (Some (WeakLitAlt lit,_,_,_,e))                   => doesWeakVarOccur wev e
+            | T_Leaf (Some ((WeakDataAlt dc), tvars, cvars, evars,e))  => doesWeakVarOccur wev e  (* FIXME!!! *)
+            | T_Branch b1 b2                                       => doesWeakVarOccurAlts b1 || doesWeakVarOccurAlts b2
+          end) alts)
+    | WELetRec mlr e =>
+      doesWeakVarOccur wev e ||
+      (fix doesWeakVarOccurLetRec (mlr:Tree ??(WeakExprVar * WeakExpr)) : bool :=
+      match mlr with
+        | T_Leaf None          => false
+        | T_Leaf (Some (cv,e)) => if eqd_dec (wev:CoreVar) (cv:CoreVar) then false else doesWeakVarOccur wev e
+        | T_Branch b1 b2       => doesWeakVarOccurLetRec b1 || doesWeakVarOccurLetRec b2
+      end) mlr
+  end.
+Fixpoint doesWeakVarOccurAlts (wev:WeakExprVar)
+  (alts:Tree ??(WeakAltCon * list WeakTypeVar * list WeakCoerVar * list WeakExprVar * WeakExpr)) : bool := 
+  match alts with
+    | T_Leaf  None                                             => false
+    | T_Leaf (Some (WeakDEFAULT,_,_,_,e))                      => doesWeakVarOccur wev e
+    | T_Leaf (Some (WeakLitAlt lit,_,_,_,e))                   => doesWeakVarOccur wev e
+    | T_Leaf (Some ((WeakDataAlt dc), tvars, cvars, evars,e))  => doesWeakVarOccur wev e  (* FIXME!!! *)
+    | T_Branch b1 b2                                           => doesWeakVarOccurAlts wev b1 || doesWeakVarOccurAlts wev b2
+  end.
+
+(*Definition ensureCaseBindersAreNotUsed (we:WeakExpr) : UniqM WeakExpr := FIXME *)
+
 Definition weakExprToStrongExpr : forall
     (Γ:TypeEnv)
     (Δ:CoercionEnv Γ)
@@ -605,17 +654,13 @@ Definition weakExprToStrongExpr : forall
     | WECase vscrut escrut tbranches tc avars alts =>
         weakTypeOfWeakExpr escrut >>= fun tscrut =>
           weakTypeToTypeOfKind φ tscrut ★ >>= fun tscrut' =>
-(*
-            let ξ'  := update_ξ  ξ  (((vscrut:CoreVar),tscrut'@@lev)::nil) in
-            let ig' := update_ig ig ((vscrut:CoreVar)::nil) in
-*)
-            let ξ'  := ξ in
-            let ig' := ig in
-              mkAvars avars (tyConKind tc) φ >>= fun avars' =>
+            if doesWeakVarOccurAlts vscrut alts
+            then Error "encountered a Case which actually used its binder - these should have been desugared away!!"
+            else mkAvars avars (tyConKind tc) φ >>= fun avars' =>
                 weakTypeToTypeOfKind φ tbranches ★  >>= fun tbranches' =>
                   (fix mkTree (t:Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
                       ??{scb : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars' &
-                        Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ' lev)(weakLT' (tbranches' @@  lev))}) := 
+                        Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ lev)(weakLT' (tbranches' @@  lev))}) := 
                     match t with
                       | T_Leaf None           => OK []
                       | T_Leaf (Some (ac,extyvars,coervars,exprvars,ebranch)) => 
@@ -625,8 +670,8 @@ Definition weakExprToStrongExpr : forall
                             let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' in
                               weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ)
                               (sacpj_ψ sac _ _ avars' ψ)
-                              (scbwv_ξ scb ξ' lev)
-                              (update_ig ig' (map (@fst _ _) (vec2list (scbwv_varstypes scb))))
+                              (scbwv_ξ scb ξ lev)
+                              (update_ig ig (map (@fst _ _) (vec2list (scbwv_varstypes scb))))
                               (weakT' tbranches') (weakL' lev) ebranch >>= fun ebranch' =>
                                 let case_case := tt in OK [ _ ]
                       | T_Branch b1 b2        =>
@@ -635,15 +680,8 @@ Definition weakExprToStrongExpr : forall
                             OK (b1',,b2')
                     end) alts >>= fun tree =>
 
-                  weakExprToStrongExpr Γ Δ φ ψ ξ ig (caseType tc avars') lev escrut >>= fun escrut' =>
-                    castExpr we "ECase" (τ@@lev) (ECase Γ Δ ξ' lev tc tbranches' avars' escrut' tree)
-(*
-                  weakExprToStrongExpr Γ Δ φ ψ ξ ig tscrut' lev escrut >>= fun escrut' =>
-                    castExpr we "ECaseScrut" (caseType tc avars' @@  lev) (EVar Γ Δ ξ' vscrut) >>= fun evscrut' =>
-                      castExpr we "ECase" (τ@@lev)
-                      (ELet Γ Δ ξ tscrut' tbranches' lev (vscrut:CoreVar) escrut'
-                        (ECase Γ Δ ξ' lev tc tbranches' avars' evscrut' tree))
-*)
+                    weakExprToStrongExpr Γ Δ φ ψ ξ ig (caseType tc avars') lev escrut >>= fun escrut' =>
+                      castExpr we "ECase" (τ@@lev) (ECase Γ Δ ξ lev tc tbranches' avars' escrut' tree)
     end)).
 
     destruct case_some.
