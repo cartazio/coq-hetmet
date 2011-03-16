@@ -16,33 +16,128 @@ Require Import HaskProof.
 
 Section HaskProofToStrong.
 
-  Context
-    {VV:Type}
-    {eqdec_vv:EqDecidable VV}
-    {fresh: forall (l:list VV), { lf:VV & distinct (lf::l) }}.
+  Context {VV:Type} {eqdec_vv:EqDecidable VV}.
 
-  Definition Exprs (Γ:TypeEnv)(Δ:CoercionEnv Γ)(ξ:VV -> LeveledHaskType Γ ★)(τ:Tree ??(LeveledHaskType Γ ★)) :=
+  Definition Exprs Γ Δ ξ τ :=
     ITree _ (fun τ => Expr Γ Δ ξ τ) τ.
 
   Definition judg2exprType (j:Judg) : Type :=
     match j with
-      (Γ > Δ > Σ |- τ) => { ξ:VV -> LeveledHaskType Γ ★ & Exprs Γ Δ ξ τ }
+      (Γ > Δ > Σ |- τ) => forall (ξ:VV -> LeveledHaskType Γ ★ ) vars, Σ=mapOptionTree ξ vars -> Exprs Γ Δ ξ τ
       end.
 
-  (* reminder: need to pass around uniq-supplies *)
-  Definition rule2expr
-    : forall h j
-      (r:Rule h [j]),
-      ITree _ judg2exprType h ->
-      judg2exprType j.
-  
-      intros.
-      destruct j.
-      refine (match r as R in Rule H C return C=[Γ > Δ > t |- t0] -> _ with
+  Definition judges2exprType (j:Tree ??Judg) : Type :=
+    ITree _ judg2exprType j.
+
+  Definition urule2expr Γ Δ : forall h j (r:@URule Γ Δ h j),
+    judges2exprType (mapOptionTree UJudg2judg h) -> judges2exprType (mapOptionTree UJudg2judg j).
+
+    intros h j r.
+
+      refine (match r as R in URule H C
+                  return judges2exprType (mapOptionTree UJudg2judg H) -> judges2exprType (mapOptionTree UJudg2judg C) with
+      | RLeft   h c ctx r => let case_RLeft := tt in _
+      | RRight  h c ctx r => let case_RRight := tt in _
+      | RCanL   t a       => let case_RCanL := tt in _
+      | RCanR   t a       => let case_RCanR := tt in _
+      | RuCanL  t a       => let case_RuCanL := tt in _
+      | RuCanR  t a       => let case_RuCanR := tt in _
+      | RAssoc  t a b c   => let case_RAssoc := tt in _
+      | RCossa  t a b c   => let case_RCossa := tt in _
+      | RExch   t a b     => let case_RExch := tt in _
+      | RWeak   t a       => let case_RWeak := tt in _
+      | RCont   t a       => let case_RCont := tt in _
+              end   ); intros.
+
+      destruct case_RCanL.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ ([],,vars)).
+        simpl; rewrite <- H; auto.
+
+      destruct case_RCanR.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ (vars,,[])).
+        simpl; rewrite <- H; auto.
+
+      destruct case_RuCanL.
+        apply ILeaf; simpl; intros.
+        destruct vars; try destruct o; inversion H.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ vars2); auto.
+
+      destruct case_RuCanR.
+        apply ILeaf; simpl; intros.
+        destruct vars; try destruct o; inversion H.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ vars1); auto.
+
+      destruct case_RAssoc.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        destruct vars; try destruct o; inversion H.
+        destruct vars1; try destruct o; inversion H.
+        apply (X0 ξ (vars1_1,,(vars1_2,,vars2))).
+        subst; auto.
+
+      destruct case_RCossa.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        destruct vars; try destruct o; inversion H.
+        destruct vars2; try destruct o; inversion H.
+        apply (X0 ξ ((vars1,,vars2_1),,vars2_2)).
+        subst; auto.
+
+      destruct case_RLeft.
+        (* this will require recursion *)
+        admit.
+        
+      destruct case_RRight.
+        (* this will require recursion *)
+        admit.
+
+      destruct case_RExch.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        destruct vars; try destruct o; inversion H.
+        apply (X0 ξ (vars2,,vars1)).
+        inversion H; subst; auto.
+        
+      destruct case_RWeak.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ []).
+        auto.
+        
+      destruct case_RCont.
+        apply ILeaf; simpl; intros.
+        inversion X.
+        simpl in X0.
+        apply (X0 ξ (vars,,vars)).
+        simpl.
+        rewrite <- H.
+        auto.
+        Defined.
+
+  Definition rule2expr : forall h j (r:Rule h j), judges2exprType h -> judges2exprType j.
+
+    intros h j r.
+
+      refine (match r as R in Rule H C return judges2exprType H -> judges2exprType C with
       | RURule a b c d e    => let case_RURule := tt in _
-      | RNote   x n z        => let case_RNote := tt in _
+      | RNote   Γ Δ Σ τ l n         => let case_RNote := tt in _
       | RLit    Γ Δ l     _    => let case_RLit := tt in _
       | RVar    Γ Δ σ         p => let case_RVar := tt in _
+      | RGlobal Γ Δ σ l wev     => let case_RGlobal := tt in _
       | RLam    Γ Δ Σ tx te     x => let case_RLam := tt in _
       | RCast   Γ Δ Σ σ τ γ     x => let case_RCast := tt in _
       | RAbsT   Γ Δ Σ κ σ a    => let case_RAbsT := tt in _
@@ -57,54 +152,145 @@ Section HaskProofToStrong.
       | RCase   Σ Γ T κlen κ θ ldcd τ  => let case_RCase := tt in _
       | RBrak   Σ a b c n m => let case_RBrak := tt in _
       | REsc    Σ a b c n m => let case_REsc := tt in _
-              end (refl_equal _)  ); intros.
+      end); intros.
 
-    destruct case_RURule.
-      destruct d; [ destruct o | idtac ]; inversion H; subst.
-      clear H.
-      destruct u.
-      refine (match e as R in URule H C return C=[a >> b > t1 |- t2] -> _ with
-      | RLeft   h c ctx r   => let case_RLeft := tt in _
-      | RRight  h c ctx r   => let case_RRight := tt in _
-      | RCanL   t a       => let case_RCanL := tt in _
-      | RCanR   t a       => let case_RCanR := tt in _
-      | RuCanL  t a       => let case_RuCanL := tt in _
-      | RuCanR  t a       => let case_RuCanR := tt in _
-      | RAssoc  t a b c   => let case_RAssoc := tt in _
-      | RCossa  t a b c   => let case_RCossa := tt in _
-      | RExch   t a b     => let case_RExch := tt in _
-      | RWeak   t a       => let case_RWeak := tt in _
-      | RCont   t a       => let case_RCont := tt in _
-              end (refl_equal _)  ); intros.
+  destruct case_RURule.
+    eapply urule2expr.
+    apply e.
+    apply X.
 
-      destruct case_RCanL. admit.
-      destruct case_RCanR. admit.
-      destruct case_RuCanL. admit.
-      destruct case_RuCanR. admit.
-      destruct case_RAssoc. admit.
-      destruct case_RCossa. admit.
-      destruct case_RLeft. admit.
-      destruct case_RRight. admit.
-      destruct case_RExch. admit.
-      destruct case_RWeak. admit.
-      destruct case_RCont. admit.
-      destruct case_RBrak. admit.
-      destruct case_REsc. admit.
-      destruct case_RNote. admit.
-      destruct case_RLit. admit.
-      destruct case_RVar. admit.
-      destruct case_RLam. admit.
-      destruct case_RCast. admit.
-      destruct case_RBindingGroup. admit.
-      destruct case_RApp. admit.
-      destruct case_RLet. admit.
-      destruct case_REmptyGroup. admit.
-      destruct case_RAppT. admit.
-      destruct case_RAbsT. admit.
-      destruct case_RAppCo. admit.
-      destruct case_RAbsCo. admit.
-      destruct case_RLetRec. admit.
-      destruct case_RCase. admit.
+  destruct case_RBrak.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply EBrak.
+    inversion X.
+    set (X0 ξ vars H) as X'.
+    inversion X'.
+    apply X1.
+
+  destruct case_REsc.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply EEsc.
+    inversion X.
+    set (X0 ξ vars H) as X'.
+    inversion X'.
+    apply X1.
+
+  destruct case_RNote.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    inversion X.
+    apply ENote.
+    apply n.
+    simpl in X0.
+    set (X0 ξ vars H) as x1.
+    inversion x1.
+    apply X1.
+
+  destruct case_RLit.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply ELit.
+
+  destruct case_RVar.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    destruct vars; simpl in H; inversion H; destruct o. inversion H1. rewrite H2.
+    apply EVar.
+    inversion H.
+
+  destruct case_RGlobal.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply EGlobal.
+    apply wev.
+
+  destruct case_RLam.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    (* need a fresh variable here *)
+    admit.
+
+  destruct case_RCast.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    eapply ECast.
+    apply x.
+    inversion X.
+    simpl in X0.
+    set (X0 ξ vars H) as q.
+    inversion q.
+    apply X1.
+
+  destruct case_RBindingGroup.
+    apply ILeaf; simpl; intros.
+    inversion X.
+    inversion X0.
+    inversion X1.
+    destruct vars; inversion H.
+    destruct o; inversion H5.
+    set (X2 _ _ H5) as q1.
+    set (X3 _ _ H6) as q2.
+    apply IBranch; auto.
+
+  destruct case_RApp.    
+    apply ILeaf; simpl; intros; apply ILeaf.
+    inversion X.
+    inversion X0.
+    inversion X1.
+    destruct vars; try destruct o; inversion H.
+    set (X2 _ _ H5) as q1.
+    set (X3 _ _ H6) as q2.
+    eapply EApp.
+      inversion q1.
+      apply X4.
+      inversion q2.
+      apply X4.
+
+  destruct case_RLet.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    (* FIXME: need a var here, and other work *)
+    admit.
+
+  destruct case_REmptyGroup.
+    apply ILeaf; simpl; intros.
+    apply INone.
+
+  destruct case_RAppT.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply ETyApp.
+    inversion X.
+    set (X0 _ _ H) as q.
+    inversion q.
+    apply X1.
+
+  destruct case_RAbsT.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    apply ETyLam.
+    inversion X.
+    simpl in *.
+    set (X0 (weakLT ○ ξ) vars) as q.
+    rewrite mapOptionTree_compose in q.
+    rewrite <- H in q.
+    set (q (refl_equal _)) as q'.
+    inversion q'.
+    apply X1.
+
+  destruct case_RAppCo.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    eapply ECoApp.
+    apply γ.
+    inversion X.
+    set (X0 _ _ H) as q.
+    inversion q.
+    apply X1.
+
+  destruct case_RAbsCo.
+    apply ILeaf; simpl; intros; apply ILeaf.
+    eapply ECoLam.
+    inversion X.
+    set (X0 _ _ H) as q.
+    inversion q; auto.
+
+  destruct case_RLetRec.
+    admit.
+
+  destruct case_RCase.
+    admit.
+
       Defined.
 
   Definition closed2expr : forall c (pn:@ClosedND _ Rule c), ITree _ judg2exprType c.
@@ -120,21 +306,9 @@ Section HaskProofToStrong.
         apply INone.
 
       destruct case_rule.
-        set (@rule2expr h) as q.
-        destruct c.
-        destruct o.
-        apply ILeaf.
         eapply rule2expr.
         apply r.
         apply rest.
-
-        apply no_rules_with_empty_conclusion in r.
-        inversion r.
-        auto.
-
-        simpl.
-        apply systemfc_all_rules_one_conclusion in r.
-        inversion r.
 
       destruct case_branch.
         apply IBranch.

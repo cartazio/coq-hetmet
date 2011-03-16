@@ -171,7 +171,7 @@ Section ToLatex.
   Fixpoint nd_rule2latex {h}{c}(r:Rule h c) : string :=
     match r with
       | RURule        _ _ _ _ r         => nd_urule2latex r
-      | RNote         _ _ _             => "Note"
+      | RNote         _ _ _ _ _ _       => "Note"
       | RLit          _ _ _ _           => "Lit"
       | RVar          _ _ _ _           => "Var"
       | RGlobal       _ _ _ _ _         => "Global"

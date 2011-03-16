@@ -86,7 +86,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | REsc  : ∀ Γ Δ t v Σ l,                              Rule [Γ > Δ > Σ      |- [<[v|-t]> @@ l]]   [Γ > Δ > Σ     |- [t  @@ (v::l)  ]]
 
 (* Part of GHC, but not explicitly in System FC *)
-| RNote   : ∀ h c,                Note ->             Rule  h                                    [ c ]
+| RNote   : ∀ Γ Δ Σ τ l,          Note ->             Rule  [Γ > Δ > Σ |- [τ @@ l]] [Γ > Δ > Σ |- [τ @@ l]]
 | RLit    : ∀ Γ Δ v       l,                          Rule  [                                ]   [Γ > Δ > []|- [literalType v @@ l]]
 
 (* SystemFC rules *)
@@ -123,7 +123,7 @@ Coercion RURule : URule >-> Rule.
 (* A rule is considered "flat" if it is neither RBrak nor REsc *)
 Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RURule           : ∀ Γ Δ  h c r            ,  Rule_Flat (RURule Γ Δ  h c r)
-| Flat_RNote            : ∀ x y z              ,  Rule_Flat (RNote x y z)
+| Flat_RNote            : ∀ Γ Δ Σ τ l n            ,  Rule_Flat (RNote Γ Δ Σ τ l n)
 | Flat_RVar             : ∀ Γ Δ  σ               l,  Rule_Flat (RVar Γ Δ  σ         l)
 | Flat_RLam             : ∀ Γ Δ  Σ tx te    q    ,  Rule_Flat (RLam Γ Δ  Σ tx te      q )
 | Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q     ,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q )
@@ -193,6 +193,7 @@ Lemma no_rules_with_multiple_conclusions : forall c h,
     destruct X0; destruct s; inversion e.
     auto.
     apply (no_urules_with_multiple_conclusions _ _ h (c1,,c2)) in u. inversion u. exists c1. exists c2. auto.
+    destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
