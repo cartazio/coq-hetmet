@@ -589,7 +589,22 @@ Implicit Arguments INil    [ I F ].
 Implicit Arguments ILeaf   [ I F ].
 Implicit Arguments IBranch [ I F ].
 
+Definition itmap {I}{F}{G}{il:Tree ??I}(f:forall i:I, F i -> G i) : ITree I F il -> ITree I G il.
+  induction il; intros; auto.
+  destruct a.
+  apply ILeaf.
+  apply f.
+  inversion X; auto.
+  apply INone.
+  apply IBranch; inversion X; auto.
+  Defined.
 
+Fixpoint itree_to_tree {T}{Z}{l:Tree ??T}(il:ITree T (fun _ => Z) l) : Tree ??Z :=
+  match il with
+  | INone     => []
+  | ILeaf _ a => [a]
+  | IBranch _ _ b1 b2 => (itree_to_tree b1),,(itree_to_tree b2)
+  end.
 
 
 (*******************************************************************************)
