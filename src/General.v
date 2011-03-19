@@ -792,4 +792,16 @@ Notation "'failM'  x" := (uniqM (fun _ => Error x)) (at level 100).
 
 
 
+
+
+Record FreshMonad {T:Type} :=
+{ FMT       :  Type -> Type
+; FMT_Monad :> Monad FMT
+; FMT_fresh :  forall tl:list T, FMT { t:T & @In _ t tl -> False }
+}.
+Implicit Arguments FreshMonad [ ].
+Coercion FMT       : FreshMonad >-> Funclass.
+
+
+
 Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
