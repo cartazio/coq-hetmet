@@ -301,6 +301,16 @@ Fixpoint unleaves'' {A:Type}(l:list ??A) : Tree ??A :=
     | (a::b) => (unleaves'' b),,(T_Leaf a)
   end.
 
+Lemma mapleaves {T:Type}(t:Tree ??T){Q}{f:T->Q} : leaves (mapOptionTree f t) = map f (leaves t).
+  induction t.
+  destruct a; auto.
+  simpl.
+  rewrite IHt1.
+  rewrite IHt2.
+  rewrite map_app.
+  auto.
+  Qed.
+
 Fixpoint filter {T:Type}(l:list ??T) : list T :=
   match l with
     | nil => nil
