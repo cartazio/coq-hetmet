@@ -717,3 +717,7 @@ Lemma list2vecOrFail {T}(l:list T)(n:nat)(error_message:nat->nat->string) : ???(
     Defined.
 
 
+
+
+
+Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".

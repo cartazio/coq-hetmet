@@ -224,9 +224,6 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     apply h.
     Defined.
     
-
-Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
-
 (* information about a datacon/literal/default which is common to all instances of a branch with that tag *)
 Section StrongAltCon.
   Context (tc : TyCon)(dc:DataCon tc).
