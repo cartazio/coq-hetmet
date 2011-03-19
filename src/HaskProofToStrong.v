@@ -401,17 +401,16 @@ Section HaskProofToStrong.
     destruct l0 as [τ l'].
     simpl.
     apply ileaf in X. simpl in X.
-    assert (unlev (ξ' v) = τ).
-      admit.
-      rewrite <- H.
+    destruct (eqd_dec (unlev (ξ' v)) τ).
+      rewrite <- e.
       apply ELR_leaf.
-      rewrite H.
       destruct (ξ' v).
-      rewrite <- H.
       simpl.
-      assert (h0=l). admit.
-        rewrite H0 in X.
+      destruct (eqd_dec h0 l).
+        rewrite <- e0.
         apply X.
+    apply (Prelude_error "level mismatch; should never happen").
+    apply (Prelude_error "letrec type mismatch; should never happen").
 
     apply ELR_nil.
 
@@ -425,11 +424,17 @@ Section HaskProofToStrong.
 
     Defined.
 
+  Lemma leaves_unleaves {T}(t:list T) : leaves (unleaves t) = t.
+    induction t; auto.
+    simpl.
+    rewrite IHt; auto.
+    Qed.
 
-(*
-  Definition case_helper tc Γ Δ lev tbranches avars ξ (Σ:Tree ??VV) tys :
+  Definition case_helper tc Γ Δ lev tbranches avars ξ (Σ:Tree ??VV) :
     forall pcb : ProofCaseBranch tc Γ Δ lev tbranches avars,
-  judg2exprType (pcb_judg pcb) -> FreshM
+  judg2exprType (pcb_judg pcb) ->
+  (pcb_freevars pcb) = mapOptionTree ξ Σ ->
+  FreshM
   {scb : StrongCaseBranchWithVVs VV eqdec_vv tc avars &
     Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars (weakCK'' Δ)) 
     (scbwv_ξ scb ξ lev) (weakLT' (tbranches @@  lev))}.
@@ -437,10 +442,56 @@ Section HaskProofToStrong.
     simpl in X.
     destruct pcb.
     simpl in *.
-    refine (bind ξvars = fresh_lemma' Γ pcb_freevars Σ [] ξ _ ; _). apply FreshMon.
-    destruct ξvars as [vars [ξ'
-  Defined.
-*)
+    set (sac_types pcb_scb _ avars) as boundvars.
+    refine (fresh_lemma' _ (unleaves (map (fun x => x@@(weakL' lev)) (vec2list boundvars))) Σ
+      (mapOptionTree weakLT' pcb_freevars)
+        (weakLT' ○ ξ) _
+      >>>= fun ξvars => _). apply FreshMon.
+    rewrite H.
+    rewrite <- mapOptionTree_compose.
+    reflexivity.
+      destruct ξvars as [ exprvars [pf1 pf2 ]].
+      set (list2vec (leaves (mapOptionTree (@fst _ _) exprvars))) as exprvars'. 
+      assert (sac_numExprVars pcb_scb = Datatypes.length (leaves (mapOptionTree (@fst _ _) exprvars))) as H'.
+        rewrite <- mapOptionTree_compose in pf2.
+        simpl in pf2.
+        rewrite mapleaves.
+        rewrite <- map_preserves_length.
+        rewrite map_preserves_length with (f:=update_ξ (weakLT' ○ ξ) (leaves exprvars) ○ (@fst _ _)).
+        rewrite <- mapleaves.
+        rewrite pf2.
+        rewrite leaves_unleaves.
+        rewrite vec2list_map_list2vec.
+        rewrite vec2list_len.
+        reflexivity.
+      rewrite <- H' in exprvars'.
+        clear H'.
+
+    set (@Build_StrongCaseBranchWithVVs VV _ tc _ avars pcb_scb exprvars') as scb.
+    set (scbwv_ξ scb ξ lev) as ξ'.
+    refine (X ξ' (Σ,,(unleaves (vec2list exprvars'))) _ >>>= fun X' => return _). apply FreshMon.
+      simpl.
+      unfold ξ'.
+      unfold scbwv_ξ.
+      simpl.
+      rewrite <- vec2list_map_list2vec.
+      rewrite <- pf1.
+      admit.
+
+    apply ileaf in X'.
+      simpl in X'.
+      exists scb.
+      unfold weakCK''.
+      unfold ξ' in X'.
+      apply X'.
+    Defined.
+
+  Fixpoint treeM {T}(t:Tree ??(FreshM T)) : FreshM (Tree ??T) :=
+    match t with
+      | T_Leaf None     => return []
+      | T_Leaf (Some x) => bind x' = x ; return [x']
+      | T_Branch b1 b2  => bind b1' = treeM b1 ; bind b2' = treeM b2 ; return (b1',,b2')
+    end.
 
   Lemma itree_mapOptionTree : forall T T' F (f:T->T') t,
     ITree _ F (mapOptionTree f t) ->
@@ -685,13 +736,6 @@ Section HaskProofToStrong.
     apply (letrec_helper _ _ _ _ _ X1).
 
   destruct case_RCase.
-  apply ILeaf.
-simpl.
-intros.
-apply (Prelude_error "FIXME").
-
-
-(*
     apply ILeaf; simpl; intros.
     inversion X_.
     clear X_.
@@ -705,17 +749,21 @@ apply (Prelude_error "FIXME").
       rename vars1 into varsalts.
       rename vars2 into varsΣ.
     
-    refine (X0 ξ varsΣ _ >>>= fun X => return ILeaf _ _); auto. apply FreshMon.
-      clear X0.
-      eapply (ECase _ _ _ _ _ _ _ (ileaf X1)).
-      clear X1.
 
+    refine ( _ >>>= fun Y => X0 ξ varsΣ _ >>>= fun X => return ILeaf _ (@ECase _ _ _ _ _ _ _ _ _ (ileaf X) Y)); auto.
+      apply FreshMon.
       destruct ξvars as [varstypes [pf1 pf2]].
-      
+
+      apply treeM.
       apply itree_mapOptionTree in X.
       refine (itree_to_tree (itmap _ X)).
-      apply case_helper.
-*)
+      intros.
+      eapply case_helper.
+      apply X1.
+      instantiate (1:=varsΣ).
+      rewrite <- H2.
+      admit.
+      apply FreshMon.
     Defined.
 
   Definition closed2expr : forall c (pn:@ClosedND _ Rule c), ITree _ judg2exprType c.

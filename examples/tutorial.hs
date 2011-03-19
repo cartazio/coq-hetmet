@@ -1,10 +1,13 @@
-{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds #-}
+{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds -XFlexibleInstances -XGADTs #-}
 module GArrowsTutorial
 where
 import Data.Bits
 import Data.Bool (not)
 import GHC.HetMet.CodeTypes hiding ((-))
 import GHC.HetMet.GArrow
+import Control.Category
+import Control.Arrow
+import Prelude hiding ( id, (.) )
 
 -- The best way to understand heterogeneous metaprogramming and
 -- generalized arrows is to play around with this file, poking at the
@@ -205,7 +208,7 @@ increment_at_level1 = <[ \x -> x + 1 ]>
 
 --------------------------------------------------------------------------------
 -- Ye Olde and Most Venerable "pow" Function
-
+{-
 pow n =
    if n==0
    then <[ \x -> 1 ]>
@@ -289,7 +292,7 @@ dotproduct'' v1 =
                           []     -> 0
                           (b:bx) -> ~~(guestIntegerLiteral a) * b + ~~(dotproduct'' ax) bx ]>
 
-
+-}
 
 
 
@@ -351,7 +354,7 @@ class Stream a where
   s_empty :: a -> Bool
   s_head  :: a -> Char
   s_tail  :: a -> a
-
+{-
 -- a continuation-passing-style matcher
 
 accept :: Stream s => Regex -> (s -> Bool) -> s -> Bool
@@ -433,6 +436,140 @@ staged_accept (Const c) k        =
 
 
 
+
+--------------------------------------------------------------------------------
+-- Unflattening
+
+-- This more or less "undoes" the flatten function.  People often ask
+-- me how you "translate generalized arrows back into multi-level
+-- terms".. I'm not sure why you'd want to do that, but this is how:
+newtype Code x y = Code { unCode :: forall a. <[ x -> y ]>@a }
+
+instance Category Code where
+  id             = Code <[ \x -> x ]>
+  f . g          = Code <[ \x -> ~~(unCode f) (~~(unCode g) x) ]>
+
+instance GArrow Code (,) where
+  ga_first     f = Code <[ \(x,y) -> ((~~(unCode f) x),y) ]>
+  ga_second    f = Code <[ \(x,y) -> (x         ,(~~(unCode f) y)) ]>
+  ga_cancell     = Code <[ \(_,x) -> x ]>
+  ga_cancelr     = Code <[ \(x,_) -> x ]>
+  ga_uncancell   = Code <[ \x -> (%%(),x) ]>
+  ga_uncancelr   = Code <[ \x -> (x,%%()) ]>
+  ga_assoc       = Code <[ \((x,y),z) -> (x,(y,z)) ]>
+  ga_unassoc     = Code <[ \(x,(y,z)) -> ((x,y),z) ]>
+
+
+
+
+--------------------------------------------------------------------------------
+-- BiGArrows
+
+class GArrow g (**) => BiGArrow g (**) where
+  -- Note that we trust the user's pair of functions actually are
+  -- mutually inverse; confirming this in the type system would
+  -- require very powerful dependent types (such as Coq's).  However,
+  -- the consequences of failure here are much more mild than failures
+  -- in BiArrow.inv: if the functions below are not mutually inverse,
+  -- the LoggingBiGArrow will simply compute the wrong result rather
+  -- than fail in some manner outside the language's semantics.
+  biga_arr :: (x -> y) -> (y -> x) -> g x y
+  biga_inv :: g x y -> g y x
+
+-- For any GArrow instance, its mutually inverse pairs form a BiGArrow
+data GArrow g (**) => GArrowInversePair g (**) x y =
+    GArrowInversePair { forward :: g x y , backward :: g y x }
+instance GArrow g (**) => Category (GArrowInversePair g (**)) where
+  id    = GArrowInversePair { forward = id , backward = id }
+  f . g = GArrowInversePair { forward = (forward f) . (forward g) , backward = (backward g) . (backward f) }
+instance GArrow g (**) => GArrow (GArrowInversePair g (**)) (**) where
+  ga_first     f = GArrowInversePair { forward = ga_first  (forward f), backward = ga_first  (backward f) }
+  ga_second    f = GArrowInversePair { forward = ga_second (forward f), backward = ga_second (backward f) }
+  ga_cancell     = GArrowInversePair { forward = ga_cancell           , backward = ga_uncancell }
+  ga_cancelr     = GArrowInversePair { forward = ga_cancelr           , backward = ga_uncancelr }
+  ga_uncancell   = GArrowInversePair { forward = ga_uncancell         , backward = ga_cancell   }
+  ga_uncancelr   = GArrowInversePair { forward = ga_uncancelr         , backward = ga_cancelr   }
+  ga_assoc       = GArrowInversePair { forward = ga_assoc             , backward = ga_unassoc   }
+  ga_unassoc     = GArrowInversePair { forward = ga_unassoc           , backward = ga_assoc     }
+instance GArrowSwap g (**) => GArrowSwap (GArrowInversePair g (**)) (**) where
+  ga_swap = GArrowInversePair { forward = ga_swap , backward = ga_swap }
+instance (GArrowDrop g (**), GArrowCopy g (**)) => GArrowCopy (GArrowInversePair g (**)) (**) where
+  ga_copy = GArrowInversePair { forward = ga_copy , backward = ga_second ga_drop >>> ga_cancelr }
+-- but notice that we can't (in general) get
+-- instance GArrowDrop g => GArrowDrop (GArrowInversePair g) where ...
+
+
+-- For that, we need PreLenses, which "log the history" where necessary.
+-- I call this a "PreLens" because it consists of the data required
+-- for a Lens (as in BCPierce's Lenses) but does not necessarily
+-- satisfy the putget/getput laws.  Specifically, the "extra stuff" we
+-- store is the inversion function.
+newtype PreLens x y = PreLens { preLens :: x -> (y , y->x) }
+
+instance Category PreLens where
+  id    = PreLens { preLens = \x -> (x, (\x -> x)) }
+  f . g = PreLens { preLens = \x -> let (gx,g') = (preLens g) x in let (fgx,f') = (preLens f) gx in (fgx , \q -> g' (f' q)) }
+
+instance GArrow PreLens (,) where
+  ga_first     f = PreLens { preLens = \(x,z) -> let (y,f') = (preLens f) x in ((y,z),(\(q1,q2) -> (f' q1,q2))) }
+  ga_second    f = PreLens { preLens = \(z,x) -> let (y,f') = (preLens f) x in ((z,y),(\(q1,q2) -> (q1,f' q2))) }
+  ga_cancell     = PreLens { preLens = \(_,x) -> (x,            (\x -> ((),x))) }
+  ga_cancelr     = PreLens { preLens = \(x,_) -> (x,            (\x -> (x,()))) }
+  ga_uncancell   = PreLens { preLens = \x     -> (((),x),       (\(_,x) -> x)) }
+  ga_uncancelr   = PreLens { preLens = \x     -> ((x,()),       (\(x,_) -> x)) }
+  ga_assoc       = PreLens { preLens = \((x,y),z) -> ( (x,(y,z)) , (\(x,(y,z)) -> ((x,y),z)) ) }
+  ga_unassoc     = PreLens { preLens = \(x,(y,z)) -> ( ((x,y),z) , (\((x,y),z) -> (x,(y,z))) ) }
+
+instance GArrowDrop PreLens (,) where
+  ga_drop        = PreLens { preLens = \x     -> (()    , (\() -> x)) }
+instance GArrowCopy PreLens (,) where
+  ga_copy        = PreLens { preLens = \x     -> ((x,x) , fst) }
+instance GArrowSwap PreLens (,) where
+  ga_swap        = PreLens { preLens = \(x,y) -> ((y,x) , (\(z,q) -> (q,z))) }
+
+
+
+data Lens x y where
+  Lens :: forall x y c1 c2 . ((x,c1)->(y,c2)) -> ((y,c2)->(x,c1)) -> Lens x y
+
+-- can we make lenses out of GArrows other than (->)?
+instance Category Lens where
+  id                          = Lens (\x -> x) (\x -> x)
+  (Lens g1 g2) . (Lens f1 f2) = Lens (\(x,(c1,c2)) -> let (y,fc) = f1 (x,c1) in  let (z,gc) = g1 (y,c2) in  (z,(fc,gc)))
+                                     (\(z,(c1,c2)) -> let (y,gc) = g2 (z,c2) in  let (x,fc) = f2 (y,c1) in  (x,(fc,gc)))
+
+instance GArrow Lens (,) where
+  ga_first     (Lens f1 f2) = Lens (\((x1,x2),c) -> let (y,c') = f1 (x1,c) in ((y,x2),c'))
+                                   (\((x1,x2),c) -> let (y,c') = f2 (x1,c) in ((y,x2),c'))
+  ga_second    (Lens f1 f2) = Lens (\((x1,x2),c) -> let (y,c') = f1 (x2,c) in ((x1,y),c'))
+                                   (\((x1,x2),c) -> let (y,c') = f2 (x2,c) in ((x1,y),c'))
+  ga_cancell                = Lens (\(((),x),()) -> (    x ,())) 
+                                   (\(    x ,()) -> (((),x),()))
+  ga_uncancell              = Lens (\(    x ,()) -> (((),x),()))
+                                   (\(((),x),()) -> (    x ,())) 
+  ga_cancelr                = Lens (\((x,()),()) -> (    x ,())) 
+                                   (\( x    ,()) -> ((x,()),()))
+  ga_uncancelr              = Lens (\( x    ,()) -> ((x,()),()))
+                                   (\((x,()),()) -> (    x ,())) 
+  ga_assoc                  = Lens (\(((x,y),z),()) -> ((x,(y,z)),()))
+                                   (\((x,(y,z)),()) -> (((x,y),z),()))
+  ga_unassoc                = Lens (\((x,(y,z)),()) -> (((x,y),z),()))
+                                   (\(((x,y),z),()) -> ((x,(y,z)),()))
+
+instance GArrowDrop Lens (,) where
+  ga_drop        = Lens (\(x,()) -> ((),x)) (\((),x) -> (x,()))
+instance GArrowCopy Lens (,) where
+  ga_copy        = Lens (\(x,()) -> ((x,x),())) (\((x,_),()) -> (x,()))
+instance GArrowSwap Lens (,) where
+  ga_swap        = Lens (\((x,y),()) -> ((y,x),())) (\((x,y),()) -> ((y,x),()))
+
+instance BiGArrow Lens (,) where
+  biga_arr f f'  = Lens (\(x,()) -> ((f x),())) (\(x,()) -> ((f' x),()))
+  biga_inv (Lens f1 f2) = Lens f2 f1
+
+
+
+
 --------------------------------------------------------------------------------
 -- An example generalized arrow
 
@@ -498,3 +635,190 @@ instance GArrowLiteral GArrowVerilog (,) where
 
 
 
+
+{-
+lambda calculus interpreter
+
+data Val =
+  Num Int
+| Fun <[Val -> Val]>
+
+This requires higher-order functions in the second level...
+
+eval :: Exp -> a Env Val
+eval (Var s)        = <[ lookup s ]>
+eval (Add e1 e2)    = <[ let (Num v1) = ~(eval e1)
+                      in let (Num v2) = ~(eval e2)
+                      in (Num (v1+v2)) ]>
+eval (If  e1 e2 e3) = <[ let v1 = ~(eval e1) in
+                      in if v1
+                         then ~(eval e2)
+                         else ~(eval e3) ]>
+eval (Lam x  e)     = ???
+
+eval (Var s) = proc env ->
+                returnA -< fromJust (lookup s env)
+eval (Add e1 e2) = proc env ->
+                (eval e1 -< env) `bind` \ ~(Num u) ->
+                (eval e2 -< env) `bind` \ ~(Num v) ->
+                returnA -< Num (u + v)
+eval (If e1 e2 e3) = proc env ->
+                (eval e1 -< env) `bind` \ ~(Bl b) ->
+                if b    then eval e2 -< env
+                        else eval e3 -< env
+eval (Lam x e) = proc env ->
+                returnA -< Fun (proc v -> eval e -< (x,v):env)
+eval (App e1 e2) = proc env ->
+                (eval e1 -< env) `bind` \ ~(Fun f) ->
+                (eval e2 -< env) `bind` \ v ->
+                f -< v
+
+eval (Var s)       = <[ \env -> fromJust (lookup s env)             ]>
+eval (Add e1 e2)   = <[ \env -> (~(eval e1) env) + (~(eval e2) env) ]>
+eval (If e1 e2 e3) = <[ \env -> if   ~(eval e1) env
+                                then ~(eval e2) env
+                                else ~(eval e2) env
+eval (Lam x e)     = <[ \env -> Fun (\v -> ~(eval e) ((x,v):env)) ]>
+eval (App e1 e2)   = <[ \env -> case ~(eval e1) env of
+                                   (Fun f) -> f (~(eval e2) env) ]>
+eval (Var s)     <[env]> = <[ fromJust (lookup s env)             ]>
+eval (Add e1 e2) <[env]> = <[ (~(eval e1) env) + (~(eval e2) env) ]>
+-}
+
+
+
+
+
+{-
+immutable heap with cycles
+
+-- an immutable heap; maps Int->(Int,Int)
+
+alloc  :: A (Int,Int) Int
+lookup :: A Int       (Int,Int)
+
+onetwocycle :: A (Int,Int) (Int,Int)
+onetwocycle =
+  proc \(x,y)-> do
+                 x' <- alloc -< (1,y)
+                 y' <- alloc -< (2,x)
+                 return (x',y')
+\end{verbatim}
+
+\begin{verbatim}
+alloc  :: <[ (Int,Int) ->  Int      ]>
+lookup :: <[ Int       -> (Int,Int) ]>
+
+onetwocycle :: <[ (Int,Int) ]> -> <[ (Int,Int) ]>
+onetwocycle x y = <[
+  let    x' = ~alloc (1,~y)
+  in let y' = ~alloc (2,~x)
+  in (x',y')
+]>
+
+onetwocycle' :: <[ (Int,Int) -> (Int,Int) ]>
+onetwocycle' = back2 onetwocycle
+\end{verbatim}
+-}
+
+
+
+
+{-
+The example may seem a little contrived, but its purpose is to
+illustrate the be- haviour when the argument of mapC refers both to
+its parameter and a free vari- able (n).
+
+\begin{verbatim}
+-- we can use mapA rather than mapC (from page 100)
+
+mapA f = proc xs -> case xs of
+[] -> returnA -< [] x:xs’ -> do y <- f -< x
+ys’ <- mapA f -< xs’ returnA -< y:ys
+
+example2 =
+   <[ \(n,xs) -> 
+       ~(mapA <[ \x-> (~(delay 0) n, x) ]> )
+        xs
+    ]>
+
+<[ example2 (n,xs) =
+   ~(mapA <[ \x-> (~(delay 0) n, x) ]> ) xs ]>
+\end{verbatim}
+-}
+
+
+
+
+
+
+{-
+delaysA =
+   arr listcase >>>
+    arr (const []) |||
+     (arr id *** (delaysA >>> delay []) >>>
+       arr (uncurry (:)))
+
+nor :: SF (Bool,Bool) Bool
+nor = arr (not.uncurry (||))
+
+edge :: SF Bool Bool
+edge =
+   proc a -> do
+   b <- delay False -< a
+   returnA -< a && not b
+
+flipflop =
+   proc (reset,set) -> do
+   rec c <- delay False -< nor
+   reset d d <- delay True -< nor set c
+   returnA -< (c,d)
+
+halfAdd :: Arrow arr => arr (Bool,Bool) (Bool,Bool)
+halfAdd =
+   proc (x,y) -> returnA -< (x&&y, x/=y)
+
+fullAdd ::
+   Arrow arr => arr (Bool,Bool,Bool) (Bool,Bool)
+fullAdd =
+   proc (x,y,c) -> do
+   (c1,s1) <- halfAdd -< (x,y)
+   (c2,s2) <- halfAdd -< (s1,c)
+   returnA -< (c1||c2,s2)
+
+Here is the appendix of Hughes04:
+module Circuits where
+import Control.Arrow import List
+class ArrowLoop a => ArrowCircuit a where delay :: b -> a b b
+nor :: Arrow a => a (Bool,Bool) Bool nor = arr (not.uncurry (||))
+flipflop :: ArrowCircuit a => a (Bool,Bool) (Bool,Bool) flipflop = loop (arr (\((a,b),~(c,d)) -> ((a,d),(b,c))) >>>
+nor *** nor >>> delay (False,True) >>> arr id &&& arr id)
+class Signal a where showSignal :: [a] -> String
+instance Signal Bool where showSignal bs = concat top++"\n"++concat bot++"\n"
+where (top,bot) = unzip (zipWith sh (False:bs) bs) sh True True = ("__"," ") sh True False = (" ","|_") sh False True = (" _","| ")
+sh False False = (" ","__")
+instance (Signal a,Signal b) => Signal showSignal xys = showSignal (map fst showSignal (map snd
+instance Signal a => Signal [a] where showSignal = concat . map showSignal
+sig = concat . map (uncurry replicate)
+(a,b) where xys) ++ xys)
+. transpose
+flipflopInput = sig [(5,(False,False)),(2,(False,True)),(5,(False,False)),
+(2,(True,False)),(5,(False,False)),(2,(True,True)), (6,(False,False))]
+
+
+
+
+
+-- from Hughes' "programming with Arrows"
+
+mapC :: ArrowChoice arr => arr (env,a) b -> arr (env,[a]) [b] mapC c = proc (env,xs) ->
+case xs of [] -> returnA -< [] x:xs’ -> do y <- c -< (env,x)
+ys <- mapC c -< (env,xs’) returnA -< y:ys
+
+example2 = proc (n,xs) -> (| mapC (\x-> do delay 0 -< n
+&&& do returnA -< x) |) xs
+-}
+
+
+
+-}
