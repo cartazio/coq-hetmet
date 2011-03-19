@@ -18,39 +18,6 @@ Require Import HaskWeakToCore.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 
-(* Uniques *)
-Variable UniqSupply      : Type.                   Extract Inlined Constant UniqSupply     => "UniqSupply.UniqSupply".
-Variable Unique          : Type.                   Extract Inlined Constant Unique         => "Unique.Unique".
-Variable uniqFromSupply  : UniqSupply -> Unique.   Extract Inlined Constant uniqFromSupply => "UniqSupply.uniqFromSupply".
-Variable splitUniqSupply : UniqSupply -> UniqSupply * UniqSupply.
-    Extract Inlined Constant splitUniqSupply => "UniqSupply.splitUniqSupply".
-
-Inductive UniqM {T:Type} : Type :=
- | uniqM    : (UniqSupply -> ???(UniqSupply * T)) -> UniqM.
- Implicit Arguments UniqM [ ].
-
-Instance UniqMonad : Monad UniqM :=
-{ returnM := fun T (x:T) => uniqM (fun u => OK (u,x))
-; bindM   := fun a b (x:UniqM a) (f:a->UniqM b) =>
-  uniqM (fun u =>
-    match x with
-      | uniqM fa =>
-        match fa u with
-          | Error s   => Error s
-          | OK (u',va) => match f va with
-                           | uniqM fb => fb u'
-                         end
-        end
-    end)
-}.
-
-Definition getU : UniqM Unique :=
-  uniqM (fun us => let (us1,us2) := splitUniqSupply us in OK (us1,(uniqFromSupply us2))).
-
-Notation "'bind' x = e ; f" := (@bindM _ _ _ _ e (fun x => f)) (x ident, at level 60, right associativity).
-Notation "'return' x" := (returnM x) (at level 100).
-Notation "'failM'  x" := (uniqM (fun _ => Error x)) (at level 100).
-
 Section HaskStrongToWeak.
 
   Context (hetmet_brak : WeakExprVar).
