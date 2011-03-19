@@ -129,7 +129,14 @@ Lemma mapOptionTree_compose : forall A B C (f:A->B)(g:B->C)(l:Tree ??A),
     reflexivity.
     Qed.
 
-
+Open Scope string_scope.
+Fixpoint treeToString {T}{TT:ToString T}(t:Tree ??T) : string :=
+match t with
+  | T_Leaf None => "[]"
+  | T_Leaf (Some s) => "["+++s+++"]"
+  | T_Branch b1 b2 => treeToString b1 +++ ",," +++ treeToString b2
+end.
+Instance TreeToString {T}{TT:ToString T} : ToString (Tree ??T) := { toString := treeToString }.
 
 (*******************************************************************************)
 (* Lists                                                                       *)
