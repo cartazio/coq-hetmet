@@ -73,5 +73,31 @@ Section HaskStrong.
   | ELR_branch : ∀ Γ Δ ξ l t1 t2, ELetRecBindings Γ Δ ξ l t1 -> ELetRecBindings Γ Δ ξ l t2 -> ELetRecBindings Γ Δ ξ l (t1,,t2)
   .
 
+
+  Context {ToStringVV:ToString VV}.
+
+  Require Import HaskCoreVars.
+
+  Fixpoint exprToString {Γ}{Δ}{ξ}{τ}(exp:Expr Γ Δ ξ τ) : string :=
+    match exp with
+    | EVar  Γ' _ ξ' ev              => "var."+++ev
+    | EGlobal Γ' _ ξ' t wev         => "global." +++(wev:CoreVar)
+    | ELam  Γ'   _ _ tv _ _ cv e    => "\("+++cv+++":t) -> "+++ exprToString e
+    | ELet  Γ' _ _ t _ _ ev e1 e2   => "let "+++ev+++" = "+++exprToString e1+++" in "+++exprToString e2
+    | ELit  _ _ _ lit _             => "lit."+++lit
+    | EApp  Γ' _ _ _ _ _ e1 e2      => "("+++exprToString e1+++")("+++exprToString e2+++")"
+    | EEsc  Γ' _ _ ec t _ e         => "~~("+++exprToString e+++")"
+    | EBrak Γ' _ _ ec t _ e         => "<["+++exprToString e+++"]>"
+    | ENote _ _ _ _ n e             => "note."+++exprToString e
+    | ETyApp  Γ Δ κ σ τ ξ l       e => "("+++exprToString e+++")@("+++τ+++")"
+    | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => "("+++exprToString e+++")~(co)"
+    | ECast Γ Δ ξ t1 t2 γ l e       => "cast ("+++exprToString e+++"):t2"
+    | ETyLam _ _ _ k _ _ e          => "\@_ ->"+++ exprToString e
+    | ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e    => "\~_ ->"+++ exprToString e
+    | ECase Γ Δ ξ l tc tbranches atypes escrut alts => "case " +++ exprToString escrut +++ " of FIXME"
+    | ELetRec _ _ _ _ _ vars elrb e => "letrec FIXME in " +++ exprToString e
+    end.
+  Instance ExprToString Γ Δ ξ τ : ToString (Expr Γ Δ ξ τ) := { toString := exprToString }.
+
 End HaskStrong.
 Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
