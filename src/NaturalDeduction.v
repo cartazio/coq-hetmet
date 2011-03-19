@@ -299,6 +299,14 @@ Section Natural_Deduction.
     apply q2. subst. apply cnd0.
     Defined.
 
+  (* undo the above *)
+  Fixpoint closedNDtoNormalND {c}(cnd:ClosedND c) : ND [] c :=
+  match cnd in ClosedND C return ND [] C with
+  | cnd_weak                   => nd_id0
+  | cnd_rule   h c cndh rhc    => closedNDtoNormalND cndh ;; nd_rule rhc
+  | cnd_branch c1 c2 cnd1 cnd2 => nd_llecnac ;; nd_prod (closedNDtoNormalND cnd1) (closedNDtoNormalND cnd2)
+  end.
+
   Close Scope nd_scope.
   Open Scope pf_scope.
 
