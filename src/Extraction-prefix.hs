@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-unused-binds  #-}
 module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
 import qualified Unique
@@ -29,15 +28,19 @@ import qualified Data.List
 import qualified Data.Ord
 import qualified Data.Typeable
 import Data.Bits ((.&.), shiftL, (.|.))
-import Prelude ( (++), (+), (==), Show, show, Char, (.) )
+import Prelude ( (++), (+), (==), Show, show, Char, (.), ($) )
 import qualified Prelude
+import qualified Debug.Trace
 import qualified GHC.Base
+import qualified System.IO
+import qualified System.IO.Unsafe
 
--- used for extracting strings
+{-  -- used for extracting strings WITHOUT the patch for Coq
 bin2ascii =
   (\ b0 b1 b2 b3 b4 b5 b6 b7 ->
      let f b i = if b then 1 `shiftL` i else 0
      in Data.Char.chr (f b0 0 .|. f b1 1 .|. f b2 2 .|. f b3 3 .|. f b4 4 .|. f b5 5 .|. f b6 6 .|. f b7 7))
+-}
 
 getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]
 getTyConTyVars tc =
@@ -175,4 +178,16 @@ weakCoercionToCoreCoercion :: CoreCoercion -> Type.Type
 | WCoLeft    c                       => Prelude_error "FIXME WCoLeft"
 | WCoRight   c                       => Prelude_error "FIXME WCoRight"
 | WCoUnsafe  t1 t2                   => (t1,t2)
+-}
+
+
+--trace = Debug.Trace.trace
+--trace msg x = x
+trace msg x = System.IO.Unsafe.unsafePerformIO $ Prelude.return x
+{-
+trace s x = x
+trace msg x = System.IO.Unsafe.unsafePerformIO $
+                (Prelude.>>=) (System.IO.hPutStrLn System.IO.stdout msg) (\_ -> Prelude.return x)
+trace msg x = System.IO.Unsafe.unsafePerformIO $
+                (Prelude.>>=) (System.IO.hPutStr System.IO.stdout " ") (\_ -> Prelude.return x)
 -}
