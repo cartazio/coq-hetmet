@@ -129,6 +129,14 @@ Lemma mapOptionTree_compose : forall A B C (f:A->B)(g:B->C)(l:Tree ??A),
     reflexivity.
     Qed.
 
+Lemma mapOptionTree_extensional {A}{B}(f g:A->B) : (forall a, f a = g a) -> (forall t, mapOptionTree f t = mapOptionTree g t).
+  intros.
+  induction t.
+  destruct a; auto.
+  simpl; rewrite H; auto.
+  simpl; rewrite IHt1; rewrite IHt2; auto.
+  Qed.
+
 Open Scope string_scope.
 Fixpoint treeToString {T}{TT:ToString T}(t:Tree ??T) : string :=
 match t with
@@ -221,6 +229,17 @@ Lemma mapOptionTree_comp a b c (f:a->b) (g:b->c) q : (mapOptionTree g (mapOption
     rewrite IHq1.
     rewrite IHq2.
     reflexivity.
+  Qed.
+
+Lemma leaves_unleaves {T}(t:list T) : leaves (unleaves t) = t.
+  induction t; auto.
+  simpl.
+  rewrite IHt; auto.
+  Qed.
+
+Lemma mapleaves' {T:Type}(t:list T){Q}{f:T->Q} : unleaves (map f t) = mapOptionTree f (unleaves t).
+  induction t; simpl in *; auto.
+  rewrite IHt; auto.
   Qed.
 
 (* handy facts: map preserves the length of a list *)
