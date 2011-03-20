@@ -21,11 +21,11 @@ Section HaskStrong.
   (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
 
   Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:IList _ (HaskType Γ) (tyConKind tc)} :=
-  { scbwv_sac       :  @StrongAltCon tc
-  ; scbwv_exprvars  :  vec VV (sac_numExprVars scbwv_sac)
-  ; scbwv_varstypes := vec_zip scbwv_exprvars (sac_types scbwv_sac Γ atypes)
-  ; scbwv_ξ         := fun ξ lev =>  update_ξ (weakLT'○ξ) (vec2list
-                                        (vec_map (fun x => ((fst x),(snd x @@ weakL' lev))) scbwv_varstypes))
+  { scbwv_sac               :  @StrongAltCon tc
+  ; scbwv_exprvars          :  vec VV (sac_numExprVars scbwv_sac)
+  ; scbwv_exprvars_distinct :  distinct (vec2list scbwv_exprvars)
+  ; scbwv_varstypes         := vec_zip scbwv_exprvars (sac_types scbwv_sac Γ atypes)
+  ; scbwv_ξ                 := fun ξ lev =>  update_ξ (weakLT'○ξ) (weakL' lev) (vec2list scbwv_varstypes)
   }.
   Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
   Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.
@@ -38,8 +38,8 @@ Section HaskStrong.
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
   | ELit   : ∀ Γ Δ ξ lit   l,                                                                        Expr Γ Δ ξ (literalType lit@@l)
   | EApp   : ∀ Γ Δ ξ t1 t2 l,        Expr Γ Δ ξ (t2--->t1 @@ l)   -> Expr Γ Δ ξ (t2 @@ l)         -> Expr Γ Δ ξ (t1 @@ l)
-  | ELam   : ∀ Γ Δ ξ t1 t2 l ev,              Expr Γ Δ (update_ξ ξ ((ev,t1@@l)::nil)) (t2@@l)     -> Expr Γ Δ ξ (t1--->t2@@l)
-  | ELet   : ∀ Γ Δ ξ tv t  l ev,Expr Γ Δ ξ (tv@@l)->Expr Γ Δ (update_ξ ξ ((ev,tv@@l)::nil))(t@@l) -> Expr Γ Δ ξ (t@@l)
+  | ELam   : ∀ Γ Δ ξ t1 t2 l ev,              Expr Γ Δ (update_ξ ξ l ((ev,t1)::nil)) (t2@@l)      -> Expr Γ Δ ξ (t1--->t2@@l)
+  | ELet   : ∀ Γ Δ ξ tv t  l ev,Expr Γ Δ ξ (tv@@l)->Expr Γ Δ (update_ξ ξ l ((ev,tv)::nil))(t@@l)  -> Expr Γ Δ ξ (t@@l)
   | EEsc   : ∀ Γ Δ ξ ec t  l,     Expr Γ Δ ξ (<[ ec |- t ]> @@ l)                                 -> Expr Γ Δ ξ (t @@ (ec::l))
   | EBrak  : ∀ Γ Δ ξ ec t  l,     Expr Γ Δ ξ (t @@ (ec::l))                                       -> Expr Γ Δ ξ (<[ ec |- t ]> @@ l)
   | ECast  : forall Γ Δ ξ t1 t2 (γ:HaskCoercion Γ Δ (t1 ∼∼∼ t2)) l,
@@ -61,7 +61,8 @@ Section HaskStrong.
                                    (weakLT' (tbranches@@l)) } ->
                Expr Γ Δ ξ (tbranches @@ l)
 
-  | ELetRec  : ∀ Γ Δ ξ l τ vars, let ξ' := update_ξ ξ (map (fun x => ((fst x),(snd x @@ l))) (leaves vars)) in
+  | ELetRec  : ∀ Γ Δ ξ l τ vars,
+    let ξ' := update_ξ ξ l (leaves vars) in
     ELetRecBindings Γ Δ ξ'     l vars ->
     Expr            Γ Δ ξ' (τ@@l) ->
     Expr            Γ Δ ξ  (τ@@l)
@@ -69,7 +70,7 @@ Section HaskStrong.
   (* can't avoid having an additional inductive: it is a tree of Expr's, each of whose ξ depends on the type of the entire tree *)
   with ELetRecBindings : ∀ Γ, CoercionEnv Γ -> (VV -> LeveledHaskType Γ ★) -> HaskLevel Γ -> Tree ??(VV*HaskType Γ ★) -> Type :=
   | ELR_nil    : ∀ Γ Δ ξ l  ,                                                                 ELetRecBindings Γ Δ ξ l []
-  | ELR_leaf   : ∀ Γ Δ ξ l v,                                Expr Γ Δ ξ (unlev (ξ v) @@ l) -> ELetRecBindings Γ Δ ξ l [(v,unlev (ξ v))]
+  | ELR_leaf   : ∀ Γ Δ ξ l v t,                                        Expr Γ Δ ξ (t @@ l) -> ELetRecBindings Γ Δ ξ l [(v,t)]
   | ELR_branch : ∀ Γ Δ ξ l t1 t2, ELetRecBindings Γ Δ ξ l t1 -> ELetRecBindings Γ Δ ξ l t2 -> ELetRecBindings Γ Δ ξ l (t1,,t2)
   .
 

@@ -230,7 +230,6 @@ Section core2proof.
 (*
     Definition TInt : HaskType nil ★.
       assert (tyConKind' intPrimTyCon = ★).
-        admit.
         rewrite <- H.
         unfold HaskType; intros.
         apply TCon.

@@ -546,7 +546,7 @@ Definition weakExprToStrongExpr : forall
     | WELam   ev ebody                  => weakTypeToTypeOfKind φ ev ★ >>= fun tv =>
                                              weakTypeOfWeakExpr ebody >>= fun tbody =>
                                                weakTypeToTypeOfKind φ tbody ★ >>= fun tbody' =>
-                                                 let ξ' := update_ξ ξ (((ev:CoreVar),tv@@lev)::nil) in
+                                                 let ξ' := update_ξ ξ lev (((ev:CoreVar),tv)::nil) in
                                                  let ig' := update_ig ig ((ev:CoreVar)::nil) in
                                                    weakExprToStrongExpr Γ Δ φ ψ ξ' ig' tbody' lev ebody >>= fun ebody' =>
                                                      castExpr we "WELam" (τ@@lev) (ELam Γ Δ ξ tv tbody' lev ev ebody')
@@ -570,7 +570,7 @@ Definition weakExprToStrongExpr : forall
 
     | WELet   v ve  ebody               => weakTypeToTypeOfKind φ v ★  >>= fun tv =>
                                              weakExprToStrongExpr Γ Δ φ ψ ξ ig tv lev ve >>= fun ve' =>
-                                               weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ (((v:CoreVar),tv@@lev)::nil))
+                                               weakExprToStrongExpr Γ Δ φ ψ (update_ξ ξ lev (((v:CoreVar),tv)::nil))
                                                     (update_ig ig ((v:CoreVar)::nil)) τ lev ebody
                                                >>= fun ebody' =>
                                                  OK (ELet _ _ _ tv _ lev (v:CoreVar) ve' ebody')
@@ -631,7 +631,7 @@ Definition weakExprToStrongExpr : forall
                                                        (ECast Γ Δ ξ t1' t2' (weakCoercionToHaskCoercion _ _ _ co) lev e')
 
     | WELetRec rb   e                   =>
-      let ξ' := update_ξ ξ (map (fun x => ((fst x),(snd x @@ lev))) _) in
+      let ξ' := update_ξ ξ lev _ in
       let ig' := update_ig ig (map (fun x:(WeakExprVar*_) => (fst x):CoreVar) (leaves rb)) in
       let binds := 
         (fix binds (t:Tree ??(WeakExprVar * WeakExpr))
@@ -664,7 +664,8 @@ Definition weakExprToStrongExpr : forall
                         mkStrongAltConPlusJunk' tc ac >>= fun sac =>
                           list2vecOrFail (map (fun ev:WeakExprVar => ev:CoreVar) exprvars) _ (fun _ _ => "WECase")
                           >>= fun exprvars' =>
-                            let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' in
+                            (let case_pf := tt in _) >>= fun pf =>
+                            let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' pf in
                               weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ)
                               (sacpj_ψ sac _ _ avars' ψ)
                               (scbwv_ξ scb ξ lev)
@@ -679,7 +680,7 @@ Definition weakExprToStrongExpr : forall
 
                     weakExprToStrongExpr Γ Δ φ ψ ξ ig (caseType tc avars') lev escrut >>= fun escrut' =>
                       castExpr we "ECase" (τ@@lev) (ECase Γ Δ ξ lev tc tbranches' avars' escrut' tree)
-    end)).
+    end)); try clear binds.
 
     destruct case_some.
     apply (addErrorMessage "case_some").
@@ -693,7 +694,18 @@ Definition weakExprToStrongExpr : forall
       destruct e''; try apply (Error error_message).
       apply OK.
       apply ELR_leaf.
+      unfold ξ'.
+      simpl.
+      induction (leaves (varsTypes rb φ)).
+        simpl; auto.
+        destruct (ξ c).
+        simpl.
       apply e1.
+
+    destruct case_pf.
+      set (distinct_decidable (vec2list exprvars')) as dec.
+      destruct dec; [ idtac | apply (Error "malformed HaskWeak: case branch with variables repeated") ].
+      apply OK; auto.
 
     destruct case_case.
       exists scb.

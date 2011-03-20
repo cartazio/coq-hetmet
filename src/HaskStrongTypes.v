@@ -385,13 +385,35 @@ Notation "a ∼∼∼ b" := (@mkHaskCoercionKind _ _ a b) (at level 18).
 Fixpoint update_ξ
   `{EQD_VV:EqDecidable VV}{Γ}
    (ξ:VV -> LeveledHaskType Γ ★)
-   (vt:list (VV * LeveledHaskType Γ ★))
+   (lev:HaskLevel Γ)
+   (vt:list (VV * HaskType Γ ★))
    : VV -> LeveledHaskType Γ ★ :=
   match vt with
     | nil => ξ
-    | (v,τ)::tl => fun v' => if eqd_dec v v' then τ else (update_ξ ξ tl) v'
+    | (v,τ)::tl => fun v' => if eqd_dec v v' then τ @@ lev else (update_ξ ξ lev tl) v'
   end.
 
+Lemma update_ξ_lemma0 `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:list (VV*_)) v,
+  not (In v (map (@fst _ _) varstypes)) ->
+  (update_ξ ξ lev varstypes) v = ξ v.
+  intros.
+  induction varstypes.
+  reflexivity.
+  simpl.
+  destruct a.
+  destruct (eqd_dec v0 v).
+  subst.
+  simpl in  H.
+  assert False. 
+  apply H.
+  auto.
+  inversion H0.
+  apply IHvarstypes.
+  unfold not; intros.
+  apply H.
+  simpl.
+  auto.
+  Defined.
 
 
 (***************************************************************************************************)

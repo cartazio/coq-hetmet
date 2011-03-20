@@ -109,7 +109,7 @@ HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->
 | RAbsCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) σ l,
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ @@ l]]
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
-| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂, Rule [Γ > Δ > Σ₁,,τ₂ |- [τ₁],,τ₂ ] [Γ > Δ > Σ₁ |- [τ₁] ]
+| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- ([τ₁],,τ₂)@@@lev ] [Γ > Δ > Σ₁ |- [τ₁@@lev] ]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
   (alts:Tree ??(@ProofCaseBranch tc Γ Δ lev tbranches avars)),
                    Rule

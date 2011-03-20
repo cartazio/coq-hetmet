@@ -184,7 +184,7 @@ Section ToLatex.
       | RApp          _ _ _ _ _ _ _     => "App"
       | RLet          _ _ _ _ _ _ _     => "Let"
       | RBindingGroup _ _ _ _ _ _       => "RBindingGroup"
-      | RLetRec       _ _ _ _ _         => "LetRec"
+      | RLetRec       _ _ _ _ _ _       => "LetRec"
       | RCase         _ _ _ _ _ _ _ _   => "Case"
       | RBrak         _ _ _ _ _ _       => "Brak"
       | REsc          _ _ _ _ _ _       => "Esc"

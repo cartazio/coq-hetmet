@@ -194,7 +194,7 @@ Section HaskStrongToWeak.
     match elrb as E in ELetRecBindings G D X L V
        return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> UniqM (Tree ??(WeakExprVar * WeakExpr)) with
     | ELR_nil    _ _ _ _           => fun ite => return []
-    | ELR_leaf   _ _ ξ' cv v e     => fun ite => bind t'  = typeToWeakType (unlev (ξ' v)) ite
+    | ELR_leaf   _ _ ξ' cv v t e   => fun ite => bind t'  = typeToWeakType t ite
                                                ; bind e'  = exprToWeakExpr χ e ite
                                                ; bind v'  = match χ v with Error s => failM s | OK y => return y end
                                                ; return [(v',e')]
