@@ -322,6 +322,50 @@ Inductive distinct {T:Type} : list T -> Prop :=
 | distinct_nil  : distinct nil
 | distinct_cons : forall a ax, (@In _ a ax -> False) -> distinct ax -> distinct (a::ax).
 
+Lemma in_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (v:VV)(lv:list VV), sumbool (In v lv) (not (In v lv)).
+  intros.
+  induction lv.
+  right.
+  unfold not.
+  intros.
+  inversion H.
+  destruct IHlv.
+  left.
+  simpl.
+  auto.
+  set (eqd_dec v a) as dec.
+  destruct dec.
+  subst.
+  left; simpl; auto.
+  right.
+  unfold not; intros.
+  destruct H.
+  subst.
+  apply n0; auto.
+  apply n.
+  apply H.
+  Defined.
+
+Lemma distinct_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (lv:list VV), sumbool (distinct lv) (not (distinct lv)).
+  intros.
+  induction lv.
+  left; apply distinct_nil.
+  destruct IHlv.
+  set (in_decidable a lv) as dec.
+  destruct dec.
+  right; unfold not; intros.
+  inversion H.
+  subst.
+  apply H2; auto.
+  left.
+  apply distinct_cons; auto.
+  right.
+  unfold not; intros.
+  inversion H.
+  subst.
+  apply n; auto.
+  Defined.
+
 Lemma map_preserves_length {A}{B}(f:A->B)(l:list A) : (length l) = (length (map f l)).
   induction l; auto.
   simpl.
