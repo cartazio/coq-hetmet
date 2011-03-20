@@ -695,8 +695,9 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
 
 Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
   forall scb:StrongCaseBranchWithVVs _ _ tc atypes,
-    forall l ξ, vec_map (scbwv_ξ scb ξ l) (scbwv_exprvars scb) =
-                                 vec_map (fun t => t @@ weakL' l) (sac_types (scbwv_sac scb) _ atypes).
+    forall l ξ,
+      vec2list (vec_map (scbwv_ξ scb ξ l) (scbwv_exprvars scb)) =
+      vec2list (vec_map (fun t => t @@ weakL' l) (sac_types (scbwv_sac scb) _ atypes)).
   intros.
   unfold scbwv_ξ.
   unfold scbwv_varstypes.
@@ -716,7 +717,6 @@ Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
   rewrite leaves_unleaves in q'.
   rewrite vec2list_map_list2vec in q'.
   rewrite vec2list_map_list2vec in q'.
-  apply vec2list_injective.
   apply q'.
   rewrite fst_zip.
   apply scbwv_exprvars_distinct.

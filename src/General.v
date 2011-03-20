@@ -876,12 +876,19 @@ Ltac eqd_dec_refl X :=
   destruct (eqd_dec X X) as [eqd_dec1 | eqd_dec2];
     [ clear eqd_dec1 | set (eqd_dec2 (refl_equal _)) as eqd_dec2'; inversion eqd_dec2' ].
 
-Lemma vec2list_injective : forall T n (v1 v2:vec T n), vec2list v1 = vec2list v2 -> v1 = v2.
-  admit.
-  Defined.
-
 Lemma unleaves_injective : forall T (t1 t2:list T), unleaves t1 = unleaves t2 -> t1 = t2.
-  admit.
+  intros T.
+  induction t1; intros.
+  destruct t2.
+  auto.
+  inversion H.
+  destruct t2.
+  inversion H.
+  simpl in H.
+  inversion H.
+  set (IHt1 _ H2) as q.
+  rewrite q.
+  reflexivity.
   Qed.
 
 Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
