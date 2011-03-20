@@ -61,9 +61,270 @@ Context {VV:Type}{eqd_vv:EqDecidable VV}.
       | nil     => Some v
       | v'::lv' => if eqd_dec v v' then None else dropVar lv' v
     end.
+
+Fixpoint mapOptionTree' {a b:Type}(f:a->??b)(t:@Tree ??a) : @Tree ??b :=
+  match t with 
+    | T_Leaf None     => T_Leaf None
+    | T_Leaf (Some x) => T_Leaf (f x)
+    | T_Branch l r    => T_Branch (mapOptionTree' f l) (mapOptionTree' f r)
+  end.
+
   (* later: use mapOptionTreeAndFlatten *)
   Definition stripOutVars (lv:list VV) : Tree ??VV -> Tree ??VV :=
-    mapTree (fun x => match x with None => None | Some vt => dropVar lv vt end).
+    mapOptionTree' (dropVar lv).
+
+Lemma In_both : forall T (l1 l2:list T) a, In a l1 -> In a (app l1 l2).
+  intros T l1.
+  induction l1; intros.
+  inversion H.
+  simpl.
+  inversion H; subst.
+  left; auto.
+  right.
+  apply IHl1.
+  apply H0.
+  Qed.
+
+Lemma In_both' : forall T (l1 l2:list T) a, In a l2 -> In a (app l1 l2).
+  intros T l1.
+  induction l1; intros.
+  apply H.
+  rewrite <- app_comm_cons.
+  simpl.
+  right.
+  apply IHl1.
+  auto.
+  Qed.
+
+Lemma distinct_app : forall T (l1 l2:list T), distinct (app l1 l2) -> distinct l1 /\ distinct l2.
+  intro T.
+  intro l1.
+  induction l1; intros.
+  split; auto.
+  apply distinct_nil.
+  simpl in H.
+  inversion H.
+  subst.
+  set (IHl1 _ H3) as H3'.
+  destruct H3'.
+  split; auto.
+  apply distinct_cons; auto.
+  intro.
+  apply H2.
+  apply In_both; auto.
+  Qed.
+
+Lemma mapOptionTree'_compose : forall T A B (t:Tree ??T) (f:T->??A)(g:A->??B),
+  mapOptionTree' g (mapOptionTree' f t)
+  = 
+  mapOptionTree' (fun x => match f x with None => None | Some x => g x end) t.
+  intros; induction t.
+    destruct a; auto.
+    simpl.
+    destruct (f t); reflexivity.
+    simpl.
+    rewrite <- IHt1.
+    rewrite <- IHt2.
+    reflexivity.
+    Qed.
+
+Lemma strip_lemma a x t : stripOutVars (a::x) t = stripOutVars (a::nil) (stripOutVars x t).
+  unfold stripOutVars.
+  rewrite mapOptionTree'_compose.
+  simpl.
+  induction t.
+  destruct a0.
+  simpl.
+  induction x.
+  reflexivity.
+  simpl.
+  destruct (eqd_dec v a0).
+    destruct (eqd_dec v a); reflexivity.
+    apply IHx.
+  reflexivity.
+  simpl.
+  rewrite <- IHt1.
+  rewrite <- IHt2.
+  reflexivity.
+  Qed.
+
+Lemma strip_twice_lemma x y t : stripOutVars x (stripOutVars y t) = stripOutVars (app y x) t.
+(*
+  induction x.
+  simpl.
+  unfold stripOutVars.
+  simpl.
+  rewrite mapOptionTree'_compose.
+  induction t.
+  destruct a; try reflexivity.
+  simpl.
+  destruct (dropVar y v); reflexivity.
+  simpl.
+  rewrite IHt1.
+  rewrite IHt2.
+  reflexivity.
+  rewrite strip_lemma.
+  rewrite IHx.
+  rewrite <- strip_lemma.
+  rewrite app_comm_cons.
+  reflexivity.
+*)
+admit.
+  Qed.
+
+Lemma strip_distinct a y : (not (In a (leaves y))) -> stripOutVars (a :: nil) y = y.
+  intros.
+  induction y.
+  destruct a0; try reflexivity.
+  simpl in *.
+  unfold stripOutVars.
+  simpl.
+  destruct (eqd_dec v a).
+  subst.
+  assert False.
+  apply H.
+  left; auto.
+  inversion H0.
+  auto.
+  rewrite <- IHy1 at 2.
+  rewrite <- IHy2 at 2.
+  reflexivity.
+  unfold not; intro.
+  apply H.
+  eapply In_both' in H0.
+  apply H0.
+  unfold not; intro.
+  apply H.
+  eapply In_both in H0.
+  apply H0.
+  Qed.
+
+Lemma drop_distinct x v : (not (In v x)) -> dropVar x v = Some v.
+  intros.
+  induction x.
+  reflexivity.
+  simpl.
+  destruct (eqd_dec v a).
+  subst.
+  assert False. apply H.
+  simpl; auto.
+  inversion H0.
+  apply IHx.
+  unfold not.
+  intro.
+  apply H.
+  simpl; auto.
+  Qed.
+
+Lemma in3 {T}(a b c:list T) q : In q (app a c) -> In q (app (app a b) c).
+  induction a; intros.
+  simpl.
+  simpl in H.
+  apply In_both'.
+  auto.
+  rewrite <- ass_app.
+  rewrite <- app_comm_cons.
+  simpl.
+  rewrite ass_app.
+  rewrite <- app_comm_cons in H.
+  inversion H.
+  left; auto.
+  right.
+  apply IHa.
+  apply H0.
+  Qed.
+
+Lemma distinct3 {T}(a b c:list T) : distinct (app (app a b) c) -> distinct (app a c).
+  induction a; intros.
+  simpl in *.
+  apply distinct_app in H; auto.
+  destruct H; auto.
+  rewrite <- app_comm_cons.
+  apply distinct_cons.
+  rewrite <- ass_app in H.
+  rewrite <- app_comm_cons in H.
+  inversion H.
+  subst.
+  intro q.
+  apply H2.
+  rewrite ass_app.
+  apply in3.
+  auto.
+  apply IHa.
+  rewrite <- ass_app.
+  rewrite <- ass_app in H.
+  rewrite <- app_comm_cons in H.
+  inversion H.
+  subst.
+  auto.
+  Qed.
+
+Lemma strip_distinct' y : forall x, distinct (app x (leaves y)) -> stripOutVars x y = y.
+  induction x; intros.
+  simpl in H.
+  unfold stripOutVars.
+  simpl.
+  induction y; try destruct a; auto.
+  simpl.
+  rewrite IHy1.
+  rewrite IHy2.
+  reflexivity.
+  simpl in H.
+  apply distinct_app in H; destruct H; auto.
+  apply distinct_app in H; destruct H; auto.
+  rewrite <- app_comm_cons in H.
+  inversion H; subst.
+  set (IHx H3) as qq.
+  rewrite strip_lemma.
+  rewrite IHx.
+  apply strip_distinct.
+  unfold not; intros.
+  apply H2.
+  apply In_both'.
+  auto.
+  auto.
+  Qed.
+
+Lemma updating_stripped_tree_is_inert'
+  {Γ} lev
+  (ξ:VV -> LeveledHaskType Γ ★)
+  lv tree2 :
+    mapOptionTree (update_ξ ξ lev lv) (stripOutVars (map (@fst _ _) lv) tree2)
+  = mapOptionTree ξ (stripOutVars (map (@fst _ _) lv) tree2).
+  induction tree2.
+  destruct a.
+  simpl.
+  induction lv.
+  reflexivity.
+  simpl.
+  destruct a.
+  simpl.
+  set (eqd_dec v v0) as q.
+  destruct q.
+  auto.
+  set (dropVar (map (@fst _ _) lv) v) as b in *.
+  destruct b.
+  inversion IHlv.
+  admit.
+  auto.
+  reflexivity.
+  simpl.
+  unfold stripOutVars in *.
+  rewrite <- IHtree2_1.
+  rewrite <- IHtree2_2.
+  reflexivity.
+  Qed.
+
+Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)),
+  distinct (map (@fst _ _) (leaves varstypes)) ->
+  mapOptionTree (update_ξ ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) =
+  mapOptionTree (fun t => t@@ lev) (mapOptionTree (@snd _ _) varstypes).
+  admit.
+  Qed.
+
+
+
+
 
 Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ??VV :=
   match exp as E in Expr Γ Δ ξ τ with
@@ -157,10 +418,6 @@ Lemma stripping_nothing_is_inert
     rewrite <- IHtree2 at 2.
     reflexivity.
     Qed.
-
-Ltac eqd_dec_refl X :=
-  destruct (eqd_dec X X) as [eqd_dec1 | eqd_dec2];
-    [ clear eqd_dec1 | set (eqd_dec2 (refl_equal _)) as eqd_dec2'; inversion eqd_dec2' ].
 
 Definition arrangeContext 
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
@@ -289,41 +546,16 @@ Definition arrangeContextAndWeaken v ctx Γ Δ τ ξ :
   refine (ext_left _ _ _ (nd_rule (RWeak _ _))).
   Defined.
 
-Lemma strip_lemma a x t : stripOutVars (a::x) t = stripOutVars (a::nil) (stripOutVars x t).
-  unfold stripOutVars.
-  rewrite <- mapTree_compose.
-  induction t; try destruct a0.
+Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v tree t lev :
+      mapOptionTree (update_ξ ξ lev ((v,t)::nil)) (stripOutVars (v :: nil) tree)
+    = mapOptionTree ξ (stripOutVars (v :: nil) tree).
+  set (@updating_stripped_tree_is_inert' Γ lev ξ ((v,t)::nil)) as p.
+  rewrite p.
   simpl.
-  induction x.
-    reflexivity.
-    admit.
-  subst.
-  reflexivity.
-  simpl in *.
-  rewrite <- IHt1.
-  rewrite <- IHt2.
   reflexivity.
   Qed.
 
-Lemma strip_twice_lemma x y t : stripOutVars x (stripOutVars y t) = stripOutVars (app y x) t.
-  induction x.
-  simpl.
-  admit.
-  rewrite strip_lemma.
-  rewrite IHx.
-  rewrite <- strip_lemma.
-  admit.
-  Qed.
-
-Lemma distinct_app1 : forall T (l1 l2:list T), distinct (app l1 l2) -> distinct l1.
-  admit.
-  Qed.
-
-Lemma distinct_app2 : forall T (l1 l2:list T), distinct (app l1 l2) -> distinct l2.
-  admit.
-  Qed.
-
-Lemma strip_distinct x y : distinct (app (leaves y) x) -> stripOutVars x y = y.
+Lemma cheat : forall {T}(a b:list T), distinct (app a b) -> distinct (app b a).
   admit.
   Qed.
 
@@ -362,76 +594,20 @@ Definition arrangeContextAndWeaken'' Γ Δ ξ v : forall ctx z,
     simpl in IHv2'.
     fold (mapOptionTree ξ) in IHv2'.
     fold X in IHv2'.
-    set (nd_comp (IHv1 _ _ (distinct_app1 _ _ _ H)) (IHv2' (distinct_app2 _ _ _ H))) as qq.
+    set (distinct_app _ _ _ H) as H'.
+    destruct H' as [H1 H2].
+    set (nd_comp (IHv1 _ _ H1) (IHv2' H2)) as qq.
     eapply nd_comp.
       apply qq.
       clear qq IHv2' IHv2 IHv1.
       rewrite strip_twice_lemma.
 
-      rewrite (strip_distinct (leaves v2) v1).
+      rewrite (strip_distinct' v1 (leaves v2)).
         apply nd_rule.
         apply RCossa.
+        apply cheat.
         auto.
     Defined.
-
-Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v tree t lev :
-      mapOptionTree (update_ξ ξ lev ((v,t)::nil)) (stripOutVars (v :: nil) tree)
-    = mapOptionTree ξ (stripOutVars (v :: nil) tree).
-  induction tree; simpl in *; try reflexivity; auto.
-
-  unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *; fold (mapOptionTree (update_ξ ξ lev ((v,t)::nil))) in *.
-  destruct a; simpl; try reflexivity.
-  unfold update_ξ.
-  simpl.
-  unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
-  unfold update_ξ.
-  unfold dropVar.
-  simpl.
-  set (eqd_dec v v0) as q.
-  assert (q=eqd_dec v v0).
-    reflexivity.
-  destruct q.
-(*
-  reflexivity.
-  rewrite <- H.
-  reflexivity.
-  auto.
-  unfold mapOptionTree.
-  unfold mapOptionTree in IHtree1.
-  unfold mapOptionTree in IHtree2.
-  simpl in *.
-  simpl in IHtree1.
-  fold (stripOutVars (v::nil)).
-  rewrite <- IHtree1.
-  rewrite <- IHtree2.
-  reflexivity.
-*)
-admit.
-admit.
-admit.
-  Qed.
-
-
-Lemma updating_stripped_tree_is_inert'
-  {Γ} lev
-  (ξ:VV -> LeveledHaskType Γ ★)
-  tree tree2 :
-    mapOptionTree (update_ξ ξ lev (leaves tree)) (stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) tree2)
-  = mapOptionTree ξ (stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) tree2).
-  admit.
-  Qed.
-
-Lemma updating_stripped_tree_is_inert''' : forall Γ tc ξ l t atypes x,
-         mapOptionTree (scbwv_ξ(Γ:=Γ)(tc:=tc)(atypes:=atypes) x ξ l)
-           (stripOutVars (vec2list (scbwv_exprvars x)) t)
-             =
-         mapOptionTree (weakLT' ○ ξ)
-           (stripOutVars (vec2list (scbwv_exprvars x)) t).
-  intros.
-  unfold scbwv_ξ.
-  unfold scbwv_varstypes.
-  admit.
-  Qed.
 
 (* IDEA: use multi-conclusion proofs instead *)
 Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ lev tree -> Type := 
@@ -447,7 +623,7 @@ Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ l
 Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
   LetRecSubproofs Γ Δ ξ lev tree branches ->
     ND Rule [] [ Γ > Δ > mapOptionTree ξ (eLetRecContext branches)
-      |- eLetRecTypes branches @@@ lev ].
+      |- (mapOptionTree (@snd _ _) tree) @@@ lev ].
   intro X; induction X; intros; simpl in *.
     apply nd_rule.
       apply REmptyGroup.
@@ -462,6 +638,7 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
 
 Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     forall branches body,
+    distinct (leaves (mapOptionTree (@fst _ _) tree)) ->
     ND Rule [] [Γ > Δ > mapOptionTree (update_ξ ξ lev (leaves tree)) (expr2antecedent body) |- [τ @@ lev]] -> 
     LetRecSubproofs Γ Δ (update_ξ ξ lev (leaves tree)) lev tree branches ->
     ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree branches body)) |- [τ @@ lev]].
@@ -469,8 +646,14 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   (* NOTE: how we interpret stuff here affects the order-of-side-effects *)
   intro branches.
   intro body.
+  intro disti.
   intro pf.
   intro lrsp.
+
+  rewrite mapleaves in disti.
+  set (@update_ξ_lemma _ Γ ξ lev tree disti) as ξlemma.
+    rewrite <- mapOptionTree_compose in ξlemma.
+
   set ((update_ξ ξ lev (leaves tree))) as ξ' in *.
   set ((stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) (eLetRecContext branches))) as ctx.
   set (mapOptionTree (@fst _ _) tree) as pctx.
@@ -485,18 +668,16 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   eapply UND_to_ND in q'.
 
   unfold ξ' in *.
-  set (@updating_stripped_tree_is_inert') as zz.
+  set (@updating_stripped_tree_is_inert' Γ lev ξ (leaves tree)) as zz.
+  rewrite <- mapleaves in zz.
   rewrite zz in q'.
   clear zz.
   clear ξ'.
   Opaque stripOutVars.
   simpl.
   rewrite <- mapOptionTree_compose in q'.
-  cut ((mapOptionTree (update_ξ ξ lev (leaves tree) ○ (@fst _ _)) tree) = (mapOptionTree (@snd _ _) tree @@@ lev)).
-  intro H'.
-  rewrite <- H'.
+  rewrite <- ξlemma.
   eapply nd_comp; [ idtac | apply q' ].
-  clear H'.
   clear q'.
   simpl.
 
@@ -504,39 +685,13 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     eapply nd_comp; [ idtac | eapply nd_rule; apply RBindingGroup ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod; auto.
-    cut ((eLetRecTypes branches @@@ lev) = mapOptionTree (update_ξ ξ lev (leaves tree) ○ (@fst _ _)) tree).
-      intro H''.
-      rewrite <- H''.
+    rewrite ξlemma.
     apply q.
-  admit.
-  admit.
-  admit.
-  Defined.
+    clear q'.
 
-Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:list (VV*_)),
-  distinct (map (@fst _ _) varstypes) ->
-  map (update_ξ ξ lev varstypes) (map (@fst _ _) varstypes) =
-  map (fun t => t@@ lev) (map (@snd _ _) varstypes).
-  intros.
-  induction varstypes.
-  reflexivity.
-  destruct a.
-  inversion H.
-  subst.
-  admit.
-  Qed.
-
-Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
-  admit.
-  Qed.
-
-Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
-  admit.
-  Defined.
-
-Lemma vec2list_injective : forall T n (v1 v2:vec T n), vec2list v1 = vec2list v2 -> v1 = v2.
-  admit.
-  Defined.
+  rewrite <- mapleaves in disti.
+    apply disti.
+    Defined.
 
 Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
   forall scb:StrongCaseBranchWithVVs _ _ tc atypes,
@@ -546,15 +701,24 @@ Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
   unfold scbwv_ξ.
   unfold scbwv_varstypes.
   set (@update_ξ_lemma _ _ (weakLT' ○ ξ) (weakL' l)
-    (vec2list (vec_zip (scbwv_exprvars scb) (sac_types (scbwv_sac scb) Γ atypes)))) as q.
-  rewrite vec2list_map_list2vec in q.
-  rewrite fst_zip in q.
-  rewrite vec2list_map_list2vec in q.
-  rewrite vec2list_map_list2vec in q.
-  rewrite snd_zip in q.
-  rewrite vec2list_map_list2vec in q.
+    (unleaves (vec2list (vec_zip (scbwv_exprvars scb) (sac_types (scbwv_sac scb) Γ atypes))))
+    ) as q.
+  rewrite <- mapleaves' in q.
+  rewrite <- mapleaves' in q.
+  rewrite <- mapleaves' in q.
+  rewrite <- mapleaves' in q.
+  set (fun z => unleaves_injective _ _ _ (q z)) as q'.
+  rewrite vec2list_map_list2vec in q'.
+  rewrite fst_zip in q'.
+  rewrite vec2list_map_list2vec in q'.
+  rewrite vec2list_map_list2vec in q'.
+  rewrite snd_zip in q'.
+  rewrite leaves_unleaves in q'.
+  rewrite vec2list_map_list2vec in q'.
+  rewrite vec2list_map_list2vec in q'.
   apply vec2list_injective.
-  apply q.
+  apply q'.
+  rewrite fst_zip.
   apply scbwv_exprvars_distinct.
   Qed.
 
@@ -760,18 +924,28 @@ Definition expr2proof  :
       rewrite mapleaves'.
       simpl.
       rewrite <- mapOptionTree_compose.
-      rewrite <- updating_stripped_tree_is_inert''' with (l:=l).
-      replace (vec2list (scbwv_exprvars scbx)) with (leaves (unleaves (vec2list (scbwv_exprvars scbx)))).
+      unfold scbwv_ξ.
       rewrite <- mapleaves'.
       rewrite vec2list_map_list2vec.
       unfold sac_Γ.      
       rewrite <- (scbwv_coherent scbx l ξ).
       rewrite <- vec2list_map_list2vec.
       rewrite mapleaves'.
-      apply arrangeContextAndWeaken''.
+      set (@arrangeContextAndWeaken'') as q.
+      unfold scbwv_ξ.
+      set (@updating_stripped_tree_is_inert' _ (weakL' l) (weakLT' ○ ξ) (vec2list (scbwv_varstypes scbx))) as z.
+      unfold scbwv_varstypes in z.
+      rewrite vec2list_map_list2vec in z.
+      rewrite fst_zip in z.
+      rewrite <- z.
+      clear z.
+      replace (stripOutVars (vec2list (scbwv_exprvars scbx))) with
+        (stripOutVars (leaves (unleaves (vec2list (scbwv_exprvars scbx))))).
+      apply q.
       rewrite leaves_unleaves.
       apply (scbwv_exprvars_distinct scbx).
-      apply leaves_unleaves.
+      rewrite leaves_unleaves.
+      reflexivity.
 
     destruct case_nil.
       apply nd_id0.
@@ -796,6 +970,7 @@ Definition expr2proof  :
       unfold ξ'1 in *.
       clear ξ'1.
       apply letRecSubproofsToND'.
+      admit.
       apply e'.
       apply subproofs.
 

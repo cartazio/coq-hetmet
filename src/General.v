@@ -52,7 +52,7 @@ Fixpoint mapOptionTree {a b:Type}(f:a->b)(t:@Tree ??a) : @Tree ??b :=
   match t with 
     | T_Leaf None     => T_Leaf None
     | T_Leaf (Some x) => T_Leaf (Some (f x))
-    | T_Branch l r => T_Branch (mapOptionTree f l) (mapOptionTree f r)
+    | T_Branch l r    => T_Branch (mapOptionTree f l) (mapOptionTree f r)
   end.
 Fixpoint mapTreeAndFlatten {a b:Type}(f:a->@Tree b)(t:@Tree a) : @Tree b :=
   match t with 
@@ -868,3 +868,26 @@ Coercion FMT       : FreshMonad >-> Funclass.
 
 
 Variable Prelude_error : forall {A}, string -> A.   Extract Inlined Constant Prelude_error => "Prelude.error".
+
+
+
+
+Ltac eqd_dec_refl X :=
+  destruct (eqd_dec X X) as [eqd_dec1 | eqd_dec2];
+    [ clear eqd_dec1 | set (eqd_dec2 (refl_equal _)) as eqd_dec2'; inversion eqd_dec2' ].
+
+Lemma vec2list_injective : forall T n (v1 v2:vec T n), vec2list v1 = vec2list v2 -> v1 = v2.
+  admit.
+  Defined.
+
+Lemma unleaves_injective : forall T (t1 t2:list T), unleaves t1 = unleaves t2 -> t1 = t2.
+  admit.
+  Qed.
+
+Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
+  admit.
+  Qed.
+
+Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
+  admit.
+  Defined.
