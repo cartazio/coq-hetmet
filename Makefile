@@ -29,9 +29,6 @@ push: build/CoqPass.hs
 	  git commit -m 'update baked-in CoqPass.hs' && \
 	  (git push -f http://git.megacz.com/coq-hetmet.git master:coq-extraction-baked-in; \
 	   git reset HEAD^)
-	make publish
-
-publish:
 	rm -rf .temp
 	mkdir .temp
 	cd .temp; ln -s ../src/*.v .
