@@ -41,6 +41,13 @@ Notation "[ q ]"    := (@T_Leaf (option _) (Some q))            : tree_scope.
 Notation "[ ]"      := (@T_Leaf (option _) None)                : tree_scope.
 Notation "[]"       := (@T_Leaf (option _) None)                : tree_scope.
 
+Fixpoint InT {A} (a:A) (t:Tree ??A) {struct t} : Prop :=
+  match t with
+    | T_Leaf None     => False
+    | T_Leaf (Some x) => x = a
+    | T_Branch b1 b2  => InT a b1 \/ InT a b2
+  end.
+
 Open Scope tree_scope.
 
 Fixpoint mapTree {a b:Type}(f:a->b)(t:@Tree a) : @Tree b :=
@@ -341,6 +348,11 @@ Inductive distinct {T:Type} : list T -> Prop :=
 | distinct_nil  : distinct nil
 | distinct_cons : forall a ax, (@In _ a ax -> False) -> distinct ax -> distinct (a::ax).
 
+Inductive distinctT {T:Type} : Tree ??T -> Prop :=
+| distinctT_nil  : distinctT []
+| distinctT_leaf : forall t, distinctT [t]
+| distinctT_cons : forall t1 t2, (forall v, InT v t1 -> InT v t2 -> False) -> distinctT (t1,,t2).
+
 Lemma in_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (v:VV)(lv:list VV), sumbool (In v lv) (not (In v lv)).
   intros.
   induction lv.
@@ -383,6 +395,10 @@ Lemma distinct_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (lv:list VV), 
   inversion H.
   subst.
   apply n; auto.
+  Defined.
+
+Lemma distinctT_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (lv:Tree ??VV), sumbool (distinctT lv) (not (distinctT lv)).
+  admit.
   Defined.
 
 Lemma map_preserves_length {A}{B}(f:A->B)(l:list A) : (length l) = (length (map f l)).
