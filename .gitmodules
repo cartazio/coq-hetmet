@@ -1,0 +1,3 @@
+[submodule "src/categories"]
+	path = src/categories
+	url = http://git.megacz.com/coq-categories.git/

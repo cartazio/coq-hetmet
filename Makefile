@@ -10,12 +10,16 @@ build/CoqPass.hs: $(allfiles)
 	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
 	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
 
-build/Makefile.coq: $(coqfiles)
+build/Makefile.coq: $(coqfiles) src/categories/src
 	mkdir -p build
 	rm -f build/*.v
 	rm -f build/*.d
-	cd build; ln -s ../src/*.v .
+	cd build; ln -fs `find ../src -name \*.v` .
 	cd build; coq_makefile *.v > Makefile.coq
+
+src/categories/src:
+	git submodule update --init src/categories
+	cd compiler/categories; git checkout master
 
 clean:
 	rm -rf build
