@@ -25,10 +25,10 @@ Require Import HaskProof.
 Require Import HaskCoreToWeak.
 Require Import HaskWeakToStrong.
 Require Import HaskStrongToProof.
-Require Import HaskProofToStrong.
 Require Import HaskProofToLatex.
 Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
+Require Import HaskProofToStrong.
 
 Open Scope string_scope.
 Extraction Language Haskell.

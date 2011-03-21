@@ -50,15 +50,14 @@ Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
   Coercion UJudg2judg : UJudg >-> Judg.
 
 (* information needed to define a case branch in a HaskProof *)
-Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars} :=
-{ pcb_scb            :  @StrongAltCon tc
-; pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
-; pcb_judg           := sac_Γ pcb_scb Γ > sac_Δ pcb_scb Γ avars (map weakCK' Δ)
+Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars}{sac:@StrongAltCon tc} :=
+{ pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
+; pcb_judg           := sac_Γ sac Γ > sac_Δ sac Γ avars (map weakCK' Δ)
                 > (mapOptionTree weakLT' pcb_freevars),,(unleaves (map (fun t => t@@weakL' lev)
-                  (vec2list (sac_types pcb_scb Γ avars))))
+                  (vec2list (sac_types sac Γ avars))))
                 |- [weakLT' (branchtype @@ lev)]
 }.
-Coercion pcb_scb : ProofCaseBranch >-> StrongAltCon.
+(*Coercion pcb_scb : ProofCaseBranch >-> StrongAltCon.*)
 Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
@@ -111,11 +110,11 @@ HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
 | RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- ([τ₁],,τ₂)@@@lev ] [Γ > Δ > Σ₁ |- [τ₁@@lev] ]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
-  (alts:Tree ??(@ProofCaseBranch tc Γ Δ lev tbranches avars)),
+  (alts:Tree ??{ sac : @StrongAltCon tc & @ProofCaseBranch tc Γ Δ lev tbranches avars sac }),
                    Rule
-                       ((mapOptionTree pcb_judg alts),,
+                       ((mapOptionTree (fun x => pcb_judg (projT2 x)) alts),,
                         [Γ > Δ >                                              Σ |- [ caseType tc avars @@ lev ] ])
-                        [Γ > Δ > (mapOptionTreeAndFlatten pcb_freevars alts),,Σ |- [ tbranches         @@ lev ] ]
+                        [Γ > Δ > (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x)) alts),,Σ |- [ tbranches         @@ lev ] ]
 .
 Coercion RURule : URule >-> Rule.
 

@@ -348,15 +348,15 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
    in     stripOutVars (leaves (mapOptionTree (@fst _ _ ) vars)) all_contexts
   | ECase    Γ Δ ξ l tc tbranches atypes e' alts =>
     ((fix varsfromalts (alts:
-               Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc atypes
-                            & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+               Tree ??{ sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
+                            & Expr (sac_Γ sac Γ)
+                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
                                    (scbwv_ξ scb ξ l)
-                                   (weakLT' (tbranches@@l)) }
+                                   (weakLT' (tbranches@@l)) } }
       ): Tree ??VV :=
       match alts with
         | T_Leaf None     => []
-        | T_Leaf (Some h) => stripOutVars (vec2list (scbwv_exprvars (projT1 h))) (expr2antecedent (projT2 h))
+        | T_Leaf (Some h) => stripOutVars (vec2list (scbwv_exprvars (projT1 (projT2 h)))) (expr2antecedent (projT2 (projT2 h)))
         | T_Branch b1 b2  => (varsfromalts b1),,(varsfromalts b2)
       end) alts),,(expr2antecedent e')
 end
@@ -368,15 +368,18 @@ match elrb with
 end.
 
 Definition mkProofCaseBranch {Γ}{Δ}{ξ}{l}{tc}{tbranches}{atypes}
-  (alt: { scb : StrongCaseBranchWithVVs _ _ tc atypes
-                            & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+(alt : { sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
+                            & Expr (sac_Γ sac Γ)
+                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
                                    (scbwv_ξ scb ξ l)
-                                   (weakLT' (tbranches@@l)) })
-  : ProofCaseBranch tc Γ Δ l tbranches atypes.
+                                   (weakLT' (tbranches@@l)) } })
+  : { sac : _ & ProofCaseBranch tc Γ Δ l tbranches atypes sac }.
+  destruct alt.
+  exists x.
   exact
-    {| pcb_scb := projT1 alt
-     ; pcb_freevars := mapOptionTree ξ (stripOutVars (vec2list (scbwv_exprvars (projT1 alt))) (expr2antecedent (projT2 alt)))
+    {| pcb_freevars := mapOptionTree ξ
+      (stripOutVars (vec2list (scbwv_exprvars (projT1 s)))
+        (expr2antecedent (projT2 s)))
      |}.
      Defined.
 
@@ -693,16 +696,16 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     apply disti.
     Defined.
 
-Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
-  forall scb:StrongCaseBranchWithVVs _ _ tc atypes,
+Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _}{sac} :
+  forall scb:StrongCaseBranchWithVVs _ _ tc atypes sac,
     forall l ξ,
       vec2list (vec_map (scbwv_ξ scb ξ l) (scbwv_exprvars scb)) =
-      vec2list (vec_map (fun t => t @@ weakL' l) (sac_types (scbwv_sac scb) _ atypes)).
+      vec2list (vec_map (fun t => t @@ weakL' l) (sac_types sac _ atypes)).
   intros.
   unfold scbwv_ξ.
   unfold scbwv_varstypes.
   set (@update_ξ_lemma _ _ (weakLT' ○ ξ) (weakL' l)
-    (unleaves (vec2list (vec_zip (scbwv_exprvars scb) (sac_types (scbwv_sac scb) Γ atypes))))
+    (unleaves (vec2list (vec_zip (scbwv_exprvars scb) (sac_types sac Γ atypes))))
     ) as q.
   rewrite <- mapleaves' in q.
   rewrite <- mapleaves' in q.
@@ -722,18 +725,28 @@ Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _} :
   apply scbwv_exprvars_distinct.
   Qed.
 
-Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e alts',
-  mapOptionTree ξ (expr2antecedent (ECase Γ Δ ξ l tc tbranches atypes e alts'))
-  = ((mapOptionTreeAndFlatten pcb_freevars (mapOptionTree mkProofCaseBranch alts')),,mapOptionTree ξ  (expr2antecedent e)).
+
+Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
+   (alts':Tree
+            ??{sac : StrongAltCon &
+              {scb : StrongCaseBranchWithVVs VV eqd_vv tc atypes sac &
+              Expr (sac_Γ sac Γ) (sac_Δ sac Γ atypes (weakCK'' Δ))
+                (scbwv_ξ scb ξ l) (weakLT' (tbranches @@  l))}}),
+
+      (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x))
+        (mapOptionTree mkProofCaseBranch alts'))
+    ,,
+    mapOptionTree ξ  (expr2antecedent e) =
+  mapOptionTree ξ
+        (expr2antecedent (ECase Γ Δ ξ l tc tbranches atypes e alts')).
   intros.
   simpl.
   Ltac hack := match goal with [ |- ?A,,?B = ?C,,?D ] => assert (A=C) end.
   hack.
   induction alts'.
-  simpl.
-  destruct a.
+  destruct a; simpl.
+  destruct s; simpl.
   unfold mkProofCaseBranch.
-  simpl.
   reflexivity.
   reflexivity.
   simpl.
@@ -743,7 +756,6 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e alts',
   rewrite H.
   reflexivity.
   Qed.
-
 
 Definition expr2proof  :
   forall Γ Δ ξ τ (e:Expr Γ Δ ξ τ),
@@ -783,18 +795,19 @@ Definition expr2proof  :
     | ECase    Γ Δ ξ l tc tbranches atypes e alts' => 
       let dcsp :=
         ((fix mkdcsp (alts:
-               Tree ??{ scb : StrongCaseBranchWithVVs _ _ tc atypes
-                            & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+               Tree ??{ sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
+                            & Expr (sac_Γ sac Γ)
+                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
                                    (scbwv_ξ scb ξ l)
-                                   (weakLT' (tbranches@@l)) })
-          : ND Rule [] (mapOptionTree (pcb_judg ○ mkProofCaseBranch) alts) :=
-        match alts as ALTS return ND Rule [] (mapOptionTree (pcb_judg ○ mkProofCaseBranch) ALTS) with
+                                   (weakLT' (tbranches@@l)) } })
+          : ND Rule [] (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) alts) :=
+        match alts as ALTS return ND Rule [] 
+          (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) ALTS) with
           | T_Leaf None      => let case_nil := tt in _
           | T_Branch b1 b2   => let case_branch := tt in (fun b1' b2' => _) (mkdcsp b1) (mkdcsp b2)
           | T_Leaf (Some x)  =>
-            match x as X return ND Rule [] [(pcb_judg ○ mkProofCaseBranch) X] with
-            existT scbx ex =>
+            match x as X return ND Rule [] [pcb_judg (projT2 (mkProofCaseBranch X))] with
+            existT sac (existT scbx ex) =>
             (fun e' => let case_leaf := tt in _) (expr2proof _ _ _ _ ex)
         end
         end) alts')
@@ -912,10 +925,6 @@ Definition expr2proof  :
       clear o x alts alts' e.
       eapply nd_comp; [ apply e' | idtac ].
       clear e'.
-      set (existT
-              (fun scb : StrongCaseBranchWithVVs VV eqd_vv tc atypes =>
-               Expr (sac_Γ scb Γ) (sac_Δ scb Γ atypes (weakCK'' Δ))
-                 (scbwv_ξ scb ξ l) (weakLT' (tbranches @@  l))) scbx ex) as stuff.
       set (fun q r x1 x2 y1 y2 => @UND_to_ND q r [q >> r > x1 |- y1] [q >> r > x2 |- y2]).
       simpl in n.
       apply n.
@@ -957,7 +966,8 @@ Definition expr2proof  :
       apply b2'.
 
     destruct case_ECase.
-      rewrite case_lemma.
+    set (@RCase Γ Δ l tc) as q.
+      rewrite <- case_lemma.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RCase ].
       eapply nd_comp; [ apply nd_llecnac | idtac ]; apply nd_prod.
       rewrite <- mapOptionTree_compose.

@@ -656,8 +656,8 @@ Definition weakExprToStrongExpr : forall
             else mkAvars avars (tyConKind tc) φ >>= fun avars' =>
                 weakTypeToTypeOfKind φ tbranches ★  >>= fun tbranches' =>
                   (fix mkTree (t:Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) : ???(Tree
-                      ??{scb : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars' &
-                        Expr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ lev)(weakLT' (tbranches' @@  lev))}) := 
+                      ??{ sac : _ & {scb : StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc avars' sac &
+                        Expr (sac_Γ sac Γ) (sac_Δ sac Γ avars' (weakCK'' Δ))(scbwv_ξ scb ξ lev)(weakLT' (tbranches' @@  lev))}}) := 
                     match t with
                       | T_Leaf None           => OK []
                       | T_Leaf (Some (ac,extyvars,coervars,exprvars,ebranch)) => 
@@ -666,7 +666,7 @@ Definition weakExprToStrongExpr : forall
                           >>= fun exprvars' =>
                             (let case_pf := tt in _) >>= fun pf =>
                             let scb := @Build_StrongCaseBranchWithVVs CoreVar CoreVarEqDecidable tc Γ avars' sac exprvars' pf in
-                              weakExprToStrongExpr (sac_Γ scb Γ) (sac_Δ scb Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ)
+                              weakExprToStrongExpr (sac_Γ sac Γ) (sac_Δ sac Γ avars' (weakCK'' Δ)) (sacpj_φ sac _ φ)
                               (sacpj_ψ sac _ _ avars' ψ)
                               (scbwv_ξ scb ξ lev)
                               (update_ig ig (map (@fst _ _) (vec2list (scbwv_varstypes scb))))
@@ -708,6 +708,7 @@ Definition weakExprToStrongExpr : forall
       apply OK; auto.
 
     destruct case_case.
+      exists sac.
       exists scb.
       apply ebranch'.
 

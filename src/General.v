@@ -893,7 +893,7 @@ Lemma unleaves_injective : forall T (t1 t2:list T), unleaves t1 = unleaves t2 ->
 
 Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
   admit.
-  Qed.
+  Defined.
 
 Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
   admit.

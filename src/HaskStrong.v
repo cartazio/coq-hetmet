@@ -20,15 +20,14 @@ Section HaskStrong.
 
   (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
 
-  Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:IList _ (HaskType Γ) (tyConKind tc)} :=
-  { scbwv_sac               :  @StrongAltCon tc
-  ; scbwv_exprvars          :  vec VV (sac_numExprVars scbwv_sac)
+  Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:IList _ (HaskType Γ) (tyConKind tc)}{sac:@StrongAltCon tc} :=
+  { scbwv_exprvars          :  vec VV (sac_numExprVars sac)
   ; scbwv_exprvars_distinct :  distinct (vec2list scbwv_exprvars)
-  ; scbwv_varstypes         := vec_zip scbwv_exprvars (sac_types scbwv_sac Γ atypes)
+  ; scbwv_varstypes         := vec_zip scbwv_exprvars (sac_types sac Γ atypes)
   ; scbwv_ξ                 := fun ξ lev =>  update_ξ (weakLT'○ξ) (weakL' lev) (vec2list scbwv_varstypes)
   }.
   Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
-  Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.
+  (*Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.*)
 
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ ★) -> LeveledHaskType Γ ★ -> Type :=
 
@@ -54,11 +53,12 @@ Section HaskStrong.
     Expr (κ::Γ) (weakCE Δ) (weakLT○ξ) (HaskTApp (weakF σ) (FreshHaskTyVar _)@@(weakL l))-> Expr Γ Δ ξ (HaskTAll κ σ @@ l)
   | ECase    : forall Γ Δ ξ l tc tbranches atypes,
                Expr Γ Δ ξ (caseType tc atypes @@ l) ->
-               Tree ??{ scb : StrongCaseBranchWithVVs tc atypes
-                            & Expr (sac_Γ scb Γ)
-                                   (sac_Δ scb Γ atypes (weakCK'' Δ))
+               Tree ??{ sac : _
+                    & { scb : StrongCaseBranchWithVVs tc atypes sac
+                    &         Expr (sac_Γ sac Γ)
+                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
                                    (scbwv_ξ scb ξ l)
-                                   (weakLT' (tbranches@@l)) } ->
+                                   (weakLT' (tbranches@@l)) } } ->
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars,

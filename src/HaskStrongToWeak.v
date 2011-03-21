@@ -156,11 +156,13 @@ Section HaskStrongToWeak.
                   ; bind tbranches' = @typeToWeakType Γ _ tbranches ite
                   ; bind escrut'    = exprToWeakExpr χ escrut ite
                   ; bind branches'  =
-                      ((fix caseBranches (tree:Tree ??{scb : StrongCaseBranchWithVVs VV _ _ _ & Expr _ _ _ _  })
+                      ((fix caseBranches (tree:Tree ??{sac : _ & { scb : StrongCaseBranchWithVVs VV _ _ _ sac & Expr _ _ _ _ } })
                             : UniqM (Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
                             match tree with
                               | T_Leaf None           => return []
-                              | T_Leaf (Some x)       => let (scb,e) := x in
+                              | T_Leaf (Some x)       =>
+                                let (sac,scb_e) := x in
+                                let (scb,e) := scb_e in
                                 let varstypes := vec2list (scbwv_varstypes scb) in
                                       bind evars_ite = mfresh _ ite
                                     ; bind exprvars  = seqM (map (fun vt:VV * HaskType _ ★
@@ -170,7 +172,7 @@ Section HaskStrongToWeak.
                                                                 varstypes)
                                     ; let χ' := update_χ' χ exprvars in
                                       bind e'' = exprToWeakExpr χ' e (snd evars_ite)
-                                    ; return [(sac_altcon scb, vec2list (fst evars_ite), nil, (map (@snd _ _) exprvars), e'')]
+                                    ; return [(sac_altcon sac, vec2list (fst evars_ite), nil, (map (@snd _ _) exprvars), e'')]
                               | T_Branch b1 b2        => bind b1' = caseBranches b1
                                                        ; bind b2' = caseBranches b2
                                                        ; return (b1',,b2')
