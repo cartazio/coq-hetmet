@@ -208,7 +208,8 @@ increment_at_level1 = <[ \x -> x + 1 ]>
 
 --------------------------------------------------------------------------------
 -- Ye Olde and Most Venerable "pow" Function
-{-
+
+pow :: forall c. GuestIntegerLiteral c => GuestLanguageMult c Integer => Integer -> <[ Integer -> Integer ]>@c
 pow n =
    if n==0
    then <[ \x -> 1 ]>
@@ -216,12 +217,12 @@ pow n =
 
 
 -- a more efficient two-level pow
+pow' :: forall c. GuestIntegerLiteral c => GuestLanguageMult c Integer => Integer -> <[ Integer -> Integer ]>@c
 pow' 0  = <[ \x -> 1 ]>
 pow' 1  = <[ \x -> x ]>
 pow' n  = if   n `mod` 2==0
           then <[ \x -> (\y -> y*y) (~~(pow' $ n `shiftR` 2) x) ]>
           else <[ \x -> x * ~~(pow' $ n-1) x ]>
-
 
 
 
@@ -273,11 +274,11 @@ dotproduct' v1 v2 =
 -- original vector, we will emit code which is faster than a one-level
 -- dot product.
 
---dotproduct'' :: forall g.
---                GuestLanguageAdd         g Int =>
---                GuestLanguageMult        g Int =>
---                GuestLanguageFromInteger g Int =>
---                [Int] -> <[ [Int] -> Int ]>@g
+dotproduct'' :: forall g.
+                GuestLanguageAdd         g Integer =>
+                GuestLanguageMult        g Integer =>
+                GuestIntegerLiteral      g         =>
+                [Integer] -> <[ [Integer] -> Integer ]>@g
 dotproduct'' v1 =
   case v1 of
     []     -> <[ \v2 -> 0 ]>
@@ -291,8 +292,6 @@ dotproduct'' v1 =
     (a:ax) -> <[ \v2 -> case v2 of
                           []     -> 0
                           (b:bx) -> ~~(guestIntegerLiteral a) * b + ~~(dotproduct'' ax) bx ]>
-
--}
 
 
 
@@ -354,7 +353,7 @@ class Stream a where
   s_empty :: a -> Bool
   s_head  :: a -> Char
   s_tail  :: a -> a
-{-
+
 -- a continuation-passing-style matcher
 
 accept :: Stream s => Regex -> (s -> Bool) -> s -> Bool
@@ -385,7 +384,7 @@ class GuestStream g a where
 
 class GuestEqChar g where
   <[ (==) ]> :: <[ Char -> Char -> Bool ]>@g
-
+{-
 staged_accept ::
     Regex
     -> forall c s.
@@ -415,10 +414,12 @@ staged_accept (Star e) k         =
     -- because "k" is free in loop; it is analogous to the free
     -- environment variable in Nanevski's example
 
+
 staged_accept (Const c) k        =
     <[ \s -> if gs_empty s 
              then false
              else (gs_head s) == ~~(guestCharLiteral c) && ~~k (gs_tail s) ]>
+-}
 
 -- this type won't work unless the case for (Star e) is commented out;
 -- see loop above
@@ -440,6 +441,7 @@ staged_accept (Const c) k        =
 --------------------------------------------------------------------------------
 -- Unflattening
 
+{-
 -- This more or less "undoes" the flatten function.  People often ask
 -- me how you "translate generalized arrows back into multi-level
 -- terms".. I'm not sure why you'd want to do that, but this is how:
@@ -453,12 +455,13 @@ instance GArrow Code (,) where
   ga_first     f = Code <[ \(x,y) -> ((~~(unCode f) x),y) ]>
   ga_second    f = Code <[ \(x,y) -> (x         ,(~~(unCode f) y)) ]>
   ga_cancell     = Code <[ \(_,x) -> x ]>
+
   ga_cancelr     = Code <[ \(x,_) -> x ]>
   ga_uncancell   = Code <[ \x -> (%%(),x) ]>
   ga_uncancelr   = Code <[ \x -> (x,%%()) ]>
   ga_assoc       = Code <[ \((x,y),z) -> (x,(y,z)) ]>
   ga_unassoc     = Code <[ \(x,(y,z)) -> ((x,y),z) ]>
-
+-}
 
 
 
@@ -498,7 +501,7 @@ instance (GArrowDrop g (**), GArrowCopy g (**)) => GArrowCopy (GArrowInversePair
 -- but notice that we can't (in general) get
 -- instance GArrowDrop g => GArrowDrop (GArrowInversePair g) where ...
 
-
+{-
 -- For that, we need PreLenses, which "log the history" where necessary.
 -- I call this a "PreLens" because it consists of the data required
 -- for a Lens (as in BCPierce's Lenses) but does not necessarily
@@ -566,7 +569,7 @@ instance GArrowSwap Lens (,) where
 instance BiGArrow Lens (,) where
   biga_arr f f'  = Lens (\(x,()) -> ((f x),())) (\(x,()) -> ((f' x),()))
   biga_inv (Lens f1 f2) = Lens f2 f1
-
+-}
 
 
 
@@ -821,4 +824,3 @@ example2 = proc (n,xs) -> (| mapC (\x-> do delay 0 -< n
 
 
 
--}
