@@ -1,3 +1,10 @@
+(*********************************************************************************************************************************)
+(* Extraction:                                                                                                                   *)
+(*                                                                                                                               *)
+(*    This module is the "top level" for extraction                                                                              *)
+(*                                                                                                                               *)
+(*********************************************************************************************************************************)
+
 (* need this or the Haskell extraction fails *)
 Set Printing Width 1300000.
 
@@ -29,6 +36,10 @@ Require Import HaskProofToLatex.
 Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
 Require Import HaskProofToStrong.
+
+Require Import HaskProofCategory.
+Require Import HaskStrongCategory.
+Require Import ReificationsEquivalentToGeneralizedArrows.
 
 Open Scope string_scope.
 Extraction Language Haskell.
