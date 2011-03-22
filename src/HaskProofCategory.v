@@ -11,6 +11,7 @@ Require Import General.
 Require Import NaturalDeduction.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
+
 Require Import HaskKinds.
 Require Import HaskCoreTypes.
 Require Import HaskLiteralsAndTyCons.
@@ -19,43 +20,143 @@ Require Import HaskProof.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
-Section HaskProofCategory.
-(*
+Require Import Algebras_ch4.
+Require Import Categories_ch1_3.
+Require Import Functors_ch1_4.
+Require Import Isomorphisms_ch1_5.
+Require Import ProductCategories_ch1_6_1.
+Require Import OppositeCategories_ch1_6_2.
+Require Import Enrichment_ch2_8.
+Require Import Subcategories_ch7_1.
+Require Import NaturalTransformations_ch7_4.
+Require Import NaturalIsomorphisms_ch7_5.
+Require Import MonoidalCategories_ch7_8.
+Require Import Coherence_ch7_8.
 
-  Context (flat_dynamic_semantics : @ND_Relation _ Rule).
-  Context (ml_dynamic_semantics   : @ND_Relation _ Rule).
+Require Import FreydCategories.
+
+
+Section HaskProofCategory.
+
+  (* This proof will work for any dynamic semantics you like, so
+   * long as those semantics are an ND_Relation (associativity,
+   * neutrality, etc) *)
+  Context (dynamic_semantics   : @ND_Relation _ Rule).
 
   Section SystemFC_Category.
-    Context (encodeTypeTree_reduce      : @LeveledHaskType V -> @LeveledHaskType V -> @LeveledHaskType V).
-    Context (encodeTypeTree_empty       : @LeveledHaskType V).
-    Context (encodeTypeTree_flat_empty  : @CoreType V).
-    Context (encodeTypeTree_flat_reduce : @CoreType V -> @CoreType V -> @CoreType V).
+
+    Context {Γ:TypeEnv}
+            {Δ:CoercionEnv Γ}.
+
+    Definition Context := Tree ??(LeveledHaskType Γ ★).
+
+    Notation "a |= b" := (Γ >> Δ > a |- b).
+
+    (* category of judgments in a fixed type/coercion context *)
+    Definition JudgmentsFC :=
+      @Judgments_Category_monoidal _ Rule dynamic_semantics (UJudg Γ Δ) UJudg2judg.
+
+    Definition identityProof t : [] ~~{JudgmentsFC}~~> [t |= t].
+      unfold hom; simpl.
+      admit.
+      Defined.
+
+    Definition cutProof a b c : [a |= b],,[b |= c] ~~{JudgmentsFC}~~> [a |= c].
+      unfold hom; simpl.
+      admit.
+      Defined.
+
+    Definition TypesFC : ECategory JudgmentsFC Context (fun x y => [Γ >> Δ > x |- y]).
+      refine
+      {| eid   := identityProof
+       ; ecomp := cutProof
+      |}; intros.
+      apply MonoidalCat_all_central.
+      apply MonoidalCat_all_central.
+      admit.
+      admit.
+      admit.
+      Defined.
+
+    Definition TypesEnrichedInJudgments : Enrichment.
+      refine {| enr_c := TypesFC |}.
+      Defined.
+   
+(*
+    Definition TwoLevelLanguage L2 :=
+    { L1 : _ &
+      Reification (TypesEnrichedInJudgments L1) (TypesEnrichedInJudgments L2) }
+
+    Inductive NLevelLanguage : nat -> Language -> Type :=
+    | NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
+    | NLevelLanguage_succ : forall L1 L2 n, TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2
+
+    Definition OmegaLevelLanguage : Language -> Type :=
+      forall n:nat, NLevelLanguage n L.
+*)
+
+    
+    (* The full subcategory of SystemFC(Γ,Δ) consisting only of judgments involving types at a fixed level.  Note that
+     * code types are still permitted! *)
+    Section SingleLevel.
+      Context (lev:HaskLevel Γ).
+
+      Inductive ContextAtLevel : Context -> Prop :=
+        | contextAtLevel_nil    :               ContextAtLevel []
+        | contextAtLevel_leaf   : forall τ,     ContextAtLevel [τ @@ lev]
+        | contextAtLevel_branch : forall b1 b2, ContextAtLevel b1 -> ContextAtLevel b2 -> ContextAtLevel (b1,,b2).
+
+      Inductive JudgmentsAtLevel : JudgmentsFC -> Prop :=
+        | judgmentsAtLevel_nil    : JudgmentsAtLevel []
+        | judgmentsAtLevel_leaf   : forall c1 c2, ContextAtLevel c1 -> ContextAtLevel c2 -> JudgmentsAtLevel [c1 |= c2]
+        | judgmentsAtLevel_branch : forall j1 j2, JudgmentsAtLevel j1 -> JudgmentsAtLevel j2 -> JudgmentsAtLevel (j1,,j2).
   
-    Definition encodeTypeTree      :=
-      @treeReduce _ _ (fun x => match x with None => encodeTypeTree_empty | Some q => q end) encodeTypeTree_reduce.
-    Definition encodeTypeTree_flat :=
-      @treeReduce _ _ (fun x => match x with None => encodeTypeTree_flat_empty | Some q => q end) encodeTypeTree_flat_reduce.
-    (* the full category of judgments *)
-    Definition ob2judgment past :=
-      fun q:Tree ??(@LeveledHaskType V) * Tree ??(@LeveledHaskType V)  =>
-        let (a,s):=q in (Γ > past : a |- (encodeTypeTree s) ).
-    Definition SystemFC_Cat past :=
-      @Judgments_Category_monoidal _ Rule
-        (@ml_dynamic_semantics V)
-        (Tree ??(@LeveledHaskType V) * Tree ??(@LeveledHaskType V))
-        (ob2judgment past).
+      Definition JudgmentsFCAtLevel := FullSubcategory JudgmentsFC JudgmentsAtLevel.
+      Definition TypesFCAtLevel     := FullSubcategory TypesFC     ContextAtLevel.
+    End SingleLevel.
+
+  End SystemFC_Category.
+
+  Implicit Arguments TypesFC [ ].
+
+  Definition Types_first c : EFunctor (TypesFC nil nil) (TypesFC nil nil) (fun x => x,,c ).
+    admit.
+    Defined.
+  Definition Types_second c : EFunctor (TypesFC nil nil) (TypesFC nil nil) (fun x => c,,x ).
+    admit.
+    Defined.
+
+  Definition Types_binoidal : BinoidalCat (TypesFC nil nil) (@T_Branch _).
+    refine
+      {| bin_first  := Types_first
+       ; bin_second := Types_second
+       |}.
+    Defined.
+
+  Definition Types_premonoidal : PreMonoidalCat Types_binoidal [].
+    admit.
+    Defined.
+
+(*
+  Definition ArrowInProgrammingLanguage :=
+    FreydCategory Types_premonoidal Types_premonoidal.
+
+  FlatSubCategory
+
+  InitialGArrowsAllowFlattening
+
+  SystemFCa
+
+  PCF
+
+  SystemFCa_two_level
+  SystemFCa_initial_GArrow
   
-    (* the category of judgments with no variables or succedents in the "future" –- still may have code types *)
-    (* technically this should be a subcategory of SystemFC_Cat *)
-    Definition ob2judgment_flat past :=
-      fun q:Tree ??(@CoreType V) * Tree ??(@CoreType V)  =>
-        let (a,s):=q in (Γ > past : ``a |- `(encodeTypeTree_flat s) ).
-    Definition SystemFC_Cat_Flat past :=
-      @Judgments_Category_monoidal _ Rule
-        (@flat_dynamic_semantics V)
-        (Tree ??(@CoreType V) * Tree ??(@CoreType V))
-        (ob2judgment_flat past).
-  
+
+*)
+
+    
+(*
     Section EscBrak_Functor.
       Context
         (past:@Past V)

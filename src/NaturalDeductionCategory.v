@@ -154,6 +154,10 @@ Section Judgments_Category.
     apply Build_Triangle; simpl; intros; apply ndr_structural_indistinguishable; auto.
     Defined.
 
+  Instance Judgments_Category_CartesianCat : CartesianCat Judgments_Category_monoidal.
+    admit.
+    Defined.
+
   (* Given some mapping "rep" that turns a (Tree ??T) intoto Judgment,
    * this asserts that we have sensible structural rules with respect
    * to that mapping.  Doing all of this "with respect to a mapping"

@@ -23,8 +23,8 @@ Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 Require Import Reification.
 Require Import GeneralizedArrow.
-Require Import GArrowFromReification.
-Require Import ReificationFromGArrow.
+Require Import GeneralizedArrowFromReification.
+Require Import ReificationFromGeneralizedArrow.
 Require Import ReificationCategory.
 Require Import GeneralizedArrowCategory.
 

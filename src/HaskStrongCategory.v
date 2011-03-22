@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
 (* HaskStrongCategory:                                                                                                           *)
 (*                                                                                                                               *)
-(*    Well-typed Haskell terms in a specific tyvar/covar context form a category                                                 *)
+(*    Well-typed Haskell terms in a specific tyvar/covar context form a category:  Types(Haskell)                                *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -17,16 +17,15 @@ Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 
+(* the category of flat Haskell terms in a specific Γ Δ context *)
 (*  
-    (* the category of flat Haskell terms (n-ary) *)
-    Section HaskFlat.
-  
-      Context (past:@Past V).
+Section HaskFlat.
+  Context (Γ:TypeEnv)(Δ:CoercionEnv Γ).
     
-      Lemma idmor   a : [] ~~{SystemFC_Cat_Flat past}~~> [(a,a)].
-        (*set (@nd_rule _ Rule (RVar Γ a past)) as q.*)
-        admit.
-        Defined.
+  Lemma idmor   a : [] ~~{SystemFC_Cat_Flat past}~~> [(a,a)].
+  (*set (@nd_rule _ Rule (RVar Γ a past)) as q.*)
+    admit.
+  Defined.
     
       Lemma compmor a b c : [(a,b)],,[(b,c)] ~~{SystemFC_Cat_Flat past}~~> [(a,c)].
         admit.
@@ -123,5 +122,6 @@ Require Import HaskStrong.
     
     End ReificationAndGeneralizedArrow.
 *)  
+
 
 
