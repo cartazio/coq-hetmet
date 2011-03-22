@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds -XFlexibleInstances -XGADTs #-}
+{-# OPTIONS_GHC -XModalTypes -XScopedTypeVariables -XFlexibleContexts -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds -XFlexibleInstances -XGADTs -XUndecidableInstances #-}
 module GArrowsTutorial
 where
 import Data.Bits
@@ -468,7 +468,7 @@ instance GArrow Code (,) where
 --------------------------------------------------------------------------------
 -- BiGArrows
 
-class GArrow g (**) => BiGArrow g (**) where
+class GArrow g (**) u => BiGArrow g (**) u where
   -- Note that we trust the user's pair of functions actually are
   -- mutually inverse; confirming this in the type system would
   -- require very powerful dependent types (such as Coq's).  However,
@@ -480,12 +480,12 @@ class GArrow g (**) => BiGArrow g (**) where
   biga_inv :: g x y -> g y x
 
 -- For any GArrow instance, its mutually inverse pairs form a BiGArrow
-data GArrow g (**) => GArrowInversePair g (**) x y =
+data GArrow g (**) u => GArrowInversePair g (**) u x y =
     GArrowInversePair { forward :: g x y , backward :: g y x }
-instance GArrow g (**) => Category (GArrowInversePair g (**)) where
+instance GArrow g (**) u => Category (GArrowInversePair g (**) u) where
   id    = GArrowInversePair { forward = id , backward = id }
   f . g = GArrowInversePair { forward = (forward f) . (forward g) , backward = (backward g) . (backward f) }
-instance GArrow g (**) => GArrow (GArrowInversePair g (**)) (**) where
+instance GArrow g (**) u => GArrow (GArrowInversePair g (**) u) (**) u where
   ga_first     f = GArrowInversePair { forward = ga_first  (forward f), backward = ga_first  (backward f) }
   ga_second    f = GArrowInversePair { forward = ga_second (forward f), backward = ga_second (backward f) }
   ga_cancell     = GArrowInversePair { forward = ga_cancell           , backward = ga_uncancell }
@@ -494,10 +494,12 @@ instance GArrow g (**) => GArrow (GArrowInversePair g (**)) (**) where
   ga_uncancelr   = GArrowInversePair { forward = ga_uncancelr         , backward = ga_cancelr   }
   ga_assoc       = GArrowInversePair { forward = ga_assoc             , backward = ga_unassoc   }
   ga_unassoc     = GArrowInversePair { forward = ga_unassoc           , backward = ga_assoc     }
-instance GArrowSwap g (**) => GArrowSwap (GArrowInversePair g (**)) (**) where
+instance GArrowSwap g (**) u => GArrowSwap (GArrowInversePair g (**) u) (**) u where
   ga_swap = GArrowInversePair { forward = ga_swap , backward = ga_swap }
-instance (GArrowDrop g (**), GArrowCopy g (**)) => GArrowCopy (GArrowInversePair g (**)) (**) where
+{-
+instance (GArrowDrop g (**) u, GArrowCopy g (**) u) => GArrowCopy (GArrowInversePair g (**) u) (**) u where
   ga_copy = GArrowInversePair { forward = ga_copy , backward = ga_second ga_drop >>> ga_cancelr }
+-}
 -- but notice that we can't (in general) get
 -- instance GArrowDrop g => GArrowDrop (GArrowInversePair g) where ...
 
