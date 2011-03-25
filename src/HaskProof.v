@@ -133,7 +133,8 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
 | Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
 | Flat_RBindingGroup    : ∀ q a b c d e ,  Rule_Flat (RBindingGroup q a b c d e)
-| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x).
+| Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x)
+| Flat_RLetRec          : ∀ Γ Δ Σ₁ τ₁ τ₂ lev,      Rule_Flat (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
 
 (* given a proof that uses only uniform rules, we can produce a general proof *)
 Definition UND_to_ND Γ Δ h c : ND (@URule Γ Δ) h c -> ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)
