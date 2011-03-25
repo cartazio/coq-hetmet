@@ -27,10 +27,6 @@ Section HaskProofToLatex.
   Definition FreshM' := FMT freshM.
   Instance FreshMon' : Monad FreshM' := FMT_Monad freshM.
   
-  Instance ToLatexTyCon : ToLatex TyCon.
-    admit.
-    Defined.
-
   Fixpoint typeToLatex (needparens:bool){κ}(t:RawHaskType TV κ) {struct t} : FMT freshM Latex :=
     match t with
     | TVar    _ v        => return toLatex v
