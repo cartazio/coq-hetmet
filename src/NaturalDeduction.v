@@ -182,12 +182,29 @@ Section Natural_Deduction.
       | T_Branch a b     => nd_prod (nd_id a) (nd_id b)
     end.
 
+  Fixpoint nd_weak' (sl:Tree ??Judgment) : sl /⋯⋯/ [] :=
+    match sl as SL return SL /⋯⋯/ [] with
+      | T_Leaf None      => nd_id0
+      | T_Leaf (Some x)  => nd_weak x
+      | T_Branch a b     => nd_prod (nd_weak' a) (nd_weak' b) ;; nd_cancelr
+    end.
+
   Hint Constructors Structural.
   Lemma nd_id_structural : forall sl, Structural (nd_id sl).
     intros.
     induction sl; simpl; auto.
     destruct a; auto.
     Defined.
+
+  Lemma weak'_structural : forall a, Structural (nd_weak' a).
+    intros.
+    induction a.
+    destruct a; auto.
+    simpl.
+    auto.
+    simpl.
+    auto.
+    Qed.
 
   (* An equivalence relation on proofs which is sensitive only to the logical content of the proof -- insensitive to
    * structural variations  *)
