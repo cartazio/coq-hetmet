@@ -212,6 +212,9 @@ Section Natural_Deduction.
 
   (* any two _structural_ proofs with the same hypotheses/conclusions must be considered equal *)
   ; ndr_structural_indistinguishable : forall `(f:a/⋯⋯/b)(g:a/⋯⋯/b), Structural f -> Structural g -> f===g
+
+  (* any two proofs of nothing are "equally good" *)
+  ; ndr_void_proofs_irrelevant : forall `(f:a/⋯⋯/[])(g:a/⋯⋯/[]), f === g
   }.
 
   (* 
