@@ -4,8 +4,8 @@
 
 Generalizable All Variables.
 Require Import Preamble.
-Require Import General.
 Require Import Coq.Lists.List.
+Require Import General.
 Require Import HaskKinds.
 Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreVars.
@@ -229,9 +229,9 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                       | LitAlt lit             => OK ((WeakLitAlt lit,nil,nil,nil,e')::rest')
                       | DataAlt dc             => let vars := map coreVarToWeakVar vars in
                         OK (((WeakDataAlt dc),
-                        (General.filter (map (fun x => match x with WTypeVar v => Some v | _ => None end) vars)),
-                        (General.filter (map (fun x => match x with WCoerVar v => Some v | _ => None end) vars)),
-                        (General.filter (map (fun x => match x with WExprVar v => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with WTypeVar v => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with WCoerVar v => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with WExprVar v => Some v | _ => None end) vars)),
                         e')::rest')
                     end
             end) alts)
