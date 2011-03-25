@@ -507,13 +507,6 @@ Section HaskProofToStrong.
     admit.
     Defined.
 
-  Fixpoint treeM {T}(t:Tree ??(FreshM T)) : FreshM (Tree ??T) :=
-    match t with
-      | T_Leaf None     => return []
-      | T_Leaf (Some x) => bind x' = x ; return [x']
-      | T_Branch b1 b2  => bind b1' = treeM b1 ; bind b2' = treeM b2 ; return (b1',,b2')
-    end.
-
   Definition gather_branch_variables
     Γ Δ (ξ:VV -> LeveledHaskType Γ ★) tc avars tbranches lev (alts:Tree ?? {sac : StrongAltCon &
                 ProofCaseBranch tc Γ Δ lev tbranches avars sac})

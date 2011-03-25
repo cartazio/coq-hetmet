@@ -209,7 +209,7 @@ Section HaskStrongToWeak.
   Fixpoint strongExprToWeakExpr (us:UniqSupply){Γ}{Δ}{ξ}{τ}(exp:@Expr _ eqVV Γ Δ ξ τ)
     (ite:InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ)
     : ???WeakExpr :=
-    match exprToWeakExpr (fun v => Error ("unbound variable " +++ v)) exp ite with
+    match exprToWeakExpr (fun v => Error ("unbound variable " +++ toString v)) exp ite with
       uniqM f => f us >>= fun x => OK (snd x)
       end.
 

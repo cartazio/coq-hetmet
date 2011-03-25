@@ -79,16 +79,16 @@ Section HaskStrong.
   Context {ToLatexVV:ToLatex VV}.
   Fixpoint exprToString {Γ}{Δ}{ξ}{τ}(exp:Expr Γ Δ ξ τ) : string :=
     match exp with
-    | EVar  Γ' _ ξ' ev              => "var."+++ev
-    | EGlobal Γ' _ ξ' t wev         => "global." +++(wev:CoreVar)
-    | ELam  Γ'   _ _ tv _ _ cv e    => "\("+++cv+++":t) -> "+++ exprToString e
-    | ELet  Γ' _ _ t _ _ ev e1 e2   => "let "+++ev+++" = "+++exprToString e1+++" in "+++exprToString e2
-    | ELit  _ _ _ lit _             => "lit."+++lit
+    | EVar  Γ' _ ξ' ev              => "var."+++ toString ev
+    | EGlobal Γ' _ ξ' t wev         => "global." +++ toString (wev:CoreVar)
+    | ELam  Γ'   _ _ tv _ _ cv e    => "\("+++ toString cv +++":t) -> "+++ exprToString e
+    | ELet  Γ' _ _ t _ _ ev e1 e2   => "let "+++toString ev+++" = "+++exprToString e1+++" in "+++exprToString e2
+    | ELit  _ _ _ lit _             => "lit."+++toString lit
     | EApp  Γ' _ _ _ _ _ e1 e2      => "("+++exprToString e1+++")("+++exprToString e2+++")"
     | EEsc  Γ' _ _ ec t _ e         => "~~("+++exprToString e+++")"
     | EBrak Γ' _ _ ec t _ e         => "<["+++exprToString e+++"]>"
     | ENote _ _ _ _ n e             => "note."+++exprToString e
-    | ETyApp  Γ Δ κ σ τ ξ l       e => "("+++exprToString e+++")@("+++τ+++")"
+    | ETyApp  Γ Δ κ σ τ ξ l       e => "("+++exprToString e+++")@("+++toString τ+++")"
     | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => "("+++exprToString e+++")~(co)"
     | ECast Γ Δ ξ t1 t2 γ l e       => "cast ("+++exprToString e+++"):t2"
     | ETyLam _ _ _ k _ _ e          => "\@_ ->"+++ exprToString e

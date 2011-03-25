@@ -547,7 +547,7 @@ Instance haskLevelEqDecidable Γ : EqDecidable (HaskLevel Γ).
 (* ToString instance for PHOAS types *)
 Fixpoint typeToString' (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat) κ) {struct t} : string :=
     match t with
-    | TVar    _ v          => "tv" +++ v
+    | TVar    _ v          => "tv" +++ toString v
     | TCon    tc           => toString tc
     | TCoerc _ t1 t2   t   => "("+++typeToString' false n t1+++"~"
                                   +++typeToString' false n t2+++")=>"
@@ -564,11 +564,12 @@ Fixpoint typeToString' (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat)
                      else (typeToString' true n t1)+++" "+++(typeToString' false n t2)
       end
     | TArrow => "(->)"
-    | TAll   k f           => let alpha := "tv"+++n
-                              in "(forall "+++ alpha +++ ":"+++ k +++")"+++
+    | TAll   k f           => let alpha := "tv"+++ toString n
+                              in "(forall "+++ alpha +++ ":"+++ toString k +++")"+++
                                    typeToString' false (S n) (f n)
     | TCode  ec t          => "<["+++(typeToString' true n t)+++"]>@"+++(typeToString' false n ec)
-    | TyFunApp   tfc lt    => tfc+++"_"+++n+++" ["+++(fold_left (fun x y => " \  "+++x+++y) (typeList2string false n lt) "")+++"]"
+    | TyFunApp   tfc lt    => toString tfc+++ "_" +++ toString n+++" ["+++
+      (fold_left (fun x y => " \  "+++x+++y) (typeList2string false n lt) "")+++"]"
   end
   with typeList2string (needparens:bool)(n:nat){κ}(t:RawHaskTypeList κ) {struct t} : list string :=
   match t with

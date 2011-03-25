@@ -38,17 +38,17 @@ Instance KindToString : ToString Kind := { toString := kindToString }.
 Notation "'★'"   := KindStar.
 Notation "a ⇛ b" := (KindArrow a b).
 
-Fixpoint kindToLatex (k:Kind) : Latex :=
+Fixpoint kindToLatexMath (k:Kind) : LatexMath :=
   match k with
-  | ★                            => latex "\star"
-  | ★  ⇛ k2                      => (latex "\star\Rightarrow ")+=+kindToLatex k2
-  | k1 ⇛ k2                      => (latex "(")+=+kindToLatex k1+=+(latex ")\Rightarrow ")+=+kindToLatex k2
-  | KindUnliftedType             => latex "\text{\tt{\#}}"
-  | KindUnboxedTuple             => latex "\text{\tt{(\#)}}"
-  | KindArgType                  => latex "\text{\tt{??}}"
-  | KindOpenType                 => latex "\text{\tt{?}}"
+  | ★                            => rawLatexMath "\star"
+  | ★  ⇛ k2                      => (rawLatexMath "\star\Rightarrow ")+++kindToLatexMath k2
+  | k1 ⇛ k2                      => (rawLatexMath "(")+++kindToLatexMath k1+++(rawLatexMath ")\Rightarrow ")+++kindToLatexMath k2
+  | KindUnliftedType             => rawLatexMath "\text{\tt{\#}}"
+  | KindUnboxedTuple             => rawLatexMath "\text{\tt{(\#)}}"
+  | KindArgType                  => rawLatexMath "\text{\tt{??}}"
+  | KindOpenType                 => rawLatexMath "\text{\tt{?}}"
   end.
-Instance KindToLatex : ToLatex Kind := { toLatex := kindToLatex }.
+Instance KindToLatexMath : ToLatexMath Kind := { toLatexMath := kindToLatexMath }.
 
 Instance KindEqDecidable : EqDecidable Kind.
   apply Build_EqDecidable.

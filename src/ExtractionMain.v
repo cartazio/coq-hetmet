@@ -88,7 +88,7 @@ Section core2proof.
   Definition Δ : CoercionEnv Γ := nil.
 
   Definition φ : TyVarResolver Γ :=
-    fun cv => Error ("unbound tyvar: " +++ (cv:CoreVar)).
+    fun cv => Error ("unbound tyvar: " +++ toString (cv:CoreVar)).
     (*fun tv => error ("tried to get the representative of an unbound tyvar:" +++ (getCoreVarOccString tv)).*)
 
   Definition ψ : CoVarResolver Γ Δ :=
@@ -128,20 +128,19 @@ Section core2proof.
     eol.
 
 
-  Definition coreToStringExpr' (ce:@CoreExpr CoreVar) : ???string := Error "Temporarily Disabled".
-(*
-    addErrorMessage ("input CoreSyn: " +++ ce)
-    (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
+  Definition coreToStringExpr' (ce:@CoreExpr CoreVar) : ???string :=
+    addErrorMessage ("input CoreSyn: " +++ toString ce)
+    (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
       coreExprToWeakExpr ce >>= fun we =>
-        addErrorMessage ("WeakExpr: " +++ we)
-          ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
+        addErrorMessage ("WeakExpr: " +++ toString we)
+          ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
             ((weakTypeOfWeakExpr we) >>= fun t =>
-              (addErrorMessage ("WeakType: " +++ t)
+              (addErrorMessage ("WeakType: " +++ toString t)
                 ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
-                  addErrorMessage ("HaskType: " +++ τ)
+                  addErrorMessage ("HaskType: " +++ toString τ)
                   ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => false) τ nil we) >>= fun e =>
-                    OK (eol+++"$$"+++ nd_ml_toLatex (@expr2proof _ _ _ _ _ _ e)+++"$$"+++eol)
-                  )))))))).*)
+                    OK (eol+++"$$"+++ toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ e))+++"$$"+++eol)
+                  )))))))).
 
   Definition coreToStringExpr (ce:@CoreExpr CoreVar) : string :=
     match coreToStringExpr' ce with
@@ -239,38 +238,18 @@ Section core2proof.
       eapply nd_rule.
       eapply RLam.
       Defined.
-(*
-    Definition TInt : HaskType nil ★.
-      assert (tyConKind' intPrimTyCon = ★).
-        rewrite <- H.
-        unfold HaskType; intros.
-        apply TCon.
-        Defined.
 
-    Definition idproof1 : ND Rule [] [nil > nil > [TInt @@ nil] |- [TInt @@ nil]].
-      apply nd_rule.
-      apply RVar.
-      Defined.
-
-    Definition idtype :=
-        HaskTAll(Γ:=nil) ★ (fun TV ite tv => (TApp (TApp TArrow (TVar tv)) (TVar tv))).
-
-    Definition idproof : ND Rule [] [nil > nil > [] |- [idtype @@ nil]].
-      eapply nd_comp; [ idtac | eapply nd_rule ; eapply RAbsT ].
-      apply idproof0.
-      Defined.
-*)
 (*
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
-    addErrorMessage ("input CoreSyn: " +++ ce)
-    (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
+    addErrorMessage ("input CoreSyn: " +++ toString ce)
+    (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
       coreExprToWeakExpr ce >>= fun we =>
-        addErrorMessage ("WeakExpr: " +++ we)
-          ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
+        addErrorMessage ("WeakExpr: " +++ toString we)
+          ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
             ((weakTypeOfWeakExpr we) >>= fun t =>
-              (addErrorMessage ("WeakType: " +++ t)
+              (addErrorMessage ("WeakType: " +++ toString t)
                 ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
-                  addErrorMessage ("HaskType: " +++ τ)
+                  addErrorMessage ("HaskType: " +++ toString τ)
                   ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
                         (let haskProof := @expr2proof _ _ _ _ _ _ e
                           in (* insert HaskProof-to-HaskProof manipulations here *)
@@ -289,17 +268,17 @@ Section core2proof.
                          INil
                          >>= fun q => Error (toString q)
                   ))))))))).
-*)
-*)
+*)*)
+
 
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
-      addErrorMessage ("input CoreSyn: " +++ ce)
-      (addErrorMessage ("input CoreType: " +++ coreTypeOfCoreExpr ce) (
+      addErrorMessage ("input CoreSyn: " +++ toString ce)
+      (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
         coreExprToWeakExpr ce >>= fun we =>
-          addErrorMessage ("WeakExpr: " +++ we)
-            ((addErrorMessage ("CoreType of WeakExpr: " +++ coreTypeOfCoreExpr (weakExprToCoreExpr we))
+          addErrorMessage ("WeakExpr: " +++ toString we)
+            ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
               ((weakTypeOfWeakExpr we) >>= fun t =>
-                (addErrorMessage ("WeakType: " +++ t)
+                (addErrorMessage ("WeakType: " +++ toString t)
                   ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
 
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>

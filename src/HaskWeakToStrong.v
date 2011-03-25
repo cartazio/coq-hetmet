@@ -97,7 +97,7 @@ Notation " ` x " := (@fixkind _ x) (at level 100).
 
 Ltac matchThings T1 T2 S :=
   destruct (eqd_dec T1 T2) as [matchTypeVars_pf|];
-   [ idtac | apply (Error (S +++ T1 +++ " " +++ T2)) ].
+   [ idtac | apply (Error (S +++ toString T1 +++ " " +++ toString T2)) ].
 
 Definition mkTAll' {κ}{Γ} : HaskType (κ :: Γ) ★ -> (forall TV (ite:InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV ★).
   intros.
@@ -118,7 +118,7 @@ Definition mkTAll {κ}{Γ} : HaskType (κ :: Γ) ★ -> HaskType Γ ★.
 
 Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType), ???(HaskTypeOfSomeKind Γ).
   refine (fix weakTypeToType {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType) {struct t} : ???(HaskTypeOfSomeKind Γ) :=
-  addErrorMessage ("weakTypeToType " +++ t)
+  addErrorMessage ("weakTypeToType " +++ toString t)
   match t with
     | WFunTyCon         => let case_WFunTyCon := tt in OK (haskTypeOfSomeKind (fun TV ite => TArrow))
     | WTyCon      tc    => let case_WTyCon := tt    in _
@@ -149,6 +149,7 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
         end
       ) (fst (tyFunKind tc)) lt) >>= fun lt' => let case_WTyFunApp := tt in  _
   end ); clear weakTypeToType.
+  apply ConcatenableString.
 
   destruct case_WTyVarTy.
     apply (addErrorMessage "case_WTyVarTy").
@@ -159,7 +160,8 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     apply (addErrorMessage "case_WAppTy").
     destruct t1' as  [k1' t1'].
     destruct t2' as [k2' t2'].
-    set ("tried to apply type "+++t1'+++" of kind "+++k1'+++" to type "+++t2'+++" of kind "+++k2') as err.
+    set ("tried to apply type "+++toString t1'+++" of kind "+++toString k1'+++" to type "+++
+      toString t2'+++" of kind "+++toString k2') as err.
     destruct k1';
       try (matchThings k1'1 k2' "Kind mismatch in WAppTy: ";
         subst; apply OK; apply (haskTypeOfSomeKind (fun TV env => TApp (t1' TV env) (t2' TV env))));
@@ -354,7 +356,7 @@ Definition mkStrongAltConPlusJunk' (tc : TyCon)(alt:WeakAltCon) : ???(@StrongAlt
   set ((dataConTyCon c):TyCon) as tc' in *.
   set (eqd_dec tc tc') as eqpf; destruct eqpf;
     [ idtac
-      | apply (Error ("in a case of tycon "+++tc+++", found a branch with datacon "+++(dc:CoreDataCon))) ]; subst.
+      | apply (Error ("in a case of tycon "+++toString tc+++", found a branch with datacon "+++toString (dc:CoreDataCon))) ]; subst.
   apply OK.
   eapply mkStrongAltConPlusJunk.
   simpl in *.
@@ -401,13 +403,13 @@ Definition castExpr (we:WeakExpr)(err_msg:string) {Γ} {Δ} {ξ} {τ} τ' (e:@Ex
   destruct τ' as [τ' l'].
   destruct (eqd_dec l l'); [ idtac
     | apply (Error ("level mismatch in castExpr, invoked by "+++err_msg+++eol+++
-                    "  got: " +++(fold_left (fun x y => y+++","+++y) (map haskTyVarToType l) "")+++eol+++
-                    "  wanted: "+++(fold_left (fun x y => x+++","+++y) (map haskTyVarToType l') "")
+                    "  got: " +++(fold_left (fun x y => y+++","+++y) (map (toString ○ haskTyVarToType) l) "")+++eol+++
+                    "  wanted: "+++(fold_left (fun x y => x+++","+++y) (map (toString ○ haskTyVarToType) l') "")
     )) ].
   destruct (eqd_dec τ τ'); [ idtac
     | apply (Error ("type mismatch in castExpr, invoked by "+++err_msg+++eol+++
-                    "  got: " +++τ+++eol+++
-                    "  wanted: "+++τ'
+                    "  got: " +++toString τ+++eol+++
+                    "  wanted: "+++toString τ'
     )) ].
   subst.
   apply OK.
@@ -534,14 +536,14 @@ Definition weakExprToStrongExpr : forall
     (τ:HaskType Γ ★)
     (lev:HaskLevel Γ)
     (we:WeakExpr) : ???(@Expr _ CoreVarEqDecidable Γ Δ ξ (τ @@ lev) )  :=
-    addErrorMessage ("in weakExprToStrongExpr " +++ we)
+    addErrorMessage ("in weakExprToStrongExpr " +++ toString we)
     match we with
 
     | WEVar   v                         => if ig v
                                               then OK (EGlobal Γ Δ ξ (τ@@lev) v)
-                                              else castExpr we ("WEVar "+++(v:CoreVar)) (τ @@ lev) (EVar Γ Δ ξ v)
+                                              else castExpr we ("WEVar "+++toString (v:CoreVar)) (τ @@ lev) (EVar Γ Δ ξ v)
 
-    | WELit   lit                       => castExpr we ("WELit "+++lit) (τ @@ lev) (ELit Γ Δ ξ lit lev)
+    | WELit   lit                       => castExpr we ("WELit "+++toString lit) (τ @@ lev) (ELit Γ Δ ξ lit lev)
 
     | WELam   ev ebody                  => weakTypeToTypeOfKind φ ev ★ >>= fun tv =>
                                              weakTypeOfWeakExpr ebody >>= fun tbody =>
@@ -596,7 +598,7 @@ Definition weakExprToStrongExpr : forall
                                                    weakExprToStrongExpr Γ Δ φ ψ ξ ig (mkTAll te'') lev e >>= fun e' =>
                                                      weakTypeToTypeOfKind φ t (wtv:Kind) >>= fun t' =>
                                                        castExpr we "WETyApp" _ (ETyApp Γ Δ wtv (mkTAll' te'') t' ξ lev e')
-                                             | _                 => Error ("weakTypeToType: WETyApp body with type "+++te)
+                                             | _                 => Error ("weakTypeToType: WETyApp body with type "+++toString te)
                                            end
 
     | WECoApp e co                     => weakTypeOfWeakExpr e >>= fun te =>
@@ -612,7 +614,7 @@ Definition weakExprToStrongExpr : forall
                                                            OK (ECoApp Γ Δ κ t1'' t2''
                                                              (weakCoercionToHaskCoercion _ _ _ co) τ ξ lev e'')
                                                  end
-                                             | _                 => Error ("weakTypeToType: WECoApp body with type "+++te)
+                                             | _                 => Error ("weakTypeToType: WECoApp body with type "+++toString te)
                                            end
 
     | WECoLam cv e                      => let (_,_,t1,t2) := cv in
@@ -680,8 +682,8 @@ Definition weakExprToStrongExpr : forall
 
                     weakExprToStrongExpr Γ Δ φ ψ ξ ig (caseType tc avars') lev escrut >>= fun escrut' =>
                       castExpr we "ECase" (τ@@lev) (ECase Γ Δ ξ lev tc tbranches' avars' escrut' tree)
-    end)); try clear binds.
-
+    end)); try clear binds; try apply ConcatenableString.
+  
     destruct case_some.
     apply (addErrorMessage "case_some").
       simpl.

@@ -53,7 +53,7 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                                     | WExprVar _  => Error "encountered expression variable in a modal box type"
                                     | WCoerVar _  => Error "encountered coercion variable in a modal box type"
                                   end
-                                | _                           => Error ("mis-applied modal box tycon: " +++ ct)
+                                | _                           => Error ("mis-applied modal box tycon: " +++ toString ct)
                               end
                          else let tc' := if eqd_dec tc ArrowTyCon
                                          then WFunTyCon
@@ -134,8 +134,8 @@ Fixpoint expectTyConApp (wt:WeakType)(acc:list WeakType) : ???(TyCon * list Weak
   match wt with
     | WTyCon tc        => OK (tc,acc)
     | WAppTy t1 t2     => expectTyConApp t1 (t2::acc)
-    | WTyFunApp tc tys => Error ("expectTyConApp encountered TyFunApp: " +++ wt)
-    | _                => Error ("expectTyConApp encountered " +++ wt)
+    | WTyFunApp tc tys => Error ("expectTyConApp encountered TyFunApp: " +++ toString wt)
+    | _                => Error ("expectTyConApp encountered " +++ toString wt)
   end.
 
 Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=

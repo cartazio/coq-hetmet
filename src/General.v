@@ -24,7 +24,15 @@ Coercion eqd_type : EqDecidable >-> Sortclass.
 Class ToString (T:Type) := { toString : T -> string }.
 Instance StringToString : ToString string := { toString := fun x => x }.
 
-Notation "a +++ b" := (append (toString a) (toString b)) (at level 100).
+Class Concatenable {T:Type} :=
+ { concatenate : T -> T -> T }.
+ Implicit Arguments Concatenable [ ].
+Open Scope string_scope.
+Open Scope type_scope.
+Close Scope list_scope.
+Notation "a +++ b" := (@concatenate _ _ a b) (at level 99).
+Instance ConcatenableString : Concatenable string := { concatenate := append }.
+
 
 (*******************************************************************************)
 (* Trees                                                                       *)
@@ -145,11 +153,10 @@ Lemma mapOptionTree_extensional {A}{B}(f g:A->B) : (forall a, f a = g a) -> (for
   simpl; rewrite IHt1; rewrite IHt2; auto.
   Qed.
 
-Open Scope string_scope.
 Fixpoint treeToString {T}{TT:ToString T}(t:Tree ??T) : string :=
 match t with
   | T_Leaf None => "[]"
-  | T_Leaf (Some s) => "["+++s+++"]"
+  | T_Leaf (Some s) => "["+++toString s+++"]"
   | T_Branch b1 b2 => treeToString b1 +++ ",," +++ treeToString b2
 end.
 Instance TreeToString {T}{TT:ToString T} : ToString (Tree ??T) := { toString := treeToString }.
@@ -725,10 +732,6 @@ Lemma extensionality_composes : forall t1 t2 t3 (f f':t1->t2) (g g':t2->t3),
 
 
 
-CoInductive Fresh A T :=
-{ next  : forall a:A, (T a * Fresh A T)
-; split : Fresh A T * Fresh A T
-}.
 
 
 
@@ -763,7 +766,6 @@ Definition orErrorBind {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrError Q) :=
   end.
 Notation "a >>= b" := (@orErrorBind _ a _ b) (at level 20).
 
-Open Scope string_scope.
 Definition orErrorBindWithMessage {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrError Q) err_msg :=
   match oe with
     | Error s => Error (err_msg +++ eol +++ "  " +++ s)
@@ -912,23 +914,58 @@ Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_z
   admit.
   Defined.
 
+
+Fixpoint mapM {M}{mon:Monad M}{T}(ml:list (M T)) : M (list T) :=
+  match ml with
+    | nil  => return nil
+    | a::b => bind a' = a ; bind b' = mapM b ; return a'::b'
+  end.
+
+Fixpoint list_to_ilist {T}{F}(f:forall t:T, F t) (l:list T) : IList T F l :=
+  match l as L return IList T F L with
+  | nil  => INil
+  | a::b => ICons a b (f a) (list_to_ilist f b)
+  end.
+
+Fixpoint treeM {T}{M}{MT:Monad M}(t:Tree ??(M T)) : M (Tree ??T) :=
+  match t with
+    | T_Leaf None     => return []
+    | T_Leaf (Some x) => bind x' = x ; return [x']
+    | T_Branch b1 b2  => bind b1' = treeM b1 ; bind b2' = treeM b2 ; return (b1',,b2')
+  end.
+
+
 (* escapifies any characters which might cause trouble for LaTeX *)
 Variable sanitizeForLatex    : string      -> string.
    Extract Inlined Constant sanitizeForLatex      => "sanitizeForLatex".
-Inductive Latex : Type := latex : string -> Latex.
-Instance LatexToString : ToString Latex := { toString := fun x => match x with latex s => s end }.
+Inductive Latex     : Type := rawLatex     : string -> Latex.
+Inductive LatexMath : Type := rawLatexMath : string -> LatexMath.
+
 Class ToLatex (T:Type) := { toLatex : T -> Latex }.
-Instance StringToLatex : ToLatex string := { toLatex := fun x => latex (sanitizeForLatex x) }.
-Instance LatexToLatex  : ToLatex Latex  := { toLatex := fun x => x }.
-Definition concatLatex {T1}{T2}(l1:T1)(l2:T2){L1:ToLatex T1}{L2:ToLatex T2} : Latex :=
-  match toLatex l1 with
-    latex s1 =>
-  match toLatex l2 with
-    latex s2 =>
-    latex (s1 +++ s2)
-    end
-    end.
-Notation "a +=+ b" := (concatLatex a b) (at level 60, right associativity).
+Instance ConcatenableLatex : Concatenable Latex :=
+  { concatenate := fun l1 l2 => match l1 with rawLatex l1' => match l2 with rawLatex l2' => rawLatex (l1'+++l2') end end }.
+Instance LatexToString : ToString Latex := { toString := fun x => match x with rawLatex s => s end }.
 
+Class ToLatexMath (T:Type) := { toLatexMath : T -> LatexMath }.
+Instance ConcatenableLatexMath : Concatenable LatexMath :=
+  { concatenate := fun l1 l2 =>
+    match l1 with rawLatexMath l1' =>
+      match l2 with rawLatexMath l2' => rawLatexMath (l1'+++l2')
+      end end }.
+Instance LatexMathToString : ToString LatexMath := { toString := fun x => match x with rawLatexMath s => s end }.
 
+Instance ToLatexLatexMath : ToLatex LatexMath := { toLatex     := fun l => rawLatex     ("$"+++toString l+++"$") }.
+Instance ToLatexMathLatex : ToLatexMath Latex := { toLatexMath := fun l => rawLatexMath ("\text{"+++toString l+++"}") }.
 
+Instance StringToLatex     : ToLatex string := { toLatex := fun x => rawLatex (sanitizeForLatex x) }.
+Instance StringToLatexMath : ToLatexMath  string := { toLatexMath := fun x => toLatexMath (toLatex x) }.
+Instance LatexToLatex          : ToLatex     Latex      := { toLatex := fun x => x }.
+Instance LatexMathToLatexMath  : ToLatexMath LatexMath  := { toLatexMath := fun x => x }.
+
+Fixpoint treeToLatexMath {V}{ToLatexV:ToLatexMath V}(t:Tree ??V) : LatexMath :=
+  match t with
+    | T_Leaf None     => rawLatexMath "\langle\rangle"
+    | T_Leaf (Some x) => (rawLatexMath "\langle")+++toLatexMath x+++(rawLatexMath "\rangle")
+    | T_Branch b1 b2  => (rawLatexMath "\langle")+++treeToLatexMath b1+++(rawLatexMath " , ")
+      +++treeToLatexMath b2+++(rawLatexMath "\rangle")
+  end.
