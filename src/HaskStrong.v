@@ -12,6 +12,7 @@ Require Import HaskCoreTypes.
 Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskWeakVars.
+Require Import HaskCoreVars.
 
 Section HaskStrong.
 
@@ -74,11 +75,8 @@ Section HaskStrong.
   | ELR_branch : ∀ Γ Δ ξ l t1 t2, ELetRecBindings Γ Δ ξ l t1 -> ELetRecBindings Γ Δ ξ l t2 -> ELetRecBindings Γ Δ ξ l (t1,,t2)
   .
 
-
   Context {ToStringVV:ToString VV}.
-
-  Require Import HaskCoreVars.
-
+  Context {ToLatexVV:ToLatex VV}.
   Fixpoint exprToString {Γ}{Δ}{ξ}{τ}(exp:Expr Γ Δ ξ τ) : string :=
     match exp with
     | EVar  Γ' _ ξ' ev              => "var."+++ev
