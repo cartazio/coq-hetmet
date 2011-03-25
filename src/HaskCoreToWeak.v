@@ -15,9 +15,6 @@ Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
 
-Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
-Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
-
 Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
 Variable coreViewDeep : CoreType  -> CoreType.        Extract Inlined Constant coreViewDeep => "coreViewDeep".
 Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.

@@ -31,9 +31,6 @@ Variable mkUnsafeCoercion : CoreType -> CoreType -> CoreCoercion.
 Variable coreCoercionsAreReallyTypes : CoreCoercion -> CoreType.
   Extract Inlined Constant coreCoercionsAreReallyTypes => "(\x -> x)".
 
-Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
-Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
-
 Definition weakAltConToCoreAltCon (wa:WeakAltCon) : CoreAltCon :=
   match wa with
   | WeakDataAlt cdc => DataAlt cdc

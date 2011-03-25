@@ -86,3 +86,6 @@ Variable tyConToString   : TyCon   -> string.     Extract Inlined Constant tyCon
 Variable tyFunToString   : TyFun   -> string.     Extract Inlined Constant tyFunToString         => "outputableToString".
 Instance TyConToString   : ToString TyCon := { toString := tyConToString }.
 Instance TyFunToString   : ToString TyFun := { toString := tyFunToString }.
+
+Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
+Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
