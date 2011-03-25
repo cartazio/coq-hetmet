@@ -23,6 +23,7 @@ Coercion eqd_type : EqDecidable >-> Sortclass.
 
 Class ToString (T:Type) := { toString : T -> string }.
 Instance StringToString : ToString string := { toString := fun x => x }.
+
 Notation "a +++ b" := (append (toString a) (toString b)) (at level 100).
 
 (*******************************************************************************)
@@ -395,10 +396,6 @@ Lemma distinct_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (lv:list VV), 
   inversion H.
   subst.
   apply n; auto.
-  Defined.
-
-Lemma distinctT_decidable {VV:Type}{eqdVV:EqDecidable VV} : forall (lv:Tree ??VV), sumbool (distinctT lv) (not (distinctT lv)).
-  admit.
   Defined.
 
 Lemma map_preserves_length {A}{B}(f:A->B)(l:list A) : (length l) = (length (map f l)).
@@ -914,3 +911,24 @@ Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_z
 Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
   admit.
   Defined.
+
+(* escapifies any characters which might cause trouble for LaTeX *)
+Variable sanitizeForLatex    : string      -> string.
+   Extract Inlined Constant sanitizeForLatex      => "sanitizeForLatex".
+Inductive Latex : Type := latex : string -> Latex.
+Instance LatexToString : ToString Latex := { toString := fun x => match x with latex s => s end }.
+Class ToLatex (T:Type) := { toLatex : T -> Latex }.
+Instance StringToLatex : ToLatex string := { toLatex := fun x => latex (sanitizeForLatex x) }.
+Instance LatexToLatex  : ToLatex Latex  := { toLatex := fun x => x }.
+Definition concatLatex {T1}{T2}(l1:T1)(l2:T2){L1:ToLatex T1}{L2:ToLatex T2} : Latex :=
+  match toLatex l1 with
+    latex s1 =>
+  match toLatex l2 with
+    latex s2 =>
+    latex (s1 +++ s2)
+    end
+    end.
+Notation "a +=+ b" := (concatLatex a b) (at level 60, right associativity).
+
+
+

@@ -18,9 +18,6 @@ Require Import HaskStrong.
 Require Import HaskProof.
 Require Import HaskCoreTypes.
 
-(* escapifies any characters which might cause trouble for LaTeX *)
-Variable sanitizeForLatex    : string      -> string.        Extract Inlined Constant sanitizeForLatex      => "sanitizeForLatex".
-
 Open Scope string_scope.
 Section ToLatex.
 
