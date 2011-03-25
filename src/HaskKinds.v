@@ -38,6 +38,18 @@ Instance KindToString : ToString Kind := { toString := kindToString }.
 Notation "'★'"   := KindStar.
 Notation "a ⇛ b" := (KindArrow a b).
 
+Fixpoint kindToLatex (k:Kind) : Latex :=
+  match k with
+  | ★                            => latex "\star"
+  | ★  ⇛ k2                      => (latex "\star\Rightarrow ")+=+kindToLatex k2
+  | k1 ⇛ k2                      => (latex "(")+=+kindToLatex k1+=+(latex ")\Rightarrow ")+=+kindToLatex k2
+  | KindUnliftedType             => latex "\text{\tt{\#}}"
+  | KindUnboxedTuple             => latex "\text{\tt{(\#)}}"
+  | KindArgType                  => latex "\text{\tt{??}}"
+  | KindOpenType                 => latex "\text{\tt{?}}"
+  end.
+Instance KindToLatex : ToLatex Kind := { toLatex := kindToLatex }.
+
 Instance KindEqDecidable : EqDecidable Kind.
   apply Build_EqDecidable.
   induction v1.
