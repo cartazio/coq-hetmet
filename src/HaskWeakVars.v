@@ -4,9 +4,9 @@
 
 Generalizable All Variables.
 Require Import Preamble.
-Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
+Require Import General.
 Require Import HaskKinds.
 Require Import HaskLiteralsAndTyCons.
 Require Import HaskCoreVars.
@@ -44,7 +44,7 @@ Definition haskLiteralToWeakType lit : WeakType :=
 Variable coreVarToWeakVar  : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
 Variable getTyConTyVars_   : CoreTyCon   -> list CoreVar.  Extract Inlined Constant getTyConTyVars_   => "getTyConTyVars".
 Definition tyConTyVars (tc:CoreTyCon) :=
-  General.filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (getTyConTyVars_ tc)).
+  filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (getTyConTyVars_ tc)).
   Opaque tyConTyVars.
 Definition tyConKind (tc:TyCon) : list Kind := map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc).
 
