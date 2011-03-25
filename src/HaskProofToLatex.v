@@ -19,17 +19,71 @@ Require Import HaskProof.
 Require Import HaskCoreTypes.
 
 Open Scope string_scope.
-Section ToLatex.
+Section HaskProofToLatex.
 
-  Fixpoint kind2latex (k:Kind) : string :=
-    match k with
-    | ★                            => "\star"
-    | ★  ⇛ k2                      => "\star\Rightarrow "+++kind2latex k2
-    | k1 ⇛ k2                      => "("+++kind2latex k1+++")\Rightarrow "+++kind2latex k2
-    | KindUnliftedType             => "\text{\tt{\#}}"
-    | KindUnboxedTuple             => "\text{\tt{(\#)}}"
-    | KindArgType                  => "\text{\tt{??}}"
-    | KindOpenType                 => "\text{\tt{?}}"
+  Context {TV:Kind -> Type}.
+  Context {TVLatex:forall k, ToLatex (TV k)}.
+  Context {freshM:FreshMonad (∀ κ, TV κ)}.
+  Definition FreshM' := FMT freshM.
+  Instance FreshMon' : Monad FreshM' := FMT_Monad freshM.
+  
+  Instance ToLatexTyCon : ToLatex TyCon.
+    admit.
+    Defined.
+
+  Fixpoint typeToLatex (needparens:bool){κ}(t:RawHaskType TV κ) {struct t} : FMT freshM Latex :=
+    match t with
+    | TVar    _ v        => return toLatex v
+    | TCon    tc         => return (latex "\text{\tt{")+=+tc+=+(latex "}}")
+    | TArrow             => return latex "\text{\tt{(->)}}"
+    | TCoerc _ t1 t2   t => bind t1' = typeToLatex false      t1
+                          ; bind t2' = typeToLatex false      t2
+                          ; bind t'  = typeToLatex needparens t
+                          ; return (latex "{(")+=+t1'+=+(latex "{\sim}")+=+
+                                     t2'+=+(latex ")}\Rightarrow{")+=+t'+=+(latex "}")
+    | TApp  _ _  t1 t2   => match t1 with
+                            | TApp _ _ TArrow tx => bind t1' = typeToLatex true tx
+                                                  ; bind t2' = typeToLatex true t2
+                                                  ; let body := t1'+=+(latex "{\rightarrow}")+=+t2'
+                                                    in return if needparens then (latex "(")+=+body+=+(latex ")") else body
+                            | _                  => bind t1' = typeToLatex true t1
+                                                  ; bind t2' = typeToLatex true t2
+                                                  ; let body := t1'+=+(latex " ")+=+t2'
+                                                    in return if needparens then (latex "(")+=+body+=+(latex ")") else body
+                         end
+    | TCode  ec t        => bind ec' = typeToLatex true ec
+                          ; bind t'  = typeToLatex false t
+                          ; return (latex "\code{")+=+ec'+=+(latex "}{")+=+t'+=+(latex "}")
+    | TyFunApp   tfc lt  => bind rest = typeListToLatex false lt
+                          ; return (latex "{\text{\tt{")+=+(sanitizeForLatex (toString tfc))+=+(latex "}}}")+=+
+                                   (*(latex "_{")+=+(latex (toString (tfc:nat)))+=+(latex "}")+=+*)
+                                   (fold_left (fun x y => (latex " \  ")+=+x+=+y)
+                                     rest (latex ""))
+    | TAll   k f         => (*bind alpha = next
+                          ; bind t'    = typeToLatex false (f (alpha k))
+                          ; *)return (latex "(\forall ")(*+=+(@toLatex _ (TVLatex k) (alpha k))*)
+                          +=+(latex "{:}")+=+(kindToLatex k)+=+(latex ")")(*+=+t'*)
+  end
+  with typeListToLatex (needparens:bool){κ}(t:RawHaskTypeList κ) {struct t} : FreshM' (list Latex) :=
+  match t with
+  | TyFunApp_nil                 => return nil
+  | TyFunApp_cons  κ kl rhk rhkl => bind r  = typeToLatex needparens rhk
+                                  ; bind rl = typeListToLatex needparens rhkl
+                                  ; return (r::rl)
+  end.
+(*
+  Definition ltypeToLatex {Γ:TypeEnv}{κ}(t:RawHaskType TV κ)(lev:list nat) : FreshM' Latex :=
+    match lev with
+      | nil => typeToLatex false t
+      | lv  => bind t' = typeToLatex true t
+             ; 
+        (latex "{")
+        +=+
+        
+        +=+
+        (latex "}^{")
+        +=+
+        (fold_left (fun x y => x+=+":"+=+y) (map tyvar2greek lv) "")+=+"}"
     end.
 
   Open Scope nat_scope.
@@ -50,57 +104,8 @@ Section ToLatex.
     end.
   Close Scope nat_scope.
 
-  Definition tyvar2greek (n:nat) :=
-    match n with
-      | O => "\alpha"
-      | S O => "\beta"
-      | S (S O) => "\xi"
-      | S (S (S n)) => "\alpha_{"+++n+++"}"
-    end.
-
   Definition covar2greek (n:nat) :=
     "{\gamma_{"+++n+++"}}".
-
-  (* TODO: now that PHOAS tyvar-representation-types are kind-indexed, we can do some clever stuff here *)
-  Fixpoint type2latex (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat) κ) {struct t} : string :=
-    match t with
-    | TVar    _ v          => tyvar2greek v
-    | TCon    tc           => "\text{\tt{"+++sanitizeForLatex (toString tc) +++"}}"
-    | TCoerc _ t1 t2   t   => "{("+++type2latex false n t1+++"{\sim}"
-                                  +++type2latex false n t2+++")}\Rightarrow{"
-                                  +++type2latex needparens n t+++"}"
-    | TApp  _ _  t1 t2     =>
-      match t1 with
-        | TApp _ _ TArrow t1 =>
-                     if needparens
-                     then "("+++(type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)+++")"
-                     else (type2latex true n t1)+++"{\rightarrow}"+++(type2latex true n t2)
-        | _ =>
-                     if needparens
-                     then "("+++(type2latex true n t1)+++" "+++(type2latex false n t2)+++")"
-                     else (type2latex true n t1)+++" "+++(type2latex false n t2)
-      end
-    | TArrow => "\text{\tt{(->)}}"
-    | TAll   k f           => let alpha := tyvar2greek n
-                              in "(\forall "+++ alpha +++ "{:}"+++ kind2latex k +++")"+++
-                                   type2latex false (S n) (f n)
-    | TCode  ec t          => "\code{"+++(type2latex true n ec)+++"}{"+++(type2latex false n t)+++"}"
-    | TyFunApp   tfc lt    => "{\text{\tt{"+++sanitizeForLatex (toString tfc) +++"}}}"+++
-                              "_{"+++n+++"}"+++
-                              fold_left (fun x y => " \  "+++x+++y)
-                              (typeList2latex false n lt) ""
-  end
-  with typeList2latex (needparens:bool)(n:nat){κ}(t:RawHaskTypeList κ) {struct t} : list string :=
-  match t with
-  | TyFunApp_nil                 => nil
-  | TyFunApp_cons  κ kl rhk rhkl => (type2latex needparens n rhk)::(typeList2latex needparens n rhkl)
-  end.
-
-  Definition ltype2latex {Γ:TypeEnv}{κ}(t:RawHaskType (fun _ => nat) κ)(lev:list nat) : string :=
-    match lev with
-      | nil => type2latex false O t
-      | lv  => "{"+++type2latex true O t+++"}^{"+++(fold_left (fun x y => x+++":"+++y) (map tyvar2greek lv) "")+++"}"
-    end.
 
   Fixpoint enumerate' (n:nat){T:Type}(l:list T) : list (nat * T) :=
     match l with
@@ -124,7 +129,7 @@ Section ToLatex.
 
   Definition InstantiatedTypeEnvString     Γ   : @InstantiatedTypeEnv     (fun _ => nat) Γ := count' Γ O.
   Definition InstantiatedCoercionEnvString Γ Δ : @InstantiatedCoercionEnv (fun _ => nat) nat Γ Δ  := count (length Δ).
-  Definition judgment2latex (j:Judg) : string :=
+  Definition judgmentToLatex (j:Judg) : string :=
       match j with
         | mkJudg Γ Δ  a b =>
           let Γ' := InstantiatedTypeEnvString Γ in
@@ -133,27 +138,27 @@ Section ToLatex.
             let (n,lt) := nt in
               match lt with
                 t @@ l =>
-                (var2string n)+++"{:}"+++(@ltype2latex Γ _ (t (fun _ => nat) Γ')
+                (var2string n)+++"{:}"+++(@ltypeToLatex Γ _ (t (fun _ => nat) Γ')
                   (map (fun x:HaskTyVar Γ _ => x (fun _ => nat) Γ') l))
               end in
           let lt2l' := fun lt:(LeveledHaskType Γ ★) => 
               match lt with
                 t @@ l =>
-                "e{:}"+++(@ltype2latex Γ _ (t (fun _ => nat) Γ')
+                (@ltypeToLatex Γ _ (t (fun _ => nat) Γ')
                   (map (fun x:HaskTyVar Γ _ => x (fun _ => nat) Γ') l))
               end in
-          (list2latex "" lt2l "\ ,\ " (enumerate (leaves a)))
+          (listToLatex "" lt2l "\ ,\ " (enumerate (leaves a)))
           +++" \ \vdash_e\  "(*+++"e{:}"*)
-          +++(list2latex "" lt2l' "\ ,\ " (leaves b))
+          +++(listToLatex "" lt2l' "\ ,\ " (leaves b))
       end.
 
   Definition j2l (j2j:Judg -> Judg) jt :=
-    @judgments2latex Judg judgment2latex (mapOptionTree j2j jt).
+    @judgmentsToLatex Judg judgmentToLatex (mapOptionTree j2j jt).
 
-  Fixpoint nd_urule2latex {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : string :=
+  Fixpoint nd_uruleToLatex {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : string :=
     match r with
-      | RLeft   _ _ _ r => nd_urule2latex r
-      | RRight  _ _ _ r => nd_urule2latex r
+      | RLeft   _ _ _ r => nd_uruleToLatex r
+      | RRight  _ _ _ r => nd_uruleToLatex r
       | RCanL   _ _     => "CanL"
       | RCanR   _ _     => "CanR"
       | RuCanL  _ _     => "uCanL"
@@ -165,9 +170,9 @@ Section ToLatex.
       | RCont   _ _     => "Cont"
     end.
 
-  Fixpoint nd_rule2latex {h}{c}(r:Rule h c) : string :=
+  Fixpoint nd_ruleToLatex {h}{c}(r:Rule h c) : string :=
     match r with
-      | RURule        _ _ _ _ r         => nd_urule2latex r
+      | RURule        _ _ _ _ r         => nd_uruleToLatex r
       | RNote         _ _ _ _ _ _       => "Note"
       | RLit          _ _ _ _           => "Lit"
       | RVar          _ _ _ _           => "Var"
@@ -211,11 +216,15 @@ Section ToLatex.
       | RBindingGroup _ _ _ _ _ _ => true
       | _                         => false
     end.
-End ToLatex.
+  *)
 
+End HaskProofToLatex.
+
+(*
 Definition nd_ml_toLatex {c}(pf:@ND _ Rule [] c) :=
   @SCND_toLatex _ _
-      judgment2latex
-      (fun h c r => @nd_rule2latex h c r)
+      judgmentToLatex
+      (fun h c r => @nd_ruleToLatex h c r)
       (fun h c r => @nd_hideRule h c r)
       _ _ (mkSCND (systemfc_all_rules_one_conclusion) _ _ _ pf (scnd_weak [])).
+*)
