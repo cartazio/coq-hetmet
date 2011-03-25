@@ -29,8 +29,8 @@ Definition reification_from_garrow (K:Enrichment) (C:MonoidalEnrichment) (garrow
   refine
   {| reification_r         := fun k:K => RepresentableFunctor K k >>>> garrow
    ; reification_rstar_f   :=                                garrow >>>> me_mf C
-   ; reification_rstar     :=              MonoidalFunctorsCompose _ _ _ _ _ garrow (me_mf C)
    |}.
+   apply MonoidalFunctorsCompose.
    abstract (intros; set (@ni_associativity) as q; apply q).
    Defined.
 
