@@ -24,6 +24,16 @@ src/categories/src:
 clean:
 	rm -rf build
 
+merged:
+	mkdir -p .temp
+	cd src; for A in *.v; do cat $$A  | grep -v '^Require Import' > ../.temp/`echo $$A | sed s_\\\\.v_._`; done
+	cd src/categories/src; for A in *.v; do cat $$A  | grep -v '^Require Import' > ../../../.temp/`echo $$A | sed s_\\\\.v_._`; done
+	cp src/Banner.v .temp/GArrows.v
+	cd .temp; grep '^Require Import ' ../src/All.v | sed 's_Require Import _echo;echo;echo;echo;echo;cat _' | bash >> GArrows.v
+	cd .temp; time $(coqc) -dont-load-proofs -verbose GArrows.v
+	echo
+	echo COMPILATION OK
+	echo
 
 
 # this is for Adam's use only!
