@@ -33,10 +33,360 @@ Require Import NaturalIsomorphisms_ch7_5.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 
-Require Import FreydCategories.
-
+Require Import HaskStrongTypes.
+Require Import HaskStrong.
+Require Import HaskProof.
+Require Import HaskStrongToProof.
+Require Import HaskProofToStrong.
+(*Require Import FreydCategories.*)
+(*Require Import ProgrammingLanguage.*)
 
 Section HaskProofCategory.
+
+  Definition unitType {Γ} : RawHaskType Γ ★.
+    admit.
+    Defined.
+
+  Definition brakifyType {Γ} (lt:LeveledHaskType Γ ★) : LeveledHaskType (★ ::Γ) ★ :=
+    match lt with
+      t @@ l => HaskBrak (FreshHaskTyVar ★) (weakT t) @@ weakL l
+    end.
+
+  Definition brakify (j:Judg) : Judg :=
+    match j with
+      Γ > Δ > Σ |- τ =>
+        (★ ::Γ) > weakCE Δ > mapOptionTree brakifyType Σ |- mapOptionTree brakifyType τ
+    end.
+
+  (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows *)
+  Section RulePCF.
+
+    Context {Γ:TypeEnv}{Δ:CoercionEnv Γ}.
+
+    Inductive Rule_PCF : forall {h}{c}, Rule h c -> Prop :=
+    | PCF_RURule           : ∀ h c r            ,  Rule_PCF (RURule Γ Δ  h c r)
+    | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF (RNote Γ Δ Σ τ l n)
+    | PCF_RVar             : ∀ σ               l,  Rule_PCF (RVar Γ Δ  σ         l)
+    | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF (RLam Γ Δ  Σ tx te      q )
+    | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF (RApp Γ Δ  Σ tx te   p l)
+    | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF (RLet Γ Δ  Σ σ₁ σ₂   p l)
+    | PCF_RBindingGroup    : ∀ q a b c d e      ,  Rule_PCF (RBindingGroup q a b c d e)
+    | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x).
+
+    Inductive BoundedRule : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+
+    (* any proof using only PCF rules is an n-bounded proof for any n>0 *)
+    | br_pcf  : forall n h c (r:Rule h c), Rule_PCF  r  -> BoundedRule n h c
+
+    (* any n-bounded proof may be used as an (n+1)-bounded proof by prepending Esc and appending Brak *)
+    | br_nest : forall n h c, ND (BoundedRule n) h c    -> BoundedRule (S n) (mapOptionTree brakify h) (mapOptionTree brakify c)
+    .
+
+  Context (ndr:forall n, @ND_Relation _ (BoundedRule n)).
+
+  (* for every n we have a category of n-bounded proofs *)
+  Definition JudgmentsN n := @Judgments_Category_CartesianCat _ (BoundedRule n) (ndr n).
+
+  Open Scope nd_scope.
+  Open Scope pf_scope.
+
+  Definition TypesNmor  (n:nat) (t1 t2:Tree ??(LeveledHaskType Γ ★)) : JudgmentsN n := [Γ > Δ > t1 |- t2].
+  Definition TypesN_id  n (t:Tree ??(LeveledHaskType Γ ★)) : ND (BoundedRule n) [] [ Γ > Δ > t |- t ].
+    admit.
+    Defined.
+  Definition TypesN_comp  n t1 t2 t3 : ND (BoundedRule n) ([Γ > nil > t1 |- t2],,[Γ > nil > t2 |- t3]) [ Γ > nil > t1 |- t3 ].
+    admit.
+    Defined.
+  Definition TypesN     n : ECategory (JudgmentsN n) (Tree ??(LeveledHaskType Γ ★)) (TypesNmor n).
+(*
+    apply {| eid := TypesN_id n ; ecomp := TypesN_comp n |}; intros; simpl.
+    apply (@MonoidalCat_all_central _ _ (JudgmentsN n) _ _ _ (JudgmentsN n)).
+    apply (@MonoidalCat_all_central _ _ (JudgmentsN n) _ _ _ (JudgmentsN n)).
+    admit.
+    admit.
+*)
+    admit.
+    Defined.
+
+  (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
+  Definition ReificationFunctor n : Functor (JudgmentsN n) (JudgmentsN (S n)) (mapOptionTree brakify).
+    refine {| fmor := fun h c (f:h~~{JudgmentsN n}~~>c) => nd_rule (br_nest _ _ _ f) |}; intros; simpl.
+    admit.
+    admit.
+    admit.
+    Defined.
+
+  Definition ReificationFunctorMonoidal n : MonoidalFunctor (JudgmentsN n) (JudgmentsN (S n)) (ReificationFunctor n).
+    admit.
+    Defined.
+
+  Definition makeTree : Tree ??(LeveledHaskType Γ ★) -> HaskType Γ ★.
+    admit.
+    Defined.
+
+  Definition flattenType n (j:JudgmentsN n) : TypesN n.
+    unfold eob_eob.
+    unfold ob in j.
+    refine (mapOptionTree _ j).
+    clear j; intro j.
+    destruct j as [ Γ' Δ' Σ τ ].
+    assert (Γ'=Γ). admit.
+    rewrite H in *.
+    clear H Γ'.
+    refine (_ @@ nil).
+    refine (HaskBrak _ ( (makeTree Σ) ---> (makeTree τ) )); intros.
+    admit.
+    Defined.
+
+  Definition FlattenFunctor_fmor n :
+    forall h c,
+      (h~~{JudgmentsN n}~~>c) -> 
+      ((flattenType n h)~~{TypesN n}~~>(flattenType n c)).
+    intros.
+    unfold hom in *; simpl.
+    unfold mon_i.
+    unfold ehom.
+    unfold TypesNmor.
+
+    admit.
+    Defined.
+
+  Definition FlattenFunctor n : Functor (JudgmentsN n) (TypesN n) (flattenType n).
+    refine {| fmor := FlattenFunctor_fmor n |}; intros.
+    admit.
+    admit.
+    admit.
+    Defined.
+    
+  End RulePCF.
+  Implicit Arguments Rule_PCF [ [h] [c] ].
+  Implicit Arguments BoundedRule [ ].
+
+
+(*
+  Definition code2garrow0 {Γ}(ec t1 t2:RawHaskType Γ ★) : RawHaskType Γ ★.
+    admit.
+    Defined.
+  Definition code2garrow Γ (ec t:RawHaskType Γ ★) :=
+      match t with
+(*        | TApp ★ ★ (TApp _ ★ TArrow tx) t' => code2garrow0 ec tx       t'*)
+        |                               _  => code2garrow0 ec unitType t
+      end.
+  Opaque code2garrow.
+  Fixpoint typeMap {TV}{κ}(ty:@RawHaskType TV κ) : @RawHaskType TV κ :=
+      match ty as TY in RawHaskType _ K return RawHaskType TV K with
+        | TCode ec t        => code2garrow _ ec t
+        | TApp _ _ t1 t2    => TApp (typeMap t1) (typeMap t2)
+        | TAll _ f          => TAll _ (fun tv => typeMap (f tv))
+        | TCoerc _ t1 t2 t3 => TCoerc (typeMap t1) (typeMap t2) (typeMap t3)
+        | TVar   _ v        => TVar v
+        | TArrow            => TArrow
+        | TCon  tc          => TCon tc 
+        | TyFunApp  tf rhtl => (* FIXME *) TyFunApp tf rhtl
+      end.
+          
+  Definition typeMapL {Γ}(lht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★  :=
+    match lht with
+(*      | t @@ nil       => (fun TV ite => typeMap (t TV ite)) @@ lev*)
+      | t @@ lev => (fun TV ite => typeMap (t TV ite)) @@ lev
+    end.
+
+  Definition coMap {Γ}(ck:HaskCoercionKind Γ) := 
+    fun TV ite => match ck TV ite with 
+      | mkRawCoercionKind _ t1 t2 => mkRawCoercionKind _ (typeMap t1) (typeMap t2)
+      end.
+
+  Definition flattenCoercion {Γ}{Δ}{ck}(hk:HaskCoercion Γ Δ ck) : HaskCoercion Γ (map coMap Δ) (coMap ck).
+    admit.
+    Defined.
+
+  Lemma update_typeMap Γ (lev:HaskLevel Γ) ξ v t
+    : (typeMap ○ (update_ξ            ξ  lev ((⟨v, t ⟩)          :: nil)))
+    = (           update_ξ (typeMap ○ ξ) lev ((⟨v, typeMap_ t ⟩) :: nil)).
+    admit.
+    Qed.
+
+  Lemma foo κ Γ σ τ : typeMap_ (substT σ τ) = substT(Γ:=Γ)(κ₁:=κ) (fun TV ite => typeMap ○ σ TV ite) τ.
+    admit.
+    Qed.
+
+  Lemma lit_lemma lit Γ : typeMap_ (literalType lit) = literalType(Γ:=Γ) lit.
+    admit.
+    Qed.
+*)
+(*
+  Definition flatten : forall h c, Rule h c -> @ND Judg Rule (mapOptionTree flattenJudgment h) (mapOptionTree flattenJudgment c).
+    intros h c r.
+    refine (match r as R in Rule H C return ND Rule (mapOptionTree flattenJudgment H) (mapOptionTree flattenJudgment C) with
+      | RURule  a b c d e             => let case_RURule := tt        in _
+      | RNote   Γ Δ Σ τ l n           => let case_RNote := tt         in _
+      | RLit    Γ Δ l     _           => let case_RLit := tt          in _
+      | RVar    Γ Δ σ         p       => let case_RVar := tt          in _
+      | RGlobal Γ Δ σ l wev           => let case_RGlobal := tt       in _
+      | RLam    Γ Δ Σ tx te     x     => let case_RLam := tt          in _
+      | RCast   Γ Δ Σ σ τ γ     x     => let case_RCast := tt         in _
+      | RAbsT   Γ Δ Σ κ σ a           => let case_RAbsT := tt         in _
+      | RAppT   Γ Δ Σ κ σ τ     y     => let case_RAppT := tt         in _
+      | RAppCo  Γ Δ Σ κ σ₁ σ₂ γ σ l   => let case_RAppCo := tt        in _
+      | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
+      | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
+      | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
+      | RBindingGroup Γ p lri m x q   => let case_RBindingGroup := tt in _
+      | REmptyGroup _ _               => let case_REmptyGroup := tt   in _
+      | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
+      | REsc    Σ a b c n m           => let case_REsc := tt          in _
+      | RCase   Γ Δ lev tc Σ avars tbranches alts => let case_RCase := tt         in _
+      | RLetRec Γ Δ lri x y t         => let case_RLetRec := tt       in _
+      end).
+
+      destruct case_RURule.
+        admit.
+
+      destruct case_RBrak.
+        simpl.
+        admit.
+
+      destruct case_REsc.
+        simpl.
+        admit.
+
+      destruct case_RNote.
+        eapply nd_rule.  simpl.  apply RNote; auto.
+
+      destruct case_RLit.
+        simpl.
+
+      set (@RNote Γ Δ Σ τ l) as q.
+    Defined.
+
+  Definition flatten' {h}{c} (pf:ND Rule h c) := nd_map' flattenJudgment flatten pf.
+
+
+    @ND Judgment1 Rule1 (mapOptionTree f h) (mapOptionTree f c).
+
+  refine (fix flatten : forall Γ Δ Σ τ
+    (pf:SCND Rule [] [Γ > Δ >                       Σ |-                       τ ]) :
+    SCND Rule [] [Γ > Δ > mapOptionTree typeMap Σ |- mapOptionTree typeMap τ ] :=
+    match pf as SCND _ _ 
+    | scnd_comp   : forall ht ct c , SCND ht ct -> Rule ct [c] -> SCND ht [c]
+  | scnd_weak   : forall c       , SCND c  []
+  | scnd_leaf   : forall ht c    , SCND ht [c]  -> SCND ht [c]
+  | scnd_branch : forall ht c1 c2, SCND ht c1 -> SCND ht c2 -> SCND ht (c1,,c2)
+  Expr Γ Δ ξ τ -> Expr Γ (map coMap Δ) (typeMap ○ ξ) (typeMap τ).
+*)
+
+(*
+  Lemma all_lemma Γ κ σ l : 
+(@typeMap (κ :: Γ)
+           (@HaskTApp (κ :: Γ) κ (@weakF Γ κ ★ σ) (@FreshHaskTyVar Γ κ) @@ 
+            @weakL Γ κ l)) = (@typeMap Γ (@HaskTAll Γ κ σ @@  l)).
+*)
+
+(*    
+  Definition flatten : forall Γ Δ ξ τ,  Expr Γ Δ ξ τ -> Expr Γ (map coMap Δ) (typeMap ○ ξ) (typeMap τ).
+  refine (fix flatten Γ' Δ' ξ' τ' (exp:Expr Γ' Δ' ξ' τ') : Expr Γ' (map coMap Δ') (typeMap ○ ξ') (typeMap τ') :=
+    match exp as E in Expr G D X T return Expr G (map coMap D) (typeMap ○ X) (typeMap T) with
+    | EGlobal  Γ Δ ξ t wev                          => EGlobal _ _ _ _  wev
+    | EVar     Γ Δ ξ ev                             => EVar    _ _ _    ev
+    | ELit     Γ Δ ξ lit lev                        => let case_ELit    := tt in _
+    | EApp     Γ Δ ξ t1 t2 lev e1 e2                => EApp _ _ _ _ _ _ (flatten _ _ _ _ e1) (flatten _ _ _ _ e2)
+    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in _
+    | ELet     Γ Δ ξ tv t  l ev elet ebody          => let case_ELet    := tt in _
+    | ELetRec  Γ Δ ξ lev t tree branches ebody      => let case_ELetRec := tt in _
+    | ECast    Γ Δ ξ t1 t2 γ lev e                  => let case_ECast   := tt in _
+    | ENote    Γ Δ ξ t n e                          => ENote _ _ _ _ n (flatten _ _ _ _ e)
+    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in _
+    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in _
+    | ECoApp   Γ Δ κ σ₁ σ₂ γ σ ξ l e                => let case_ECoApp  := tt in _
+    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in _
+    | ECase    Γ Δ ξ l tc tbranches atypes e alts'  => let case_ECase   := tt in _
+
+    | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in _
+    | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in _
+    end); clear exp ξ' τ' Γ' Δ'.
+
+  destruct case_ELit.
+    simpl.
+    rewrite lit_lemma.
+    apply ELit.
+
+  destruct case_ELam.
+    set (flatten _ _ _ _ e) as q.
+    rewrite update_typeMap in q.
+    apply (@ELam _ _ _ _ _ _ _ _ v q).
+
+  destruct case_ELet.
+    set (flatten _ _ _ _ ebody) as ebody'.
+    set (flatten _ _ _ _ elet)  as elet'.
+    rewrite update_typeMap in ebody'.
+    apply (@ELet _ _ _ _ _ _ _ _ _ elet' ebody').
+
+  destruct case_EEsc.
+    admit.
+  destruct case_EBrak.
+    admit.
+
+  destruct case_ECast.
+    apply flatten in e.
+    eapply ECast in e.
+    apply e.
+    apply flattenCoercion in γ.
+    apply γ.
+
+  destruct case_ETyApp.
+    apply flatten in e.
+    simpl in e.
+    unfold HaskTAll in e.
+    unfold typeMap_ in e.
+    simpl in e.
+    eapply ETyApp in e.
+    rewrite <- foo in e.
+    apply e.
+
+  destruct case_ECoLam.
+    apply flatten in e.
+    simpl in e.
+    set (@ECoLam _ _ _ _ _ _ _ _ _ _ e) as x.
+    simpl in x.
+    simpl.
+    unfold typeMap_.
+    simpl.
+    apply x.
+
+  destruct case_ECoApp.
+    simpl.
+    apply flatten in e.
+    eapply ECoApp.
+    unfold mkHaskCoercionKind in *.
+    simpl in γ.
+    apply flattenCoercion in γ.
+    unfold coMap in γ at 2.
+    apply γ.
+    apply e.
+   
+  destruct case_ETyLam.
+    apply flatten in e.
+    set (@ETyLam Unique _ Γ (map coMap Δ) (typeMap ○ ξ) κ (fun ite x => typeMap (σ x ite))) as e'.
+    unfold HaskTAll in *.
+    unfold typeMap_ in *.
+    rewrite <- foo in e'.
+    unfold typeMap in e'.
+    simpl in e'.
+    apply ETyLam.
+
+Set Printing Implicit.
+idtac.
+idtac.
+
+
+    admit.
+   
+  destruct case_ECase.
+    admit.
+
+  destruct case_ELetRec.
+    admit.
+    Defined.
 
   (* This proof will work for any dynamic semantics you like, so
    * long as those semantics are an ND_Relation (associativity,
@@ -52,50 +402,20 @@ Section HaskProofCategory.
 
     Notation "a |= b" := (Γ >> Δ > a |- b).
 
-    (* category of judgments in a fixed type/coercion context *)
-    Definition JudgmentsFC :=
-      @Judgments_Category_monoidal _ Rule dynamic_semantics (UJudg Γ Δ) UJudg2judg.
+    (*
+       SystemFCa
+       PCF
+       SystemFCa_two_level
+       SystemFCa_initial_GArrow
+     *)
 
-    Definition identityProof t : [] ~~{JudgmentsFC}~~> [t |= t].
-      unfold hom; simpl.
-      admit.
-      Defined.
+    Context (nd_eqv:@ND_Relation _ (@URule Γ Δ)).
+    Check (@ProgrammingLanguage).
+    Context (PL:@ProgrammingLanguage (LeveledHaskType Γ ★)
+      (fun x y => match x with x1|=x2 => match y with y1|=y2 => @URule Γ Δ)).
+    Definition JudgmentsFC := @Judgments_Category_CartesianCat _ (@URule Γ Δ) nd_eqv.
+    Definition TypesFC     := @TypesL                          _ (@URule Γ Δ) nd_eqv.
 
-    Definition cutProof a b c : [a |= b],,[b |= c] ~~{JudgmentsFC}~~> [a |= c].
-      unfold hom; simpl.
-      admit.
-      Defined.
-
-    Definition TypesFC : ECategory JudgmentsFC Context (fun x y => [Γ >> Δ > x |- y]).
-      refine
-      {| eid   := identityProof
-       ; ecomp := cutProof
-      |}; intros.
-      apply MonoidalCat_all_central.
-      apply MonoidalCat_all_central.
-      admit.
-      admit.
-      admit.
-      Defined.
-
-    Definition TypesEnrichedInJudgments : Enrichment.
-      refine {| enr_c := TypesFC |}.
-      Defined.
-   
-(*
-    Definition TwoLevelLanguage L2 :=
-    { L1 : _ &
-      Reification (TypesEnrichedInJudgments L1) (TypesEnrichedInJudgments L2) }
-
-    Inductive NLevelLanguage : nat -> Language -> Type :=
-    | NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
-    | NLevelLanguage_succ : forall L1 L2 n, TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2
-
-    Definition OmegaLevelLanguage : Language -> Type :=
-      forall n:nat, NLevelLanguage n L.
-*)
-
-    
     (* The full subcategory of SystemFC(Γ,Δ) consisting only of judgments involving types at a fixed level.  Note that
      * code types are still permitted! *)
     Section SingleLevel.
@@ -108,7 +428,7 @@ Section HaskProofCategory.
 
       Inductive JudgmentsAtLevel : JudgmentsFC -> Prop :=
         | judgmentsAtLevel_nil    : JudgmentsAtLevel []
-        | judgmentsAtLevel_leaf   : forall c1 c2, ContextAtLevel c1 -> ContextAtLevel c2 -> JudgmentsAtLevel [c1 |= c2]
+        | judgmentsAtLevel_leaf   : forall c1 c2, ContextAtLevel c1   -> ContextAtLevel c2   -> JudgmentsAtLevel [c1 |= c2]
         | judgmentsAtLevel_branch : forall j1 j2, JudgmentsAtLevel j1 -> JudgmentsAtLevel j2 -> JudgmentsAtLevel (j1,,j2).
   
       Definition JudgmentsFCAtLevel := FullSubcategory JudgmentsFC JudgmentsAtLevel.
@@ -118,43 +438,6 @@ Section HaskProofCategory.
   End SystemFC_Category.
 
   Implicit Arguments TypesFC [ ].
-
-  Definition Types_first c : EFunctor (TypesFC nil nil) (TypesFC nil nil) (fun x => x,,c ).
-    admit.
-    Defined.
-  Definition Types_second c : EFunctor (TypesFC nil nil) (TypesFC nil nil) (fun x => c,,x ).
-    admit.
-    Defined.
-
-  Definition Types_binoidal : BinoidalCat (TypesFC nil nil) (@T_Branch _).
-    refine
-      {| bin_first  := Types_first
-       ; bin_second := Types_second
-       |}.
-    Defined.
-
-  Definition Types_premonoidal : PreMonoidalCat Types_binoidal [].
-    admit.
-    Defined.
-
-(*
-  Definition ArrowInProgrammingLanguage :=
-    FreydCategory Types_premonoidal Types_premonoidal.
-
-  FlatSubCategory
-
-  InitialGArrowsAllowFlattening
-
-  SystemFCa
-
-  PCF
-
-  SystemFCa_two_level
-  SystemFCa_initial_GArrow
-  
-
-*)
-
     
 (*
     Section EscBrak_Functor.
@@ -381,5 +664,6 @@ Section HaskProofCategory.
         c.
     admit.
     Defined.
+*)
 *)
 End HaskProofCategory.
