@@ -53,27 +53,6 @@ Inductive DataCon : TyCon -> Type :=
   Coercion dataConToCoreDataCon : DataCon >-> CoreDataCon.
   (*Opaque DataCon.*)
 
-Definition compare_datacons : forall tc, forall dc1 dc2:DataCon tc, bool.
-  intros.
-  destruct dc1.
-  destruct dc2.
-  exact (if eqd_dec cdc cdc0 then true else false).
-  Defined.
-
-Axiom trust_compare_datacons : forall tc dc1 dc2, if compare_datacons tc dc1 dc2 then dc1=dc2 else not (dc1=dc2).
-
-Instance DataConEqDecidable : forall tc, EqDecidable (@DataCon tc).
-  intros.
-  apply Build_EqDecidable.
-  intros.
-  set (trust_compare_datacons _ v1 v2) as x.
-  set (compare_datacons tc v1 v2) as y.
-  assert (y=compare_datacons tc v1 v2). reflexivity.
-  destruct y; rewrite <- H in x.
-  left; auto.
-  right; auto.
-  Defined.
-
 Definition tyConKind' tc := fold_right KindArrow ★ (tyConKind tc).
 
 (* types prefixed with "Raw" are NOT binder-polymorphic; they have had their PHOAS parameter instantiated already *)
