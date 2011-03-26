@@ -179,70 +179,68 @@ Section Programming_Language.
       Defined.
 
   End LanguageCategory.
-
-  Structure ProgrammingLanguageSMME :=
-  { plsmme_pl   : ProgrammingLanguage
-  ; plsmme_smme : SurjectiveMonicMonoidalEnrichment (TypesEnrichedInJudgments plsmme_pl)
-  }.
-  Coercion plsmme_pl : ProgrammingLanguageSMME >-> ProgrammingLanguage.
-  Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
-
-  Section ArrowInLanguage.
-    Context  (Host:ProgrammingLanguageSMME).
-    Context `(CC:CartesianCat (me_mon Host)).
-    Context `(K:@ECategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) C Kehom).
-    Context `(pmc:PreMonoidalCat K bobj mobj (@one _ _ _ (cartesian_terminal C))).
-      (* FIXME *)
-      (*
-      Definition ArrowInProgrammingLanguage := 
-        @FreydCategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) _ _ _ _ pmc.
-        *)
-  End ArrowInLanguage.
-
-  Section GArrowInLanguage.
-    Context (Guest:ProgrammingLanguageSMME).
-    Context (Host :ProgrammingLanguageSMME).
-    Definition GeneralizedArrowInLanguage := GeneralizedArrow Guest Host.
-
-    (* FIXME
-    Definition ArrowsAreGeneralizedArrows : ArrowInProgrammingLanguage -> GeneralizedArrowInLanguage.
-    *)
-    Definition TwoLevelLanguage := Reification Guest Host (me_i Host).
-
-    Context (GuestHost:TwoLevelLanguage).
-
-    Definition FlatObject (x:TypesL Host) :=
-      forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
-
-    Definition FlatSubCategory := FullSubcategory (TypesL Host) FlatObject.
-
-    Section Flattening.
-
-      Context  (F:Retraction (TypesL Host) FlatSubCategory).
-      Definition FlatteningOfReification := garrow_from_reification Guest Host GuestHost >>>> F.
-      Lemma FlatteningIsNotDestructive : 
-        FlatteningOfReification >>>> retraction_retraction F >>>> RepresentableFunctor _ (me_i Host) ~~~~ GuestHost.
-        admit.
-        Qed.
-
-    End Flattening.
-
-  End GArrowInLanguage.
-
-  Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
-  | NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
-  | NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
-    TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
-
-  Definition OmegaLevelLanguage : Type :=
-    { f : nat -> ProgrammingLanguageSMME
-    & forall n, TwoLevelLanguage (f n) (f (S n)) }.
-    
-  Close Scope temporary_scope3.
-  Close Scope pl_scope.
-  Close Scope nd_scope.
-  Close Scope pf_scope.
-
 End Programming_Language.
 
+Structure ProgrammingLanguageSMME :=
+{ plsmme_t       : Type
+; plsmme_judg    : Type
+; plsmme_sequent : Tree ??plsmme_t -> Tree ??plsmme_t -> plsmme_judg
+; plsmme_rule    : Tree ??plsmme_judg -> Tree ??plsmme_judg -> Type
+; plsmme_pl      : @ProgrammingLanguage plsmme_t plsmme_judg plsmme_sequent plsmme_rule
+; plsmme_smme    : SurjectiveMonicMonoidalEnrichment (TypesEnrichedInJudgments _ _ plsmme_pl)
+}.
+Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
+Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
+
+Section ArrowInLanguage.
+  Context  (Host:ProgrammingLanguageSMME).
+  Context `(CC:CartesianCat (me_mon Host)).
+  Context `(K:@ECategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) C Kehom).
+  Context `(pmc:PreMonoidalCat K bobj mobj (@one _ _ _ (cartesian_terminal C))).
+    (* FIXME *)
+    (*
+    Definition ArrowInProgrammingLanguage := 
+      @FreydCategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) _ _ _ _ pmc.
+      *)
+End ArrowInLanguage.
+
+Section GArrowInLanguage.
+  Context (Guest:ProgrammingLanguageSMME).
+  Context (Host :ProgrammingLanguageSMME).
+  Definition GeneralizedArrowInLanguage := GeneralizedArrow Guest Host.
+
+  (* FIXME
+  Definition ArrowsAreGeneralizedArrows : ArrowInProgrammingLanguage -> GeneralizedArrowInLanguage.
+  *)
+  Definition TwoLevelLanguage := Reification Guest Host (me_i Host).
+
+  Context (GuestHost:TwoLevelLanguage).
+
+  Definition FlatObject (x:TypesL _ _ Host) :=
+    forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
+
+  Definition FlatSubCategory := FullSubcategory (TypesL _ _ Host) FlatObject.
+
+  Section Flattening.
+
+    Context  (F:Retraction (TypesL _ _ Host) FlatSubCategory).
+    Definition FlatteningOfReification := garrow_from_reification Guest Host GuestHost >>>> F.
+    Lemma FlatteningIsNotDestructive : 
+      FlatteningOfReification >>>> retraction_retraction F >>>> RepresentableFunctor _ (me_i Host) ~~~~ GuestHost.
+      admit.
+      Qed.
+
+  End Flattening.
+
+End GArrowInLanguage.
+
+Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
+| NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
+| NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
+                          TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
+
+Definition OmegaLevelLanguage : Type :=
+  { f : nat -> ProgrammingLanguageSMME
+  & forall n, TwoLevelLanguage (f n) (f (S n)) }.
+  
 Implicit Arguments ND [ Judgment ].

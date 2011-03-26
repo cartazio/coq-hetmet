@@ -38,8 +38,7 @@ Require Import HaskStrong.
 Require Import HaskProof.
 Require Import HaskStrongToProof.
 Require Import HaskProofToStrong.
-(*Require Import FreydCategories.*)
-(*Require Import ProgrammingLanguage.*)
+Require Import ProgrammingLanguage.
 
 Section HaskProofCategory.
 
@@ -63,52 +62,86 @@ Section HaskProofCategory.
 
     Context {Γ:TypeEnv}{Δ:CoercionEnv Γ}.
 
+    (* Rule_PCF consists of the rules allowed in flat PCF: everything except
+     * AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements *)
     Inductive Rule_PCF : forall {h}{c}, Rule h c -> Prop :=
     | PCF_RURule           : ∀ h c r            ,  Rule_PCF (RURule Γ Δ  h c r)
+    | PCF_RLit             : ∀ Γ Δ Σ τ          ,  Rule_PCF (RLit Γ Δ Σ τ  )
     | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF (RNote Γ Δ Σ τ l n)
     | PCF_RVar             : ∀ σ               l,  Rule_PCF (RVar Γ Δ  σ         l)
     | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF (RLam Γ Δ  Σ tx te      q )
     | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF (RApp Γ Δ  Σ tx te   p l)
     | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF (RLet Γ Δ  Σ σ₁ σ₂   p l)
     | PCF_RBindingGroup    : ∀ q a b c d e      ,  Rule_PCF (RBindingGroup q a b c d e)
-    | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x).
+    | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x)   (* FIXME: only for boolean and int *)
+    | Flat_REmptyGroup     : ∀ q a              ,  Rule_PCF (REmptyGroup q a)
+    | Flat_RLetRec         : ∀ Γ Δ Σ₁ τ₁ τ₂ lev ,  Rule_PCF (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
 
-    Inductive BoundedRule : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+    (* "RulePCF n" is the type of rules permitted in PCF with n-level deep nesting (so, "RulePCF 0" is flat PCF) *)
+    Inductive RulePCF : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
 
     (* any proof using only PCF rules is an n-bounded proof for any n>0 *)
-    | br_pcf  : forall n h c (r:Rule h c), Rule_PCF  r  -> BoundedRule n h c
+    | pcf_flat : forall n h c (r:Rule h c), Rule_PCF  r  -> RulePCF n h c
 
     (* any n-bounded proof may be used as an (n+1)-bounded proof by prepending Esc and appending Brak *)
-    | br_nest : forall n h c, ND (BoundedRule n) h c    -> BoundedRule (S n) (mapOptionTree brakify h) (mapOptionTree brakify c)
+    | pfc_nest : forall n h c, ND (RulePCF n) h c    -> RulePCF (S n) (mapOptionTree brakify h) (mapOptionTree brakify c)
     .
+  End RulePCF.
 
-  Context (ndr:forall n, @ND_Relation _ (BoundedRule n)).
+  (* "RuleSystemFCa n" is the type of rules permitted in SystemFC^\alpha with n-level-deep nesting
+   * (so, "RuleSystemFCa 0" is damn close to System FC) *)
+  Inductive RuleSystemFCa : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+  | sfc_flat : forall n h c     (r:Rule h c), Rule_Flat r -> RuleSystemFCa    n  h c
+  | sfc_nest : forall n h c Γ Δ, ND (@RulePCF Γ Δ n) h c  -> RuleSystemFCa (S n) h c
+  .
+  
+  Context (ndr_pcf      :forall n Γ Δ, @ND_Relation _ (@RulePCF Γ Δ n)).
+  Context (ndr_systemfca:forall n, @ND_Relation _ (RuleSystemFCa n)).
 
-  (* for every n we have a category of n-bounded proofs *)
-  Definition JudgmentsN n := @Judgments_Category_CartesianCat _ (BoundedRule n) (ndr n).
+  (* 5.1.3 *)
+  Instance PCF n Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) (@RulePCF Γ Δ n) :=
+  { pl_eqv                := _ (*@ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)*)
+  ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
+  ; pl_sc                 := _ (*@SequentCalculus Judg Rule _ sequent*)
+  ; pl_subst              := _ (*@CutRule Judg Rule _ sequent pl_eqv pl_sc*)
+  ; pl_sequent_join       := _ (*@SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst*)
+  }.
+  Admitted.
+  
+  (* 5.1.2 *)
+  Instance SystemFCa n Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) (RuleSystemFCa n) :=
+  { pl_eqv                := _ (*@ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)*)
+  ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
+  ; pl_sc                 := _ (*@SequentCalculus Judg Rule _ sequent*)
+  ; pl_subst              := _ (*@CutRule Judg Rule _ sequent pl_eqv pl_sc*)
+  ; pl_sequent_join       := _ (*@SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst*)
+  }.
+  Admitted.
 
-  Open Scope nd_scope.
-  Open Scope pf_scope.
-
-  Definition TypesNmor  (n:nat) (t1 t2:Tree ??(LeveledHaskType Γ ★)) : JudgmentsN n := [Γ > Δ > t1 |- t2].
-  Definition TypesN_id  n (t:Tree ??(LeveledHaskType Γ ★)) : ND (BoundedRule n) [] [ Γ > Δ > t |- t ].
+  Definition PCF_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
+    refine {| plsmme_pl := PCF n Γ Δ |}.
     admit.
     Defined.
-  Definition TypesN_comp  n t1 t2 t3 : ND (BoundedRule n) ([Γ > nil > t1 |- t2],,[Γ > nil > t2 |- t3]) [ Γ > nil > t1 |- t3 ].
+
+  Definition SystemFCa_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
+    refine {| plsmme_pl := SystemFCa n Γ Δ |}.
     admit.
     Defined.
-  Definition TypesN     n : ECategory (JudgmentsN n) (Tree ??(LeveledHaskType Γ ★)) (TypesNmor n).
-(*
-    apply {| eid := TypesN_id n ; ecomp := TypesN_comp n |}; intros; simpl.
-    apply (@MonoidalCat_all_central _ _ (JudgmentsN n) _ _ _ (JudgmentsN n)).
-    apply (@MonoidalCat_all_central _ _ (JudgmentsN n) _ _ _ (JudgmentsN n)).
-    admit.
-    admit.
-*)
+
+  (* 5.1.4 *)
+  Definition PCF_SystemFCa_two_level n Γ Δ : TwoLevelLanguage (PCF_SMME n Γ Δ) (SystemFCa_SMME (S n) Γ Δ).
     admit.
     Defined.
+  (*  ... and the retraction exists *)
+
+  (* Any particular proof in HaskProof is only finitely large, so it uses only finitely many levels of nesting, so
+   * it falls within (SystemFCa n) for some n.  This function calculates that "n" and performs the translation *)
+  (*Definition HaskProof_to_SystemFCa :
+    forall h c (pf:ND Judg h c),
+      { n:nat & h ~~{JudgmentsL SystemFCa_SMME n *)
 
   (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
+    (*
   Definition ReificationFunctor n : Functor (JudgmentsN n) (JudgmentsN (S n)) (mapOptionTree brakify).
     refine {| fmor := fun h c (f:h~~{JudgmentsN n}~~>c) => nd_rule (br_nest _ _ _ f) |}; intros; simpl.
     admit.
@@ -162,7 +195,7 @@ Section HaskProofCategory.
   Implicit Arguments Rule_PCF [ [h] [c] ].
   Implicit Arguments BoundedRule [ ].
 
-
+*)
 (*
   Definition code2garrow0 {Γ}(ec t1 t2:RawHaskType Γ ★) : RawHaskType Γ ★.
     admit.
