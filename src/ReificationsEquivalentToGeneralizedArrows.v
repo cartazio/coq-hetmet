@@ -83,4 +83,8 @@ Section ReificationsEquivalentToGeneralizedArrows.
     apply (step1_niso K C (reification_from_garrow K C garrow)).
     Qed.
 
+  Theorem ReificationsAreGArrows : IsomorphicCategories CategoryOfReifications CategoryOfGeneralizedArrows.
+    admit.
+    Qed.
+
 End ReificationsEquivalentToGeneralizedArrows.

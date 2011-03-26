@@ -24,7 +24,7 @@ Require Import RepresentableStructure_ch7_2.
 Require Import Reification.
 Require Import GeneralizedArrow.
 
-Definition reification_from_garrow (K:Enrichment) (C:MonoidalEnrichment) (garrow : GeneralizedArrow K C)
+Definition reification_from_garrow (K:Enrichment) {ce} (C:MonoidalEnrichment ce) (garrow : GeneralizedArrow K C)
  : Reification K C (mon_i C).
   refine
   {| reification_r         := fun k:K => RepresentableFunctor K k >>>> garrow

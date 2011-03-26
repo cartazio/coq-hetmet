@@ -16,8 +16,11 @@ Export Coq.Setoids.Setoid.
 Set Printing Width 130.       (* Proof General seems to add an extra two columns of overhead *)
 Generalizable All Variables.
 
+Reserved Notation "a ** b"                      (at level 40).
+Reserved Notation "a ;; b"                      (at level 45).
+
 Reserved Notation "a -~- b"                     (at level 10).
-Reserved Notation "a ** b"                      (at level 10).
+Reserved Notation "pf1 === pf2"                 (at level 80).
 Reserved Notation "?? x"                        (at level 1).
 Reserved Notation "a ,, b"                      (at level 50).
 Reserved Notation "!! f"                        (at level 3).
@@ -52,7 +55,6 @@ Reserved Notation "A ⋊ f"                       (at level 40).
 Reserved Notation "- ⋉ A"                       (at level 40).
 Reserved Notation "A ⋊ -"                       (at level 40).
 Reserved Notation "a *** b"                     (at level 40).
-Reserved Notation "a ;; b"                      (at level 45).
 Reserved Notation "[# f #]"                     (at level 2).
 Reserved Notation "a ---> b"                    (at level 11, right associativity).
 Reserved Notation "a <- b"                      (at level 100, only parsing).
@@ -69,7 +71,6 @@ Reserved Notation "f ○ g"                       (at level 100).
 Reserved Notation "a ==[ n ]==> b"              (at level 20).
 Reserved Notation "a ==[ h | c ]==> b"          (at level 20).
 Reserved Notation "H /⋯⋯/ C"                    (at level 70).
-Reserved Notation "pf1 === pf2"                 (at level 80).
 Reserved Notation "a |== b @@ c"                (at level 100).
 Reserved Notation "f >>>> g"                    (at level 45).
 Reserved Notation "a >>[ n ]<< b"               (at level 100).

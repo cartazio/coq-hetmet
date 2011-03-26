@@ -34,12 +34,13 @@ Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
 Require Import HaskProofToStrong.
 
+Require Import ProgrammingLanguage.
+
 Require Import HaskProofCategory.
 (*
 Require Import HaskStrongCategory.
-Require Import ReificationsEquivalentToGeneralizedArrows.
-Require Import ProgrammingLanguage.
 *)
+Require Import ReificationsEquivalentToGeneralizedArrows.
 
 Open Scope string_scope.
 Extraction Language Haskell.

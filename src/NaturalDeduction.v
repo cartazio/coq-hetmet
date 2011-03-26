@@ -333,10 +333,55 @@ Section Natural_Deduction.
   | cnd_branch c1 c2 cnd1 cnd2 => nd_llecnac ;; nd_prod (closedNDtoNormalND cnd1) (closedNDtoNormalND cnd2)
   end.
 
+  Section Sequents.
+    Context {S:Type}.   (* type of sequent components *)
+    Context (sequent:S->S->Judgment).
+    Context (ndr:ND_Relation).
+    Notation "a |= b" := (sequent a b).
+    Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
+
+    Class SequentCalculus :=
+    { nd_seq_reflexive : forall a, ND [ ] [ a |= a ]
+    }.
+    
+    Class CutRule :=
+    { nd_cutrule_seq       :> SequentCalculus
+    ; nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
+    ; nd_cut_left_identity  : forall a b, ((    (nd_seq_reflexive a)**(nd_id _));; nd_cut _ _ b) === nd_cancell
+    ; nd_cut_right_identity : forall a b, (((nd_id _)**(nd_seq_reflexive a)    );; nd_cut b _ _) === nd_cancelr
+    ; nd_cut_associativity :  forall {a b c d},
+      (nd_cut a b c ** nd_id1 (c|=d)) ;; (nd_cut a c d) === nd_assoc ;; (nd_id1 (a|=b) ** nd_cut b c d) ;; nd_cut a b d
+    }.
+
+  End Sequents.
+
+  Section SequentsOfTrees.
+    Context {T:Type}{sequent:Tree ??T -> Tree ??T -> Judgment}(sc:SequentCalculus sequent).
+    Context (ndr:ND_Relation).
+    Notation "a |= b" := (sequent a b).
+    Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
+
+    Class TreeStructuralRules :=
+    { tsr_ant_assoc     : forall {x a b c}, Rule [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
+    ; tsr_ant_cossa     : forall {x a b c}, Rule [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
+    ; tsr_ant_cancell   : forall {x a    }, Rule [  [],,a     |= x]     [        a   |= x]
+    ; tsr_ant_cancelr   : forall {x a    }, Rule [a,,[]       |= x]     [        a   |= x]
+    ; tsr_ant_llecnac   : forall {x a    }, Rule [      a     |= x]     [    [],,a   |= x]
+    ; tsr_ant_rlecnac   : forall {x a    }, Rule [      a     |= x]     [    a,,[]   |= x]
+    }.
+
+    Class SequentExpansion :=
+    { se_expand_left            : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
+    ; se_expand_right           : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
+    }.
+  End SequentsOfTrees.
+
   Close Scope nd_scope.
   Open Scope pf_scope.
 
 End Natural_Deduction.
+
+Coercion nd_cut : CutRule >-> Funclass.
 
 Implicit Arguments ND [ Judgment ].
 Hint Constructors Structural.

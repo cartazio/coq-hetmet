@@ -22,14 +22,14 @@ Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 
-Class GeneralizedArrow (K:Enrichment) (C:MonoidalEnrichment) :=
+Class GeneralizedArrow (K:Enrichment) {ce}(C:MonoidalEnrichment ce) :=
 { ga_functor_obj      : enr_v_mon K -> C
 ; ga_functor          : Functor (enr_v_mon K) C ga_functor_obj
 ; ga_functor_monoidal : MonoidalFunctor (enr_v_mon K) C ga_functor
 }.
 Coercion ga_functor_monoidal : GeneralizedArrow >-> MonoidalFunctor.
 
-Implicit Arguments GeneralizedArrow    [ ].
-Implicit Arguments ga_functor_obj      [ K C ].
-Implicit Arguments ga_functor          [ K C ].
-Implicit Arguments ga_functor_monoidal [ K C ].
+Implicit Arguments GeneralizedArrow    [ [ce] ].
+Implicit Arguments ga_functor_obj      [ K ce C ].
+Implicit Arguments ga_functor          [ K ce C ].
+Implicit Arguments ga_functor_monoidal [ K ce C ].

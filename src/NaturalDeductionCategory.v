@@ -201,41 +201,6 @@ Section Judgments_Category.
     apply nd_structural_cancelr; auto.
     Defined.
 
-  (* Given some mapping "rep" that turns a (Tree ??T) intoto Judgment,
-   * this asserts that we have sensible structural rules with respect
-   * to that mapping.  Doing all of this "with respect to a mapping"
-   * lets us avoid duplicating code for both the antecedent and
-   * succedent of sequent deductions. *)
-  Class TreeStructuralRules  {T:Type}(rep:Tree ??T -> Judgment) :=
-  { tsr_eqv           : @ND_Relation Judgment Rule where "pf1 === pf2" := (@ndr_eqv _ _ tsr_eqv _ _ pf1 pf2)
-  ; tsr_ant_assoc     : forall {a b c}, Rule [rep ((a,,b),,c)]     [rep ((a,,(b,,c)))]
-  ; tsr_ant_cossa     : forall {a b c}, Rule [rep (a,,(b,,c))]     [rep (((a,,b),,c))]
-  ; tsr_ant_cancell   : forall {a    }, Rule [rep (  [],,a  )]     [rep (        a  )]
-  ; tsr_ant_cancelr   : forall {a    }, Rule [rep (a,,[]    )]     [rep (        a  )]
-  ; tsr_ant_llecnac   : forall {a    }, Rule [rep (      a  )]     [rep (  [],,a    )]
-  ; tsr_ant_rlecnac   : forall {a    }, Rule [rep (      a  )]     [rep (  a,,[]    )]
-  }.
-
-  Section Sequents.
-    Context {S:Type}.   (* type of sequent components *)
-    Context (sequent:S->S->Judgment).
-    Notation "a |= b" := (sequent a b).
-
-    Class SequentCalculus :=
-    { nd_seq_reflexive : forall a, ND Rule [ ] [ a |= a ]
-    }.
-    
-    Class CutRule :=
-    { nd_cutrule_seq       :> SequentCalculus
-    ; nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
-    ; nd_cut_associativity :  forall {a b c d},
-      ((nd_cut a b c) ** (nd_id1 (c|=d))) ;; (nd_cut a c d)
-        ===
-        nd_assoc ;; ((nd_id1 (a|=b)) ** (nd_cut b c d) ;; (nd_cut a b d))
-    ; nd_cut_left_identity  : forall a b, ((    (nd_seq_reflexive a)**(nd_id _));; nd_cut _ _ b) === nd_cancell
-    ; nd_cut_right_identity : forall a b, (((nd_id _)**(nd_seq_reflexive a)    );; nd_cut b _ _) === nd_cancelr
-    }.
-  End Sequents.
 
   (* Structure ExpressionAlgebra (sig:Signature) := *)
 

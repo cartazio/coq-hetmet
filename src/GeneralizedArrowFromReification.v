@@ -26,7 +26,7 @@ Require Import GeneralizedArrow.
 
 Section GArrowFromReification.
 
-  Context  (K:SurjectiveEnrichment) (C:MonicMonoidalEnrichment) (reification : Reification K C (me_i C)).
+  Context  `(K:SurjectiveEnrichment ke) `(C:MonicMonoidalEnrichment ce cme) (reification : Reification K C (me_i C)).
 
   Fixpoint garrow_fobj_ vk : C :=
     match vk with
@@ -35,13 +35,13 @@ Section GArrowFromReification.
     | t1,,t2          => me_f C (pair_obj (garrow_fobj_ t1) (garrow_fobj_ t2))
     end.
 
-  Definition garrow_fobj vk := garrow_fobj_ (projT1 (se_decomp K vk)).
+  Definition garrow_fobj vk := garrow_fobj_ (projT1 (se_decomp _ K vk)).
 
   Definition homset_tensor_iso
     : forall vk:enr_v_mon K, (reification_rstar reification vk) ≅ ehom(ECategory:=C) (me_i C) (garrow_fobj vk).
     intros.
     unfold garrow_fobj.
-    set (se_decomp K vk) as sevk.
+    set (se_decomp _ K  vk) as sevk.
     destruct sevk.
     simpl in *.
     rewrite e.
