@@ -52,23 +52,22 @@ Section ReificationsEquivalentToGeneralizedArrows.
     Qed.
 
   Definition roundtrip_lemma
-    (K:SurjectiveEnrichment) (C:MonicMonoidalEnrichment) (reification : Reification K C (me_i C))
+    `(K:SurjectiveEnrichment se) `(C:MonicMonoidalEnrichment e ce) (reification : Reification K C (me_i C))
     := roundtrip_lemma' (RepresentableFunctor C (me_i C)) (ffme_mf_full C) (ffme_mf_faithful C) (step1_functor K C reification).
 
   Lemma roundtrip_reification_to_reification
-    (K:SurjectiveEnrichment) (C:MonicMonoidalEnrichment) (reification : Reification K C (me_i C))
+    `(K:SurjectiveEnrichment se) `(C:MonicMonoidalEnrichment e ce) (reification : Reification K C (me_i C))
     : reification ≃ reification_from_garrow K C (garrow_from_reification K C reification).
     simpl.
     unfold mon_f.
     unfold garrow_functor.
     apply (if_comp(F2:=(step1_functor K C reification >>>> InclusionFunctor _ (FullImage (RepresentableFunctor C (me_i C)))))).
-       apply step1_niso.
+       apply (@step1_niso _ K _ _ C reification).
        apply (if_inv (roundtrip_lemma K C reification)).
     Qed.
-    (* FIXME: show that the R-functors are naturally isomorphic as well; should follow pretty easily from the proof for Rstar *)
 
   Lemma roundtrip_garrow_to_garrow
-    (K:SurjectiveEnrichment) (C:MonicMonoidalEnrichment) (garrow : GeneralizedArrow K C)
+    `(K:SurjectiveEnrichment se) `(C:MonicMonoidalEnrichment e ce) (garrow : GeneralizedArrow K C)
     : garrow ≃ garrow_from_reification K C (reification_from_garrow K C garrow).
     apply (ffc_functor_weakly_monic _ (ffme_mf_conservative C)).
     apply if_inv.
@@ -78,7 +77,8 @@ Section ReificationsEquivalentToGeneralizedArrows.
     unfold garrow_from_reification.
     unfold garrow_functor.
     unfold step2_functor.
-    apply roundtrip_lemma.
+    set (@roundtrip_lemma _ K _ _ C) as q.
+    apply (q (reification_from_garrow K C garrow)).
     apply if_inv.
     apply (step1_niso K C (reification_from_garrow K C garrow)).
     Qed.
