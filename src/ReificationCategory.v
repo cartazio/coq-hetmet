@@ -24,6 +24,6 @@ Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 Require Import Reification.
 
-Instance CategoryOfReifications : Category SMME Reification.
+Definition CategoryOfReifications : Category SMME (fun x y:SMME => Reification (smme_e x) (smme_e y) (mon_i (smme_mon y))).
   admit.
   Qed.

@@ -24,6 +24,6 @@ Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 Require Import GeneralizedArrow.
 
-Instance CategoryOfGeneralizedArrows : Category SMME GeneralizedArrow.
+Definition CategoryOfGeneralizedArrows : Category SMME (fun x y => @GeneralizedArrow x _ y).
   admit.
   Qed.
