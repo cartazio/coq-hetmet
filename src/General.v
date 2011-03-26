@@ -906,14 +906,9 @@ Lemma unleaves_injective : forall T (t1 t2:list T), unleaves t1 = unleaves t2 ->
   reflexivity.
   Qed.
 
-Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
-  admit.
-  Defined.
-
-Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
-  admit.
-  Defined.
-
+(* gee I wish I knew how to get Coq to accept these... *)
+Axiom fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
+Axiom snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
 
 Fixpoint mapM {M}{mon:Monad M}{T}(ml:list (M T)) : M (list T) :=
   match ml with
