@@ -49,7 +49,7 @@ Section Programming_Language.
 
   Context (Judg : Type).
   Context (sequent : Tree ??T -> Tree ??T -> Judg).
-     Notation "cs |= ss" := (sequent cs ss) : al_scope.
+     Notation "cs |= ss" := (sequent cs ss) : pl_scope.
      (* Because of term irrelevance we need only store the *erased* (def
       * 4.4) trees; for this reason there is no Coq type directly
       * corresponding to productions $e$ and $x$ of 4.1.1, and TreeOT can
@@ -59,11 +59,11 @@ Section Programming_Language.
 
   Context {Rule : Tree ??Judg -> Tree ??Judg -> Type}.
 
-  Notation "H /⋯⋯/ C" := (ND Rule H C) : al_scope.
+  Notation "H /⋯⋯/ C" := (ND Rule H C) : pl_scope.
 
   Open Scope pf_scope.
   Open Scope nd_scope.
-  Open Scope al_scope.
+  Open Scope pl_scope.
 
   (*
    *
@@ -84,31 +84,31 @@ Section Programming_Language.
    * This also means that we don't need an explicit proof obligation for 4.1.2.
    *)
   Class ProgrammingLanguage :=
-  { al_eqv                : @ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ al_eqv _ _ pf1 pf2)
-  ; al_tsr                : TreeStructuralRules
-  ; al_subst              : CutRule
-  ; al_sequent_join       : SequentJoin
+  { pl_eqv                :  @ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)
+  ; pl_tsr                :> @TreeStructuralRules Judg Rule T sequent
+  ; pl_sc                 :> @SequentCalculus Judg Rule _ sequent
+  ; pl_subst              :> @CutRule Judg Rule _ sequent pl_eqv pl_sc
+  ; pl_sequent_join       :> @SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst
   }.
-  Notation "pf1 === pf2" := (@ndr_eqv _ _ al_eqv _ _ pf1 pf2) : temporary_scope3.
+  Notation "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2) : temporary_scope3.
 
   Section LanguageCategory.
 
     Context (PL:ProgrammingLanguage).
 
     (* category of judgments in a fixed type/coercion context *)
-    Definition Judgments_cartesian := @Judgments_Category_CartesianCat _ Rule al_eqv.
+    Definition Judgments_cartesian := @Judgments_Category_CartesianCat _ Rule pl_eqv.
 
     Definition JudgmentsL          := Judgments_cartesian.
 
     Definition identityProof t : [] ~~{JudgmentsL}~~> [t |= t].
       unfold hom; simpl.
-      apply nd_rule.
-      apply al_reflexive_seq.
+      apply nd_seq_reflexive.
       Defined.
 
     Definition cutProof a b c : [a |= b],,[b |= c] ~~{JudgmentsL}~~> [a |= c].
       unfold hom; simpl.
-      apply al_subst.
+      apply pl_subst.
       Defined.
 
     Definition TypesL : ECategory JudgmentsL (Tree ??T) (fun x y => [x|=y]).
@@ -119,25 +119,39 @@ Section Programming_Language.
       apply MonoidalCat_all_central.
       apply MonoidalCat_all_central.
       unfold identityProof; unfold cutProof; simpl.
-      apply al_subst_left_identity.
+      apply nd_cut_left_identity.
       unfold identityProof; unfold cutProof; simpl.
-      apply al_subst_right_identity.
+      apply nd_cut_right_identity.
       unfold identityProof; unfold cutProof; simpl.
-      apply al_subst_associativity'.
+      symmetry.
+      apply nd_cut_associativity.
       Defined.
 
     Definition Types_first c : EFunctor TypesL TypesL (fun x => x,,c ).
-      (*
-      eapply Build_EFunctor; intros.
-      eapply MonoidalCat_all_central.
-      unfold eqv.
-      simpl.
-      *)
-      admit.
+      refine {| efunc := fun x y => (nd_rule (@se_expand_right _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)) |}.
+      intros; apply MonoidalCat_all_central.
+      intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
+      apply se_reflexive_right.
+      intros. unfold ehom. unfold comp. simpl. unfold cutProof.
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ [#se_expand_right _ c#] _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (a,,c |= b,,c))  _ [#se_expand_right _ c#]).
+      setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [a,, c |= b,, c]).
+      setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
+      apply se_cut_right.
       Defined.
 
-    Definition Types_second c : EFunctor TypesL TypesL (fun x => c,,x ).
-      admit.
+    Definition Types_second c : EFunctor TypesL TypesL (fun x => c,,x).
+      eapply Build_EFunctor.
+      instantiate (1:=(fun x y => (nd_rule (@se_expand_left _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)))).
+      intros; apply MonoidalCat_all_central.
+      intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
+      apply se_reflexive_left.
+      intros. unfold ehom. unfold comp. simpl. unfold cutProof.
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ [#se_expand_left _ c#] _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (c,,a |= c,,b))  _ [#se_expand_left _ c#]).
+      setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [c,,a |= c,,b]).
+      setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
+      apply se_cut_left.
       Defined.
 
     Definition Types_binoidal : BinoidalCat TypesL (@T_Branch _).
@@ -147,13 +161,9 @@ Section Programming_Language.
          |}.
       Defined.
 
-    Definition TypesL_binoidal : BinoidalCat TypesL (@T_Branch _).
-    admit.
-    Defined.
-
-    Definition Types_PreMonoidal : PreMonoidalCat TypesL_binoidal [].
-    admit.
-    Defined.
+    Definition Types_PreMonoidal : PreMonoidalCat Types_binoidal [].
+      admit.
+      Defined.
 
     Definition TypesEnrichedInJudgments : Enrichment.
       refine {| enr_c := TypesL |}.
@@ -229,7 +239,7 @@ Section Programming_Language.
     & forall n, TwoLevelLanguage (f n) (f (S n)) }.
     
   Close Scope temporary_scope3.
-  Close Scope al_scope.
+  Close Scope pl_scope.
   Close Scope nd_scope.
   Close Scope pf_scope.
 
