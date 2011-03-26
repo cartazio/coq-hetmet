@@ -123,6 +123,7 @@ Coercion RURule : URule >-> Rule.
 Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RURule           : ∀ Γ Δ  h c r            ,  Rule_Flat (RURule Γ Δ  h c r)
 | Flat_RNote            : ∀ Γ Δ Σ τ l n            ,  Rule_Flat (RNote Γ Δ Σ τ l n)
+| Flat_RLit             : ∀ Γ Δ Σ τ               ,  Rule_Flat (RLit Γ Δ Σ τ  )
 | Flat_RVar             : ∀ Γ Δ  σ               l,  Rule_Flat (RVar Γ Δ  σ         l)
 | Flat_RLam             : ∀ Γ Δ  Σ tx te    q    ,  Rule_Flat (RLam Γ Δ  Σ tx te      q )
 | Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q     ,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q )
@@ -133,6 +134,7 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
 | Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
 | Flat_RBindingGroup    : ∀ q a b c d e ,  Rule_Flat (RBindingGroup q a b c d e)
+| Flat_REmptyGroup      : ∀ q a                  ,  Rule_Flat (REmptyGroup q a)
 | Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x)
 | Flat_RLetRec          : ∀ Γ Δ Σ₁ τ₁ τ₂ lev,      Rule_Flat (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
 
