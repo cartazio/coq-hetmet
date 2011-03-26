@@ -335,8 +335,8 @@ Section Natural_Deduction.
 
   Section Sequents.
     Context {S:Type}.   (* type of sequent components *)
-    Context (sequent:S->S->Judgment).
-    Context (ndr:ND_Relation).
+    Context {sequent:S->S->Judgment}.
+    Context {ndr:ND_Relation}.
     Notation "a |= b" := (sequent a b).
     Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
@@ -344,19 +344,19 @@ Section Natural_Deduction.
     { nd_seq_reflexive : forall a, ND [ ] [ a |= a ]
     }.
     
-    Class CutRule :=
-    { nd_cutrule_seq       :> SequentCalculus
-    ; nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
+    Class CutRule (nd_cutrule_seq:SequentCalculus) :=
+    { nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
     ; nd_cut_left_identity  : forall a b, ((    (nd_seq_reflexive a)**(nd_id _));; nd_cut _ _ b) === nd_cancell
     ; nd_cut_right_identity : forall a b, (((nd_id _)**(nd_seq_reflexive a)    );; nd_cut b _ _) === nd_cancelr
     ; nd_cut_associativity :  forall {a b c d},
-      (nd_cut a b c ** nd_id1 (c|=d)) ;; (nd_cut a c d) === nd_assoc ;; (nd_id1 (a|=b) ** nd_cut b c d) ;; nd_cut a b d
+      (nd_id1 (a|=b) ** nd_cut b c d) ;; (nd_cut a b d) === nd_cossa ;; (nd_cut a b c ** nd_id1 (c|=d)) ;; nd_cut a c d
     }.
 
   End Sequents.
-
+(*Implicit Arguments SequentCalculus [ S ]*)
+(*Implicit Arguments CutRule [ S ]*)
   Section SequentsOfTrees.
-    Context {T:Type}{sequent:Tree ??T -> Tree ??T -> Judgment}(sc:SequentCalculus sequent).
+    Context {T:Type}{sequent:Tree ??T -> Tree ??T -> Judgment}.
     Context (ndr:ND_Relation).
     Notation "a |= b" := (sequent a b).
     Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
@@ -370,9 +370,18 @@ Section Natural_Deduction.
     ; tsr_ant_rlecnac   : forall {x a    }, Rule [      a     |= x]     [    a,,[]   |= x]
     }.
 
+    Notation "[# a #]"  := (nd_rule a)               : nd_scope.
+
+    Context `{se_cut : @CutRule _ sequent ndr sc}.
     Class SequentExpansion :=
-    { se_expand_left            : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
-    ; se_expand_right           : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
+    { se_expand_left     : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
+    ; se_expand_right    : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
+
+    (* left and right expansion must commute with cut *)
+    ; se_reflexive_left  : ∀ a c,     nd_seq_reflexive a;; [#se_expand_left  c#] === nd_seq_reflexive (c,, a)
+    ; se_reflexive_right : ∀ a c,     nd_seq_reflexive a;; [#se_expand_right c#] === nd_seq_reflexive (a,, c)
+    ; se_cut_left        : ∀ a b c d, [#se_expand_left _#]**[#se_expand_left _#];;nd_cut _ _ _===nd_cut a b d;;[#se_expand_left c#]
+    ; se_cut_right       : ∀ a b c d, [#se_expand_right _#]**[#se_expand_right _#];;nd_cut _ _ _===nd_cut a b d;;[#se_expand_right c#]
     }.
   End SequentsOfTrees.
 
