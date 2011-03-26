@@ -248,11 +248,11 @@ Section Programming_Language.
       apply al_subst_associativity'.
       Defined.
 
-    Definition TypesLEnrichedInJudgments0 : Enrichment.
+    Definition TypesEnrichedInJudgments : Enrichment.
       refine {| enr_c := TypesLFC |}.
       Defined.
 
-    Definition TypesL_first c : EFunctor TypesLFC TypesLFC (fun x => x,,c ).
+    Definition Types_first c : EFunctor TypesLFC TypesLFC (fun x => x,,c ).
 (*
       eapply Build_EFunctor; intros.
       eapply MonoidalCat_all_central.
@@ -262,11 +262,11 @@ Section Programming_Language.
       admit.
       Defined.
 
-    Definition TypesL_second c : EFunctor TypesLFC TypesLFC (fun x => c,,x ).
+    Definition Types_second c : EFunctor TypesLFC TypesLFC (fun x => c,,x ).
       admit.
       Defined.
 
-    Definition TypesL_binoidal : BinoidalCat TypesLFC (@T_Branch _).
+    Definition Types_binoidal : BinoidalCat TypesLFC (@T_Branch _).
       refine
         {| bin_first  := TypesL_first
          ; bin_second := TypesL_second

@@ -164,8 +164,14 @@ Section Judgments_Category.
     Defined.
 
   Instance Judgments_Category_Diagonal : DiagonalCat Judgments_Category_monoidal.
-    apply Build_DiagonalCat.
-    intros; unfold bin_obj; simpl; unfold hom; simpl; apply nd_copy.
+    refine {| copy_nt := _ |}.
+    intros.
+    refine {| nt_component := nd_copy |}.
+    intros.
+    unfold hom in *; unfold ob in *; unfold eqv.
+    simpl.
+    rewrite ndr_prod_preserves_copy; auto.
+    reflexivity.
     Defined.
 
   Instance Judgments_Category_CartesianCat : CartesianCat Judgments_Category_monoidal.
@@ -177,7 +183,7 @@ Section Judgments_Category.
     apply ndr_structural_indistinguishable; auto.
     apply nd_structural_comp; auto.
     apply nd_structural_comp; auto.
-    apply nd_structural_copy; auto.
+    unfold copy; simpl; apply nd_structural_copy; auto.
     apply nd_structural_prod; auto.
     apply nd_structural_comp; auto.
     apply weak'_structural.
@@ -187,7 +193,7 @@ Section Judgments_Category.
     apply ndr_structural_indistinguishable; auto.
     apply nd_structural_comp; auto.
     apply nd_structural_comp; auto.
-    apply nd_structural_copy; auto.
+    unfold copy; simpl; apply nd_structural_copy; auto.
     apply nd_structural_prod; auto.
     apply nd_structural_comp; auto.
     apply weak'_structural.

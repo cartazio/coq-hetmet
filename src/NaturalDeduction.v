@@ -227,6 +227,9 @@ Section Natural_Deduction.
   (* products and composition must distribute over each other *)
   ; ndr_prod_preserves_comp  : forall `(f:a/⋯⋯/b)`(f':a'/⋯⋯/b')`(g:b/⋯⋯/c)`(g':b'/⋯⋯/c'), (f;;g)**(f';;g') === (f**f');;(g**g')
 
+  (* products and duplication must distribute over each other *)
+  ; ndr_prod_preserves_copy  : forall `(f:a/⋯⋯/b),                                        nd_copy a;; f**f === f ;; nd_copy b
+
   (* any two _structural_ proofs with the same hypotheses/conclusions must be considered equal *)
   ; ndr_structural_indistinguishable : forall `(f:a/⋯⋯/b)(g:a/⋯⋯/b), Structural f -> Structural g -> f===g
 
