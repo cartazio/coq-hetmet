@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
-(* ReificationFromGeneralizedArrow:                                                                                              *)
+(* SmallSMMEs:                                                                                                                   *)
 (*                                                                                                                               *)
-(*   Turn a reification into a generalized arrow                                                                                 *)
+(*         The collection of SMMEs is a collection of small categories (see SmallCategories)                                     *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -21,18 +21,12 @@ Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
-Require Import Reification.
 Require Import GeneralizedArrow.
-
-Definition reification_from_garrow (K:Enrichment) {ce} (C:MonoidalEnrichment ce) (garrow : GeneralizedArrow K C)
- : Reification K C (mon_i C).
-  refine
-  {| reification_r         := fun k:K => RepresentableFunctor K k >>>> garrow
-   ; reification_rstar_f   :=                                garrow >>>> me_mf C
-   ; reification_rstar     := MonoidalFunctorsCompose _ _ _ _ _ garrow (me_mf C)
-   |}.
-   abstract (intros; set (@ni_associativity) as q; apply q).
-   Defined.
+Require Import WeakFunctorCategory.
 
 
-
+Definition SMMEs : SmallCategories.
+  refine {| small_cat       := SMME
+          ; small_cat_cat   := fun smme => enr_v smme
+          |}.
+  Defined.
