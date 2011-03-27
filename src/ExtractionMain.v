@@ -62,7 +62,7 @@ Extract Inlined Constant string_dec => "(==)".
 Extract Inlined Constant ascii_dec => "(==)".
 
 (* adapted from ExtrOcamlString.v *)
-Extract Inductive ascii => "Char" [ "bin2ascii" ] "bin2ascii'".
+Extract Inductive ascii => "Char" [ "you_forgot_to_patch_coq" ] "you_forgot_to_patch_coq".
 Extract Constant zero   => "'\000'".
 Extract Constant one    => "'\001'".
 Extract Constant shift  => "shiftAscii".
