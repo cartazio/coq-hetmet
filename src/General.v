@@ -906,9 +906,64 @@ Lemma unleaves_injective : forall T (t1 t2:list T), unleaves t1 = unleaves t2 ->
   reflexivity.
   Qed.
 
-(* gee I wish I knew how to get Coq to accept these... *)
-Axiom fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
-Axiom snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
+(* adapted from Adam Chlipala's posting to the coq-club list (thanks!) *)
+Definition openVec A n (v: vec A (S n)) : exists a, exists v0, v = a:::v0 :=
+  match v in vec _ N return match N return vec A N -> Prop with
+                              | O => fun _ => True
+                              | S n => fun v => exists a, exists v0, v = a:::v0
+                            end v with
+    | vec_nil => I
+    | a:::v0 => ex_intro _ a (ex_intro _ v0 (refl_equal _))
+  end.
+
+Definition nilVec A (v: vec A O) : v = vec_nil :=
+  match v in vec _ N return match N return vec A N -> Prop with
+                              | O   => fun v => v = vec_nil
+                              | S n => fun v => True
+                            end v with
+    | vec_nil => refl_equal _
+    | a:::v0  => I
+  end.
+
+Lemma fst_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@fst _ _) (vec_zip v1 v2) = v1.
+  intros.
+  induction n.
+  set (nilVec _ v1) as v1'.
+  set (nilVec _ v2) as v2'.
+  subst.
+  simpl.
+  reflexivity.
+  set (openVec _ _ v1) as v1'.
+  set (openVec _ _ v2) as v2'.
+  destruct v1'.
+  destruct v2'.
+  destruct H.
+  destruct H0.
+  subst.
+  simpl.
+  rewrite IHn.
+  reflexivity.
+  Qed.
+
+Lemma snd_zip : forall T Q n (v1:vec T n)(v2:vec Q n), vec_map (@snd _ _) (vec_zip v1 v2) = v2.
+  intros.
+  induction n.
+  set (nilVec _ v1) as v1'.
+  set (nilVec _ v2) as v2'.
+  subst.
+  simpl.
+  reflexivity.
+  set (openVec _ _ v1) as v1'.
+  set (openVec _ _ v2) as v2'.
+  destruct v1'.
+  destruct v2'.
+  destruct H.
+  destruct H0.
+  subst.
+  simpl.
+  rewrite IHn.
+  reflexivity.
+  Qed.
 
 Fixpoint mapM {M}{mon:Monad M}{T}(ml:list (M T)) : M (list T) :=
   match ml with
