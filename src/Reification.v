@@ -31,7 +31,7 @@ Structure Reification (K:Enrichment) (C:Enrichment) (CI:C) :=
 ; reification_r         : forall k:K, Functor K C (reification_r_obj k)
 ; reification_rstar_f   :             Functor (enr_v K) (enr_v C) reification_rstar_obj
 ; reification_rstar     :             MonoidalFunctor (enr_v_mon K) (enr_v_mon C) reification_rstar_f
-; reification_commutes  : forall k, reification_r k >>>> RepresentableFunctor C CI <~~~> RepresentableFunctor K k >>>> reification_rstar_f
+; reification_commutes : ∀ k, reification_r k >>>> RepresentableFunctor C CI <~~~> RepresentableFunctor K k >>>> reification_rstar_f
 }.
 Transparent RepresentableFunctor.
 Transparent functor_comp.

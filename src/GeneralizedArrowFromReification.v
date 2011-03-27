@@ -107,6 +107,14 @@ Section GArrowFromReification.
       apply (fmor_preserves_comp reification)).
       Defined.
 
+(*
+  Definition FullImage_Monoidal 
+    `(F:@Functor Cobj CHom C1 Dobj DHom D1 Fobj) `(mc:MonoidalCat D1 Mobj MF) : MonoidalCat (FullImage F) Mobj.
+
+  Definition step1_functor_monoidal : MonoidalFunctor (enr_v_mon K) step1_functor.
+    admit.
+    Defined.
+*)
   Definition step1_niso : reification ≃ step1_functor >>>> InclusionFunctor _ (FullImage (RepresentableFunctor C (me_i C))).
     exists (fun c1 => homset_tensor_iso c1).
     abstract (intros;
@@ -124,6 +132,11 @@ Section GArrowFromReification.
 
   Definition garrow_from_reification : GeneralizedArrow K C.
     refine {| ga_functor := garrow_functor |}.
+    (*
+    unfold garrow_functor.
+    apply MonoidalFunctorsCompose.
+    apply MonoidalFunctorsCompose.
+    *)
     admit.
     Defined.
 

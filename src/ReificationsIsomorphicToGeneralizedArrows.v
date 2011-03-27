@@ -30,6 +30,57 @@ Require Import GeneralizedArrowCategory.
 Require Import ReificationsEquivalentToGeneralizedArrows.
 Require Import WeakFunctorCategory.
 
+
 Section ReificationsIsomorphicToGeneralizedArrows.
+
+    Definition M1 (c1 c2 : SmallSMMEs.SMMEs) :
+      (c1 ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> c2) ->
+      (c1 ~~{ MorphismsOfCategoryOfReifications }~~> c2).
+      intro GA.
+      destruct GA; [ apply roi_id | idtac ].
+      apply roi_reif.
+      apply reification_from_garrow.
+      apply g.
+      Defined.
+
+    Definition M2 (c1 c2 : SmallSMMEs.SMMEs) :
+      (c1 ~~{ MorphismsOfCategoryOfReifications }~~> c2) ->
+      (c1 ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> c2).
+      intro RE.
+      destruct RE; [ apply gaoi_id | idtac ].
+      apply gaoi_ga.
+      apply (garrow_from_reification s1 s2 r).
+      Defined.
+
+    (*
+
+     * Oh my, this is massively embarrassing.  In the paper I claim
+     * that Generalized Arrows form a category and Reifications form a
+     * category, when in fact they form merely a SEMIcategory (see
+     * http://ncatlab.org/nlab/show/semicategory) since we cannot be sure that the identity functor on the
+
+    Theorem ReificationsAreGArrows : IsomorphicCategories CategoryOfGeneralizedArrows CategoryOfReifications.
+      apply WeakFunctorCategoriesIsomorphic with (M1:=M1) (M2:=M2).
+      destruct g.
+      intros.
+      simpl.
+      simpl in H.
+      split f.
+      destruct f.
+      dependent destruction f.
+      intros until g.
+      destruct f.
+      simpl.
+      inversion g.
+      destruct f as [ ] _eqn.
+      destruct g as [ ] _eqn.
+      destruct g.
+      subst.
+      simpl.
+      case g.
+      simpl.
+      inversion g; subst; intros.
+      destruct g.
+      Qed.
 
 End ReificationsIsomorphicToGeneralizedArrows.

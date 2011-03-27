@@ -30,14 +30,19 @@ Inductive ReificationOrIdentity : SMMEs -> SMMEs -> Type :=
   | roi_id   : forall smme:SMMEs,                                  ReificationOrIdentity smme smme
   | roi_reif : forall s1 s2:SMMEs, Reification s1 s2 (mon_i s2) -> ReificationOrIdentity s1   s2.
 
+Definition reificationOrIdentityFobj s1 s2 (f:ReificationOrIdentity s1 s2) : s1 -> s2 :=
+  match f with
+  | roi_id   s       => (fun x => x)
+  | roi_reif s1 s2 f => reification_rstar_obj f
+  end.
+
 Definition reificationOrIdentityFunc
-  : forall s1 s2, ReificationOrIdentity s1 s2 -> { fobj : _ & Functor s1 s2 fobj }.
+  : forall s1 s2 (f:ReificationOrIdentity s1 s2), Functor (enr_v s1) (enr_v s2) (reificationOrIdentityFobj s1 s2 f).
   intros.
-  destruct X.
-  exists (fun x => x).
+  destruct f.
   apply functor_id.
-  exists (reification_rstar_obj r).
-  apply r.
+  unfold reificationOrIdentityFobj.
+  apply (reification_rstar_f r).
   Defined.
 
 Definition compose_reifications (s0 s1 s2:SMMEs) :
@@ -54,7 +59,28 @@ Definition compose_reifications (s0 s1 s2:SMMEs) :
   clear q.
   set (reification_commutes X K) as comm1.
   set (reification_commutes X0 (mon_i s1)) as comm2.
-  admit.
+  set (RepresentableFunctor s0 K) as a in *.
+  set (reification_rstar_f X) as a' in *.
+  set (reification_rstar_f X0) as x in *.
+  set (reification_r X K) as b in *.
+  set (reification_r X0 (mon_i s1)) as c in *.
+  set (RepresentableFunctor s2 (mon_i s2)) as c' in *.
+  set (RepresentableFunctor s1 (mon_i s1)) as b' in *.
+  apply (ni_comp(F2:=b >>>> (b' >>>> x))).
+  apply (@ni_respects _ _ _ _ _ _ _ _ _ _ b _ b _ (c >>>> c') _ (b' >>>> x)).
+  apply ni_id.
+  apply comm2.
+  eapply ni_comp.
+  eapply ni_inv.
+  apply (ni_associativity b b' x).
+  eapply ni_inv.
+  eapply ni_comp.
+  eapply ni_inv.
+  apply (ni_associativity a a' x).
+  apply (@ni_respects _ _ _ _ _ _ _ _ _ _ (a >>>> a') _ (b >>>> b') _ x _ x).
+  apply ni_inv.
+  apply comm1.
+  apply ni_id.
   Defined.
 
 Definition reificationOrIdentityComp
@@ -70,7 +96,7 @@ Definition reificationOrIdentityComp
 Definition MorphismsOfCategoryOfReifications : @SmallFunctors SMMEs.
   refine {| small_func      := ReificationOrIdentity
           ; small_func_id   := fun s => roi_id s
-          ; small_func_func := fun smme1 smme2 f => projT2 (reificationOrIdentityFunc _ _ f)
+          ; small_func_func := fun smme1 smme2 f => reificationOrIdentityFunc _ _ f
           ; small_func_comp := reificationOrIdentityComp
          |}; intros; simpl.
   apply if_id.
