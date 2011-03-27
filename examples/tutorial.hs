@@ -384,7 +384,7 @@ class GuestStream g a where
 
 class GuestEqChar g where
   <[ (==) ]> :: <[ Char -> Char -> Bool ]>@g
-{-
+
 staged_accept ::
     Regex
     -> forall c s.
@@ -419,7 +419,7 @@ staged_accept (Const c) k        =
     <[ \s -> if gs_empty s 
              then false
              else (gs_head s) == ~~(guestCharLiteral c) && ~~k (gs_tail s) ]>
--}
+
 
 -- this type won't work unless the case for (Star e) is commented out;
 -- see loop above
@@ -451,7 +451,7 @@ instance Category Code where
   id             = Code <[ \x -> x ]>
   f . g          = Code <[ \x -> ~~(unCode f) (~~(unCode g) x) ]>
 
-instance GArrow Code (,) where
+instance GArrow Code (,) () where
   ga_first     f = Code <[ \(x,y) -> ((~~(unCode f) x),y) ]>
   ga_second    f = Code <[ \(x,y) -> (x         ,(~~(unCode f) y)) ]>
   ga_cancell     = Code <[ \(_,x) -> x ]>
