@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
 (* ProgrammingLanguage                                                                                                           *)
 (*                                                                                                                               *)
-(*   Basic assumptions about programming languages .                                                                             *)
+(*   Basic assumptions about programming languages.                                                                              *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -34,15 +34,6 @@ Require Import GeneralizedArrow.
 Require Import GeneralizedArrowFromReification.
 Require Import ReificationFromGeneralizedArrow.
 
-(*
- *  Everything in the rest of this section is just groundwork meant to
- *  build up to the definition of the ProgrammingLanguage class, which
- *  appears at the end of the section.  References to "the instance"
- *  mean instances of that class.  Think of this section as being one
- *  big Class { ... } definition, except that we declare most of the
- *  stuff outside the curly brackets in order to take advantage of
- *  Coq's section mechanism.
- *)   
 Section Programming_Language.
 
   Context {T    : Type}.               (* types of the language *)
@@ -50,12 +41,6 @@ Section Programming_Language.
   Context (Judg : Type).
   Context (sequent : Tree ??T -> Tree ??T -> Judg).
      Notation "cs |= ss" := (sequent cs ss) : pl_scope.
-     (* Because of term irrelevance we need only store the *erased* (def
-      * 4.4) trees; for this reason there is no Coq type directly
-      * corresponding to productions $e$ and $x$ of 4.1.1, and TreeOT can
-      * be used for productions $\Gamma$ and $\Sigma$ *)
-
-  (* to do: sequent calculus equals natural deduction over sequents, theorem equals sequent with null antecedent, *)
 
   Context {Rule : Tree ??Judg -> Tree ??Judg -> Type}.
 
@@ -65,24 +50,6 @@ Section Programming_Language.
   Open Scope nd_scope.
   Open Scope pl_scope.
 
-  (*
-   *
-   * Note that from this abstract interface, the terms (expressions)
-   * in the proof are not accessible at all; they don't need to be --
-   * so long as we have access to the equivalence relation upon
-   * proof-conclusions.  Moreover, hiding the expressions actually
-   * makes the encoding in CiC work out easier for two reasons:
-   *
-   *  1. Because the denotation function is provided a proof rather
-   *     than a term, it is a total function (the denotation function is
-   *     often undefined for ill-typed terms).
-   *
-   *  2. We can define arr_composition of proofs without having to know how
-   *     to compose expressions.  The latter task is left up to the client
-   *     function which extracts an expression from a completed proof.
-   *  
-   * This also means that we don't need an explicit proof obligation for 4.1.2.
-   *)
   Class ProgrammingLanguage :=
   { pl_eqv                :  @ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)
   ; pl_tsr                :> @TreeStructuralRules Judg Rule T sequent
