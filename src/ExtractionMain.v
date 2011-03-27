@@ -100,7 +100,8 @@ Section core2proof.
   Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
     match coreVarToWeakVar cv with
       | WExprVar wev => match weakTypeToTypeOfKind φ wev ★ with
-                          | Error s => Prelude_error ("Error in top-level xi: " +++ s)
+                          | Error s => Prelude_error ("Error converting weakType of top-level variable "+++
+                                                         toString cv+++": " +++ s)
                           | OK    t => t @@ nil
                         end
       | WTypeVar _   => Prelude_error "top-level xi got a type variable"
