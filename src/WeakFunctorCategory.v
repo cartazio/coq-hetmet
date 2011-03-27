@@ -192,8 +192,8 @@ Section WeakFunctorCategoryIsomorphism.
         apply q.
         Defined.
 
-    Theorem WeakFunctorCategoriesIsomorphic : IsomorphicCategories GA RE F1 F2.
-      apply Build_IsomorphicCategories.
+    Theorem WeakFunctorCategoriesIsomorphic : IsomorphicCategories GA RE.
+      refine {| ic_f := F1 ; ic_g := F2 |}.
       unfold EqualFunctors; intros; apply heq_morphisms_intro; unfold eqv in *; simpl in *.
         eapply if_comp.
         apply m1_m2_id.

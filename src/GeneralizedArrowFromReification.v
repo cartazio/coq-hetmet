@@ -122,9 +122,29 @@ Section GArrowFromReification.
 
   Definition garrow_functor := step1_functor >>>> step2_functor.
 
-  Definition garrow_from_reification : GeneralizedArrow K C.
-    refine {| ga_functor := garrow_functor |}.
+  Lemma garrow_functor_monoidal_niso
+    : (garrow_functor **** garrow_functor) >>>> (mon_f C) <~~~> (mon_f (enr_v_mon K)) >>>> garrow_functor.
     admit.
+    Defined.
+  Lemma garrow_functor_monoidal_iso
+    : mon_i C ≅ garrow_functor (mon_i (enr_v_mon K)).
+    admit.
+    Defined.
+
+  Instance garrow_functor_monoidal : MonoidalFunctor (enr_v_mon K) C garrow_functor :=
+    { mf_coherence := garrow_functor_monoidal_niso
+    ; mf_id        := garrow_functor_monoidal_iso
+    }.
+    admit.
+    admit.
+    admit.
+    Defined.
+
+  Definition garrow_from_reification : GeneralizedArrow K C.
+    refine
+      {| ga_functor          := garrow_functor
+       ; ga_functor_monoidal := garrow_functor_monoidal
+      |}.
     Defined.
 
 End GArrowFromReification.

@@ -40,7 +40,7 @@ Require Import HaskProofCategory.
 (*
 Require Import HaskStrongCategory.
 *)
-Require Import ReificationsEquivalentToGeneralizedArrows.
+Require Import ReificationsIsomorphicToGeneralizedArrows.
 
 Open Scope string_scope.
 Extraction Language Haskell.
