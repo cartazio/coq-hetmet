@@ -26,6 +26,19 @@ Require Import Reification.
 Require Import WeakFunctorCategory.
 Require Import SmallSMMEs.
 
+(* Technically reifications form merely a *semicategory* (no identity
+ * maps), but one can always freely adjoin identity maps (and nothing
+ * else) to a semicategory to get a category whose non-identity-map
+ * portion is identical to the original semicategory
+ *
+ * Also, technically this category has ALL enrichments (not just the
+ * surjective monic monoidal ones), though there maps OUT OF only the
+ * surjective enrichments and INTO only the monic monoidal
+ * enrichments.  It's a big pain to do this in Coq, but sort of might
+ * matter in real life: a language with really severe substructural
+ * restrictions might fail to be monoidally enriched, meaning we can't
+ * use it as a host language.  But that's for the next paper...
+ *)
 Inductive ReificationOrIdentity : SMMEs -> SMMEs -> Type :=
   | roi_id   : forall smme:SMMEs,                                  ReificationOrIdentity smme smme
   | roi_reif : forall s1 s2:SMMEs, Reification s1 s2 (mon_i s2) -> ReificationOrIdentity s1   s2.
@@ -49,7 +62,8 @@ Definition compose_reifications (s0 s1 s2:SMMEs) :
   Reification s0 s1 (mon_i s1) -> Reification s1 s2 (mon_i s2) -> Reification s0 s2 (mon_i s2).
   intros.
   refine
-    {| reification_rstar   := MonoidalFunctorsCompose _ _ _ _ _ (reification_rstar X) (reification_rstar X0)
+    {| reification_rstar_f := reification_rstar_f X >>>> reification_rstar_f X0
+     ; reification_rstar   := MonoidalFunctorsCompose _ _ _ _ _ (reification_rstar X) (reification_rstar X0)
      ; reification_r       := fun K => (reification_r X K) >>>> (reification_r X0 (mon_i s1))
     |}.
   intro K.

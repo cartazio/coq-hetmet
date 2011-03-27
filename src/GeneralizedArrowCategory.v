@@ -26,19 +26,36 @@ Require Import GeneralizedArrow.
 Require Import WeakFunctorCategory.
 Require Import SmallSMMEs.
 
+(*
+ * Technically reifications form merely a *semicategory* (no identity
+ * maps), but one can always freely adjoin identity maps (and nothing
+ * else) to a semicategory to get a category whose non-identity-map
+ * portion is identical to the original semicategory
+ *
+ * Also, technically this category has ALL enrichments (not just the
+ * surjective monic monoidal ones), though there maps OUT OF only the
+ * surjective enrichments and INTO only the monic monoidal
+ * enrichments.  It's a big pain to do this in Coq, but sort of might
+ * matter in real life: a language with really severe substructural
+ * restrictions might fail to be monoidally enriched, meaning we can't
+ * use it as a host language.  But that's for the next paper...
+ *)
 Inductive GeneralizedArrowOrIdentity : SMMEs -> SMMEs -> Type :=
   | gaoi_id   : forall smme:SMMEs,                             GeneralizedArrowOrIdentity smme smme
   | gaoi_ga : forall s1 s2:SMMEs, GeneralizedArrow s1 s2  -> GeneralizedArrowOrIdentity s1   s2.
 
-Definition generalizedArrowOrIdentityFunc
-  : forall s1 s2, GeneralizedArrowOrIdentity s1 s2 -> { fobj : _ & Functor s1 s2 fobj }.
-  intros.
-  destruct X.
-  exists (fun x => x).
-  apply functor_id.
-  eapply existT.
-  apply (g >>>> RepresentableFunctor s2 (mon_i s2)).
-  Defined.
+Definition generalizedArrowOrIdentityFobj (s1 s2:SMMEs) (f:GeneralizedArrowOrIdentity s1 s2) : s1 -> s2 :=
+  match f in GeneralizedArrowOrIdentity S1 S2 return S1 -> S2 with
+  | gaoi_id  s       => fun x => x
+  | gaoi_ga s1 s2 f  => fun a => ehom(ECategory:=s2) (mon_i (smme_mon s2)) (ga_functor_obj f a)
+  end.
+
+Definition generalizedArrowOrIdentityFunc s1 s2 (f:GeneralizedArrowOrIdentity s1 s2)
+  : Functor s1 s2 (generalizedArrowOrIdentityFobj _ _ f) :=
+  match f with
+  | gaoi_id  s       => functor_id _
+  | gaoi_ga s1 s2 f  => ga_functor f >>>> RepresentableFunctor s2 (mon_i s2)
+  end.
 
 Definition compose_generalizedArrows (s0 s1 s2:SMMEs) :
   GeneralizedArrow s0 s1 -> GeneralizedArrow s1 s2 -> GeneralizedArrow s0 s2.
@@ -66,7 +83,7 @@ Definition generalizedArrowOrIdentityComp
 Definition MorphismsOfCategoryOfGeneralizedArrows : @SmallFunctors SMMEs.
   refine {| small_func      := GeneralizedArrowOrIdentity
           ; small_func_id   := fun s => gaoi_id s
-          ; small_func_func := fun smme1 smme2 f => projT2 (generalizedArrowOrIdentityFunc _ _ f)
+          ; small_func_func := fun smme1 smme2 f => generalizedArrowOrIdentityFunc _ _ f
           ; small_func_comp := generalizedArrowOrIdentityComp
          |}; intros; simpl.
   apply if_id.
