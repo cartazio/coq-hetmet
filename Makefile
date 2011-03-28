@@ -36,6 +36,11 @@ merged:
 	echo COMPILATION OK
 	echo
 
+pushcheck:
+	ssh megacz.com -- 'rm -rf /tmp/pushcheck; mkdir /tmp/pushcheck; cd /tmp/pushcheck; git clone http://git.megacz.com/ghc-hetmet.git && git clone http://git.megacz.com/coq-hetmet.git ghc-hetmet/compiler/hetmet'
+	rsync -are ssh --progress --verbose --exclude .git --exclude src/categories/build/ --exclude build/ ./ megacz.com:/tmp/pushcheck/ghc-hetmet/compiler/hetmet/
+	ssh megacz.com -- '/vol/megacz/pushcheck2.sh'
+
 
 # this is for Adam's use only!
 push: build/CoqPass.hs
