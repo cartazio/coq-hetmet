@@ -441,7 +441,12 @@ staged_accept (Const c) k        =
 --------------------------------------------------------------------------------
 -- Unflattening
 
-{-
+-- The current implementation has problems with literals at level>0;
+-- there are special-purpose hacks for Int and Char, but none for
+-- unit.  So I use this instead as a placeholder for <[ () ]>
+
+<[ u ]> = Prelude.error "FIXME"
+
 -- This more or less "undoes" the flatten function.  People often ask
 -- me how you "translate generalized arrows back into multi-level
 -- terms".. I'm not sure why you'd want to do that, but this is how:
@@ -457,11 +462,10 @@ instance GArrow Code (,) () where
   ga_cancell     = Code <[ \(_,x) -> x ]>
 
   ga_cancelr     = Code <[ \(x,_) -> x ]>
-  ga_uncancell   = Code <[ \x -> (%%(),x) ]>
-  ga_uncancelr   = Code <[ \x -> (x,%%()) ]>
+  ga_uncancell   = Code <[ \x -> (u,x) ]>
+  ga_uncancelr   = Code <[ \x -> (x,u) ]>
   ga_assoc       = Code <[ \((x,y),z) -> (x,(y,z)) ]>
   ga_unassoc     = Code <[ \(x,(y,z)) -> ((x,y),z) ]>
--}
 
 
 
@@ -496,14 +500,10 @@ instance GArrow g (**) u => GArrow (GArrowInversePair g (**) u) (**) u where
   ga_unassoc     = GArrowInversePair { forward = ga_unassoc           , backward = ga_assoc     }
 instance GArrowSwap g (**) u => GArrowSwap (GArrowInversePair g (**) u) (**) u where
   ga_swap = GArrowInversePair { forward = ga_swap , backward = ga_swap }
-{-
-instance (GArrowDrop g (**) u, GArrowCopy g (**) u) => GArrowCopy (GArrowInversePair g (**) u) (**) u where
-  ga_copy = GArrowInversePair { forward = ga_copy , backward = ga_second ga_drop >>> ga_cancelr }
--}
 -- but notice that we can't (in general) get
 -- instance GArrowDrop g => GArrowDrop (GArrowInversePair g) where ...
 
-{-
+
 -- For that, we need PreLenses, which "log the history" where necessary.
 -- I call this a "PreLens" because it consists of the data required
 -- for a Lens (as in BCPierce's Lenses) but does not necessarily
@@ -515,7 +515,7 @@ instance Category PreLens where
   id    = PreLens { preLens = \x -> (x, (\x -> x)) }
   f . g = PreLens { preLens = \x -> let (gx,g') = (preLens g) x in let (fgx,f') = (preLens f) gx in (fgx , \q -> g' (f' q)) }
 
-instance GArrow PreLens (,) where
+instance GArrow PreLens (,) () where
   ga_first     f = PreLens { preLens = \(x,z) -> let (y,f') = (preLens f) x in ((y,z),(\(q1,q2) -> (f' q1,q2))) }
   ga_second    f = PreLens { preLens = \(z,x) -> let (y,f') = (preLens f) x in ((z,y),(\(q1,q2) -> (q1,f' q2))) }
   ga_cancell     = PreLens { preLens = \(_,x) -> (x,            (\x -> ((),x))) }
@@ -525,25 +525,25 @@ instance GArrow PreLens (,) where
   ga_assoc       = PreLens { preLens = \((x,y),z) -> ( (x,(y,z)) , (\(x,(y,z)) -> ((x,y),z)) ) }
   ga_unassoc     = PreLens { preLens = \(x,(y,z)) -> ( ((x,y),z) , (\((x,y),z) -> (x,(y,z))) ) }
 
-instance GArrowDrop PreLens (,) where
+instance GArrowDrop PreLens (,) () where
   ga_drop        = PreLens { preLens = \x     -> (()    , (\() -> x)) }
-instance GArrowCopy PreLens (,) where
+instance GArrowCopy PreLens (,) () where
   ga_copy        = PreLens { preLens = \x     -> ((x,x) , fst) }
-instance GArrowSwap PreLens (,) where
+instance GArrowSwap PreLens (,) () where
   ga_swap        = PreLens { preLens = \(x,y) -> ((y,x) , (\(z,q) -> (q,z))) }
 
 
 
 data Lens x y where
   Lens :: forall x y c1 c2 . ((x,c1)->(y,c2)) -> ((y,c2)->(x,c1)) -> Lens x y
-
+{-
 -- can we make lenses out of GArrows other than (->)?
 instance Category Lens where
   id                          = Lens (\x -> x) (\x -> x)
   (Lens g1 g2) . (Lens f1 f2) = Lens (\(x,(c1,c2)) -> let (y,fc) = f1 (x,c1) in  let (z,gc) = g1 (y,c2) in  (z,(fc,gc)))
                                      (\(z,(c1,c2)) -> let (y,gc) = g2 (z,c2) in  let (x,fc) = f2 (y,c1) in  (x,(fc,gc)))
 
-instance GArrow Lens (,) where
+instance GArrow Lens (,) () where
   ga_first     (Lens f1 f2) = Lens (\((x1,x2),c) -> let (y,c') = f1 (x1,c) in ((y,x2),c'))
                                    (\((x1,x2),c) -> let (y,c') = f2 (x1,c) in ((y,x2),c'))
   ga_second    (Lens f1 f2) = Lens (\((x1,x2),c) -> let (y,c') = f1 (x2,c) in ((x1,y),c'))
@@ -561,18 +561,17 @@ instance GArrow Lens (,) where
   ga_unassoc                = Lens (\((x,(y,z)),()) -> (((x,y),z),()))
                                    (\(((x,y),z),()) -> ((x,(y,z)),()))
 
-instance GArrowDrop Lens (,) where
+instance GArrowDrop Lens (,) () where
   ga_drop        = Lens (\(x,()) -> ((),x)) (\((),x) -> (x,()))
-instance GArrowCopy Lens (,) where
+instance GArrowCopy Lens (,) () where
   ga_copy        = Lens (\(x,()) -> ((x,x),())) (\((x,_),()) -> (x,()))
-instance GArrowSwap Lens (,) where
+instance GArrowSwap Lens (,) () where
   ga_swap        = Lens (\((x,y),()) -> ((y,x),())) (\((x,y),()) -> ((y,x),()))
 
-instance BiGArrow Lens (,) where
+instance BiGArrow Lens (,) () where
   biga_arr f f'  = Lens (\(x,()) -> ((f x),())) (\(x,()) -> ((f' x),()))
   biga_inv (Lens f1 f2) = Lens f2 f1
 -}
-
 
 
 --------------------------------------------------------------------------------
