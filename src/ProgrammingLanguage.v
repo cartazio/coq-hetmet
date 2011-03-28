@@ -30,7 +30,7 @@ Require Import NaturalDeductionCategory.
 Require Import FreydCategories.
 
 Require Import Reification.
-Require Import GeneralizedArrows.
+Require Import GeneralizedArrow.
 Require Import GeneralizedArrowFromReification.
 
 Section Programming_Language.
