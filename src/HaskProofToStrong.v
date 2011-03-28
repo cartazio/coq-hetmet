@@ -228,171 +228,124 @@ Section HaskProofToStrong.
       inversion pf2.
     Defined.
 
-  Definition urule2expr  : forall Γ Δ h j (r:@URule Γ Δ h j) (ξ:VV -> LeveledHaskType Γ ★),
-    ITree _ (ujudg2exprType ξ) h -> ITree _ (ujudg2exprType ξ) j.
-
-      refine (fix urule2expr Γ Δ h j (r:@URule Γ Δ h j) ξ {struct r} : 
-        ITree _ (ujudg2exprType ξ) h -> ITree _ (ujudg2exprType ξ) j :=
-        match r as R in URule H C return ITree _ (ujudg2exprType ξ) H -> ITree _ (ujudg2exprType ξ) C with
-          | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ _ r)
-          | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ _ r)
-          | RCanL   t a       => let case_RCanL  := tt in _
-          | RCanR   t a       => let case_RCanR  := tt in _
-          | RuCanL  t a       => let case_RuCanL := tt in _
-          | RuCanR  t a       => let case_RuCanR := tt in _
-          | RAssoc  t a b c   => let case_RAssoc := tt in _
-          | RCossa  t a b c   => let case_RCossa := tt in _
-          | RExch   t a b     => let case_RExch  := tt in _
-          | RWeak   t a       => let case_RWeak  := tt in _
-          | RCont   t a       => let case_RCont  := tt in _
+  Definition urule2expr  : forall Γ Δ h j t (r:@Arrange _ h j) (ξ:VV -> LeveledHaskType Γ ★),
+    ujudg2exprType ξ (Γ >> Δ > h |- t) ->
+    ujudg2exprType ξ (Γ >> Δ > j |- t)
+    .
+    intros Γ Δ.
+      refine (fix urule2expr h j t (r:@Arrange _ h j) ξ {struct r} : 
+        ujudg2exprType ξ (Γ >> Δ > h |- t) ->
+        ujudg2exprType ξ (Γ >> Δ > j |- t) :=
+        match r as R in Arrange H C return ujudg2exprType ξ (Γ >> Δ > H |- t) ->
+        ujudg2exprType ξ (Γ >> Δ > C |- t) with
+          | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ r)
+          | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ r)
+          | RCanL   a       => let case_RCanL  := tt in _
+          | RCanR   a       => let case_RCanR  := tt in _
+          | RuCanL  a       => let case_RuCanL := tt in _
+          | RuCanR  a       => let case_RuCanR := tt in _
+          | RAssoc  a b c   => let case_RAssoc := tt in _
+          | RCossa  a b c   => let case_RCossa := tt in _
+          | RExch   a b     => let case_RExch  := tt in _
+          | RWeak   a       => let case_RWeak  := tt in _
+          | RCont   a       => let case_RCont  := tt in _
+          | RComp   a b c f g => let case_RComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ f) (urule2expr _ _ _ g)
           end); clear urule2expr; intros.
 
       destruct case_RCanL.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
-        apply (X0 ([],,vars)).
+        simpl; intros.
+        simpl in X.
+        apply (X ([],,vars)).
         simpl; rewrite <- H; auto.
 
       destruct case_RCanR.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
-        apply (X0 (vars,,[])).
+        simpl; intros.
+        simpl in X.
+        apply (X (vars,,[])).
         simpl; rewrite <- H; auto.
 
       destruct case_RuCanL.
-        apply ILeaf; simpl; intros.
+        simpl; intros.
         destruct vars; try destruct o; inversion H.
-        inversion X.
-        simpl in X0.
-        apply (X0 vars2); auto.
+        simpl in X.
+        apply (X vars2); auto.
 
       destruct case_RuCanR.
-        apply ILeaf; simpl; intros.
+        simpl; intros.
         destruct vars; try destruct o; inversion H.
-        inversion X.
-        simpl in X0.
-        apply (X0 vars1); auto.
+        simpl in X.
+        apply (X vars1); auto.
 
       destruct case_RAssoc.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
+        simpl; intros.
+        simpl in X.
         destruct vars; try destruct o; inversion H.
         destruct vars1; try destruct o; inversion H.
-        apply (X0 (vars1_1,,(vars1_2,,vars2))).
+        apply (X (vars1_1,,(vars1_2,,vars2))).
         subst; auto.
 
       destruct case_RCossa.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
+        simpl; intros.
+        simpl in X.
         destruct vars; try destruct o; inversion H.
         destruct vars2; try destruct o; inversion H.
-        apply (X0 ((vars1,,vars2_1),,vars2_2)).
+        apply (X ((vars1,,vars2_1),,vars2_2)).
         subst; auto.
 
-      destruct case_RLeft.
-        destruct c; [ idtac | apply no_urules_with_multiple_conclusions in r0; inversion r0; exists c1; exists c2; auto ].
-        destruct o; [ idtac | apply INone ].
-        destruct u; simpl in *.
-        apply ILeaf; simpl; intros.
-        destruct vars; try destruct o; inversion H.
-        set (fun q => ileaf (e ξ q)) as r'.
-        simpl in r'.
-        apply r' with (vars:=vars2).
-        clear r' e.
-        clear r0.
-        induction h0.
-          destruct a.
-          destruct u.
-          simpl in X.
-          apply ileaf in X. 
-          apply ILeaf.
-          simpl.
-          simpl in X.
-          intros.
-          apply X with (vars:=vars1,,vars).
-          simpl.
-          rewrite H0.
-          rewrite H1.
-          reflexivity.
-          apply INone.
-          apply IBranch.
-          apply IHh0_1. inversion X; auto.
-          apply IHh0_2. inversion X; auto.
-          auto.
-        
-      destruct case_RRight.
-        destruct c; [ idtac | apply no_urules_with_multiple_conclusions in r0; inversion r0; exists c1; exists c2; auto ].
-        destruct o; [ idtac | apply INone ].
-        destruct u; simpl in *.
-        apply ILeaf; simpl; intros.
-        destruct vars; try destruct o; inversion H.
-        set (fun q => ileaf (e ξ q)) as r'.
-        simpl in r'.
-        apply r' with (vars:=vars1).
-        clear r' e.
-        clear r0.
-        induction h0.
-          destruct a.
-          destruct u.
-          simpl in X.
-          apply ileaf in X. 
-          apply ILeaf.
-          simpl.
-          simpl in X.
-          intros.
-          apply X with (vars:=vars,,vars2).
-          simpl.
-          rewrite H0.
-          rewrite H2.
-          reflexivity.
-          apply INone.
-          apply IBranch.
-          apply IHh0_1. inversion X; auto.
-          apply IHh0_2. inversion X; auto.
-          auto.
-
       destruct case_RExch.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
+        simpl; intros.
+        simpl in X.
         destruct vars; try destruct o; inversion H.
-        apply (X0 (vars2,,vars1)).
+        apply (X (vars2,,vars1)).
         inversion H; subst; auto.
         
       destruct case_RWeak.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
-        apply (X0 []).
+        simpl; intros.
+        simpl in X.
+        apply (X []).
         auto.
         
       destruct case_RCont.
-        apply ILeaf; simpl; intros.
-        inversion X.
-        simpl in X0.
-        apply (X0 (vars,,vars)).
+        simpl; intros.
+        simpl in X.
+        apply (X (vars,,vars)).
         simpl.
         rewrite <- H.
         auto.
-        Defined.
 
-  Definition bridge Γ Δ (c:Tree ??(UJudg Γ Δ)) ξ :
-    ITree Judg judg2exprType (mapOptionTree UJudg2judg c) -> ITree (UJudg Γ Δ) (ujudg2exprType ξ) c.
-    intro it.
-    induction c.
-    destruct a.
-      destruct u; simpl in *.
-      apply ileaf in it.
-      apply ILeaf.
-      simpl in *.
-      intros; apply it with (vars:=vars); auto.
-    apply INone.
-    apply IBranch; [ apply IHc1 | apply IHc2 ]; inversion it; auto.
-    Defined.
+      destruct case_RLeft.
+        intro vars; intro H.
+        destruct vars; try destruct o; inversion H.
+        apply (fun q => e ξ q vars2 H2).
+        clear r0 e H2.
+          simpl in X.
+          simpl.
+          intros.
+          apply X with (vars:=vars1,,vars).
+          rewrite H0.
+          rewrite H1.
+          simpl.
+          reflexivity.
+
+      destruct case_RRight.
+        intro vars; intro H.
+        destruct vars; try destruct o; inversion H.
+        apply (fun q => e ξ q vars1 H1).
+        clear r0 e H2.
+          simpl in X.
+          simpl.
+          intros.
+          apply X with (vars:=vars,,vars2).
+          rewrite H0.
+          inversion H.
+          simpl.
+          reflexivity.
+
+      destruct case_RComp.
+        apply e2.
+        apply e1.
+        apply X.
+        Defined.
 
   Definition letrec_helper Γ Δ l (varstypes:Tree ??(VV * HaskType Γ ★)) ξ' :
     ITree (LeveledHaskType Γ ★)
@@ -553,7 +506,7 @@ Section HaskProofToStrong.
     intros h j r.
 
       refine (match r as R in Rule H C return ITree _ judg2exprType H -> ITree _ judg2exprType C with
-      | RURule a b c d e              => let case_RURule := tt        in _
+      | RArrange a b c d e  r         => let case_RURule := tt        in _
       | RNote   Γ Δ Σ τ l n           => let case_RNote := tt         in _
       | RLit    Γ Δ l     _           => let case_RLit := tt          in _
       | RVar    Γ Δ σ         p       => let case_RVar := tt          in _
@@ -574,19 +527,17 @@ Section HaskProofToStrong.
       | RLetRec Γ Δ lri x y t         => let case_RLetRec := tt       in _
       end); intro X_; try apply ileaf in X_; simpl in X_.
 
-  destruct case_RURule.
-    destruct d; try destruct o.
-      apply ILeaf; destruct u; simpl; intros.
-      set (@urule2expr a b _ _ e ξ) as q.
-      set (fun z => ileaf (q z)) as q'.
+    destruct case_RURule.
+      apply ILeaf. simpl. intros.
+      set (@urule2expr a b _ _ e r0 ξ) as q.
+      set (fun z => q z) as q'.
       simpl in q'.
       apply q' with (vars:=vars).
       clear q' q.
-      apply bridge.
-      apply X_.
+      intros.
+      apply X_ with (vars:=vars0).
       auto.
-      apply no_urules_with_empty_conclusion in e; inversion e; auto.
-      apply no_urules_with_multiple_conclusions in e; inversion e; auto; exists d1; exists d2; auto.
+      auto.
 
   destruct case_RBrak.
     apply ILeaf; simpl; intros; refine (X_ ξ vars H >>>= fun X => return ILeaf _ _). apply FreshMon.

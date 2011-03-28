@@ -35,12 +35,10 @@ Require Import HaskWeakToCore.
 Require Import HaskProofToStrong.
 
 Require Import ProgrammingLanguage.
-
 Require Import HaskProofCategory.
-(*
-Require Import HaskStrongCategory.
-*)
 Require Import ReificationsIsomorphicToGeneralizedArrows.
+
+(*Require Import HaskStrongCategory.*)
 
 Open Scope string_scope.
 Extraction Language Haskell.
@@ -228,6 +226,7 @@ Section core2proof.
       apply t.
       Defined.
 
+(*
     Definition env := ★::nil.
     Definition freshTV : HaskType env ★ := haskTyVarToType (FreshHaskTyVar _).
     Definition idproof0 : ND Rule [] [env > nil > [] |- [freshTV--->freshTV @@ nil]].
@@ -235,13 +234,13 @@ Section core2proof.
       eapply nd_comp.
       eapply nd_rule.
       apply RVar.
-      eapply nd_rule.
-      eapply (RURule _ _ _ _ (RuCanL _ _)) .
+      eapply nd_rule
+      eapply (RArrange _ _ _ _ (RuCanL _ _)) .
       eapply nd_rule.
       eapply RLam.
       Defined.
 
-(*
+
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
     addErrorMessage ("input CoreSyn: " +++ toString ce)
     (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (

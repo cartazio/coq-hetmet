@@ -32,23 +32,6 @@ Inductive Judg  :=
   Judg.
   Notation "Γ > Δ > a '|-' s" := (mkJudg Γ Δ a s) (at level 52, Δ at level 50, a at level 52, s at level 50).
 
-(* A Uniform Judgment (UJudg) has its environment as a type index; we'll use these to distinguish proofs that have a single,
- * uniform context throughout the whole proof.  Such proofs are important because (1) we can do left and right context
- * expansion on them (see rules RLeft and RRight) and (2) they will form the fiber categories of our fibration later on *)
-Inductive UJudg (Γ:TypeEnv)(Δ:CoercionEnv Γ) :=
-  mkUJudg :
-  Tree ??(LeveledHaskType Γ ★) ->
-  Tree ??(LeveledHaskType Γ ★) ->
-  UJudg Γ Δ.
-  Notation "Γ >> Δ > a '|-' s" := (mkUJudg Γ Δ a s) (at level 52, Δ at level 50, a at level 52, s at level 50).
-  Definition ext_tree_left  {Γ}{Δ}  := (fun ctx (j:UJudg Γ Δ) => match j with mkUJudg t s => mkUJudg Γ Δ (ctx,,t) s end).
-  Definition ext_tree_right {Γ}{Δ}  := (fun ctx (j:UJudg Γ Δ) => match j with mkUJudg t s => mkUJudg Γ Δ (t,,ctx) s end).
-
-(* we can turn a UJudg into a Judg by simply internalizing the index *)
-Definition UJudg2judg {Γ}{Δ}(ej:@UJudg Γ Δ) : Judg :=
-  match ej with mkUJudg t s => Γ > Δ > t |- s end.
-  Coercion UJudg2judg : UJudg >-> Judg.
-
 (* information needed to define a case branch in a HaskProof *)
 Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars}{sac:@StrongAltCon tc} :=
 { pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
@@ -61,24 +44,25 @@ Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{ava
 Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
-Inductive URule {Γ}{Δ} : Tree ??(UJudg Γ Δ) -> Tree ??(UJudg Γ Δ) -> Type :=
-| RCanL   : ∀ t a        ,                          URule  [Γ>>Δ>    [],,a   |- t         ]      [Γ>>Δ>       a   |- t           ]
-| RCanR   : ∀ t a        ,                          URule  [Γ>>Δ>    a,,[]   |- t         ]      [Γ>>Δ>       a   |- t           ]
-| RuCanL  : ∀ t a        ,                          URule  [Γ>>Δ>       a    |- t         ]      [Γ>>Δ>  [],,a    |- t           ]
-| RuCanR  : ∀ t a        ,                          URule  [Γ>>Δ>       a    |- t         ]      [Γ>>Δ>  a,,[]    |- t           ]
-| RAssoc  : ∀ t a b c    ,                          URule  [Γ>>Δ>a,,(b,,c)   |- t         ]      [Γ>>Δ>(a,,b),,c  |- t           ]
-| RCossa  : ∀ t a b c    ,                          URule  [Γ>>Δ>(a,,b),,c   |- t         ]      [Γ>>Δ> a,,(b,,c) |- t           ]
-| RLeft   : ∀ h c x      ,             URule h c -> URule (mapOptionTree (ext_tree_left  x) h) (mapOptionTree (ext_tree_left  x) c)
-| RRight  : ∀ h c x      ,             URule h c -> URule (mapOptionTree (ext_tree_right x) h) (mapOptionTree (ext_tree_right x) c)
-| RExch   : ∀ t a b      ,                          URule  [Γ>>Δ>   (b,,a)   |- t         ]      [Γ>>Δ>  (a,,b)   |- t           ]
-| RWeak   : ∀ t a        ,                          URule  [Γ>>Δ>       []   |- t         ]      [Γ>>Δ>       a   |- t           ]
-| RCont   : ∀ t a        ,                          URule  [Γ>>Δ>  (a,,a)    |- t         ]      [Γ>>Δ>       a   |- t           ].
-
+Inductive Arrange {T} : Tree ??T -> Tree ??T -> Type :=
+| RCanL   : forall a        ,                Arrange  (    [],,a   )      (       a   )
+| RCanR   : forall a        ,                Arrange  (    a,,[]   )      (       a   )
+| RuCanL  : forall a        ,                Arrange  (       a    )      (  [],,a    )
+| RuCanR  : forall a        ,                Arrange  (       a    )      (  a,,[]    )
+| RAssoc  : forall a b c    ,                Arrange  (a,,(b,,c)   )      ((a,,b),,c  )
+| RCossa  : forall a b c    ,                Arrange  ((a,,b),,c   )      ( a,,(b,,c) )
+| RExch   : forall a b      ,                Arrange  (   (b,,a)   )      (  (a,,b)   )
+| RWeak   : forall a        ,                Arrange  (       []   )      (       a   )
+| RCont   : forall a        ,                Arrange  (  (a,,a)    )      (       a   )
+| RLeft   : forall {h}{c} x , Arrange h c -> Arrange  (    x,,h    )      (       x,,c)
+| RRight  : forall {h}{c} x , Arrange h c -> Arrange  (    h,,x    )      (       c,,x)
+| RComp   : forall {a}{b}{c}, Arrange a b -> Arrange b c -> Arrange a c
+.
 
 (* Figure 3, production $\vdash_E$, all rules *)
 Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
-| RURule  : ∀ Γ Δ h c,                  @URule Γ Δ h c -> Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)
+| RArrange  : ∀ Γ Δ Σ₁ Σ₂ Σ,         Arrange Σ₁ Σ₂ -> Rule [Γ > Δ > Σ₁     |- Σ              ]   [Γ > Δ > Σ₂    |- Σ              ]
 
 (* λ^α rules *)
 | RBrak : ∀ Γ Δ t v Σ l,                              Rule [Γ > Δ > Σ      |- [t  @@ (v::l) ]]   [Γ > Δ > Σ     |- [<[v|-t]>   @@l]]
@@ -93,8 +77,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RGlobal : ∀ Γ Δ τ       l,   WeakExprVar ->         Rule [                                 ]   [Γ>Δ>     []   |- [τ          @@l]]
 | RLam    : forall Γ Δ Σ (tx:HaskType Γ ★) te l,      Rule [Γ>Δ> Σ,,[tx@@l]|- [te@@l]        ]   [Γ>Δ>    Σ     |- [tx--->te   @@l]]
 | RCast   : forall Γ Δ Σ (σ₁ σ₂:HaskType Γ ★) l,
-HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->
- Rule [Γ>Δ> Σ         |- [σ₁@@l]         ]   [Γ>Δ>    Σ     |- [σ₂          @@l]]
+                   HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->      Rule [Γ>Δ> Σ         |- [σ₁@@l]        ]   [Γ>Δ>    Σ     |- [σ₂         @@l]]
 | RBindingGroup  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁       |- [tx--->te @@l]],,[Γ>Δ> Σ₂ |- [tx@@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,[σ₂@@l] |- [σ₁@@l] ],,[Γ>Δ> Σ₂ |- [σ₂@@l]])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₁   @@l]]
@@ -116,12 +99,11 @@ HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->
                         [Γ > Δ >                                              Σ |- [ caseType tc avars @@ lev ] ])
                         [Γ > Δ > (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x)) alts),,Σ |- [ tbranches         @@ lev ] ]
 .
-Coercion RURule : URule >-> Rule.
 
 
 (* A rule is considered "flat" if it is neither RBrak nor REsc *)
 Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
-| Flat_RURule           : ∀ Γ Δ  h c r            ,  Rule_Flat (RURule Γ Δ  h c r)
+| Flat_RArrange         : ∀ Γ Δ  h c r          a ,  Rule_Flat (RArrange Γ Δ h c r a)
 | Flat_RNote            : ∀ Γ Δ Σ τ l n            ,  Rule_Flat (RNote Γ Δ Σ τ l n)
 | Flat_RLit             : ∀ Γ Δ Σ τ               ,  Rule_Flat (RLit Γ Δ Σ τ  )
 | Flat_RVar             : ∀ Γ Δ  σ               l,  Rule_Flat (RVar Γ Δ  σ         l)
@@ -138,53 +120,9 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x)
 | Flat_RLetRec          : ∀ Γ Δ Σ₁ τ₁ τ₂ lev,      Rule_Flat (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
 
-(* given a proof that uses only uniform rules, we can produce a general proof *)
-Definition UND_to_ND Γ Δ h c : ND (@URule Γ Δ) h c -> ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c)
-  := @nd_map' _ (@URule Γ Δ ) _ Rule (@UJudg2judg Γ Δ ) (fun h c r => nd_rule (RURule _ _ h c r)) h c.
-
-Lemma no_urules_with_empty_conclusion : forall Γ Δ c h, @URule Γ Δ c h -> h=[] -> False.
-  intro.
-  intro.
-  induction 1; intros; inversion H.
-  simpl in *;  destruct c; try destruct o;  simpl in *; try destruct u;  inversion H;  simpl in *;  apply IHX;  auto;  inversion H1.
-  simpl in *;  destruct c; try destruct o;  simpl in *; try destruct u;  inversion H;  simpl in *;  apply IHX;  auto;  inversion H1.
-  Qed.
-
 Lemma no_rules_with_empty_conclusion : forall c h, @Rule c h -> h=[] -> False.
   intros.
   destruct X; try destruct c; try destruct o; simpl in *; try inversion H.
-  apply no_urules_with_empty_conclusion in u.
-  apply u.
-  auto.
-  Qed.
-
-Lemma no_urules_with_multiple_conclusions : forall Γ Δ c h,
-  @URule Γ Δ c h -> { h1:Tree ??(UJudg Γ Δ) & { h2:Tree ??(UJudg Γ Δ) & h=(h1,,h2) }} -> False.
-  intro.
-  intro.
-  induction 1; intros.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-
-  apply IHX.
-  destruct X0. destruct s. destruct c; try destruct o; try destruct u; simpl in *.
-    inversion e.
-    inversion e.
-    exists c1. exists c2. auto.
-
-  apply IHX.
-  destruct X0. destruct s. destruct c; try destruct o; try destruct u; simpl in *.
-    inversion e.
-    inversion e.
-    exists c1. exists c2. auto.
-
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
-  inversion X;inversion X0;inversion H;inversion X1;destruct c;try destruct o; inversion H2; apply IHX; exists c1;exists c2; auto.
   Qed.
 
 Lemma no_rules_with_multiple_conclusions : forall c h,
@@ -194,7 +132,6 @@ Lemma no_rules_with_multiple_conclusions : forall c h,
     try apply no_urules_with_empty_conclusion in u; try apply u.
     destruct X0; destruct s; inversion e.
     auto.
-    apply (no_urules_with_multiple_conclusions _ _ h (c1,,c2)) in u. inversion u. exists c1. exists c2. auto.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.

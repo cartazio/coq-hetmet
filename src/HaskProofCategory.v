@@ -44,15 +44,13 @@ Open Scope nd_scope.
 
 Section HaskProofCategory.
 
-  Implicit Arguments RURule [[Γ][Δ][h][c]].
-
   Context (ndr_systemfc:@ND_Relation _ Rule).
 
   (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows     *)
   (* Rule_PCF consists of the rules allowed in flat PCF: everything except *)
   (* AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements        *)
   Inductive Rule_PCF {Γ}{Δ} : ∀ h c, Rule (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c) -> Type :=
-  | PCF_RCanL            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCanL t a              ))
+  | PCF_RArrange         : ∀ x y              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCanL t a              ))
   | PCF_RCanR            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCanR t a              ))
   | PCF_RuCanL           : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RuCanL t a             ))
   | PCF_RuCanR           : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RuCanR t a             ))

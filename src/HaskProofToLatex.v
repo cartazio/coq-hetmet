@@ -157,24 +157,25 @@ Definition judgmentToRawLatexMath (j:Judg) : LatexMath :=
 Instance ToLatexMathJudgment : ToLatexMath Judg :=
   { toLatexMath := judgmentToRawLatexMath }.
 
-Fixpoint nd_uruleToRawLatexMath {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : string :=
+Fixpoint nd_uruleToRawLatexMath {T}{h}{c}(r:@Arrange T h c) : string :=
   match r with
     | RLeft   _ _ _ r => nd_uruleToRawLatexMath r
     | RRight  _ _ _ r => nd_uruleToRawLatexMath r
-    | RCanL   _ _     => "CanL"
-    | RCanR   _ _     => "CanR"
-    | RuCanL  _ _     => "uCanL"
-    | RuCanR  _ _     => "uCanR"
-    | RAssoc  _ _ _ _ => "Assoc"
-    | RCossa  _ _ _ _ => "Cossa"
-    | RExch   _ _ _   => "Exch"
-    | RWeak   _ _     => "Weak"
-    | RCont   _ _     => "Cont"
+    | RCanL   _     => "CanL"
+    | RCanR   _     => "CanR"
+    | RuCanL  _     => "uCanL"
+    | RuCanR  _     => "uCanR"
+    | RAssoc  _ _ _ => "Assoc"
+    | RCossa  _ _ _ => "Cossa"
+    | RExch   _ _   => "Exch"
+    | RWeak   _     => "Weak"
+    | RCont   _     => "Cont"
+    | RComp   _ _ _ _ _  => "Comp"  (* FIXME: do a better job here *)
   end.
 
 Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
   match r with
-    | RURule        _ _ _ _ r         => nd_uruleToRawLatexMath r
+    | RArrange      _ _ _ _ _ r       => nd_uruleToRawLatexMath r
     | RNote         _ _ _ _ _ _       => "Note"
     | RLit          _ _ _ _           => "Lit"
     | RVar          _ _ _ _           => "Var"
@@ -195,25 +196,26 @@ Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
     | REmptyGroup   _ _               => "REmptyGroup"
 end.
 
-Fixpoint nd_hideURule {Γ}{Δ}{h}{c}(r:@URule Γ Δ h c) : bool :=
+Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
   match r with
-    | RLeft   _ _ _ r               => nd_hideURule r
-    | RRight  _ _ _ r               => nd_hideURule r
-    | RCanL   _ _                   => true
-    | RCanR   _ _                   => true
-    | RuCanL  _ _                   => true
-    | RuCanR  _ _                   => true
-    | RAssoc  _ _ _ _               => true
-    | RCossa  _ _ _ _               => true
-    | RExch   _    (T_Leaf None) b  => true
-    | RExch   _ a  (T_Leaf None)    => true
-    | RWeak   _    (T_Leaf None)    => true
-    | RCont   _    (T_Leaf None)    => true
-    | _                             => false
+    | RLeft   _ _ _ r             => nd_hideURule r
+    | RRight  _ _ _ r             => nd_hideURule r
+    | RCanL   _                   => true
+    | RCanR   _                   => true
+    | RuCanL  _                   => true
+    | RuCanR  _                   => true
+    | RAssoc  _ _ _               => true
+    | RCossa  _ _ _               => true
+    | RExch      (T_Leaf None) b  => true
+    | RExch   a  (T_Leaf None)    => true
+    | RWeak      (T_Leaf None)    => true
+    | RCont      (T_Leaf None)    => true
+    | RComp   _ _ _ _ _           => false   (* FIXME: do better *)
+    | _                           => false
   end.
 Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=
   match r with
-    | RURule        _ _ _ _ r   => nd_hideURule r
+    | RArrange      _ _ _ _ _ r => nd_hideURule r
     | REmptyGroup   _ _         => true
     | RBindingGroup _ _ _ _ _ _ => true
     | _                         => false
