@@ -51,7 +51,6 @@ cmpAlts (a1,_,_) (a2,_,_)         = Data.Ord.compare a2 a1
 sortAlts :: [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)] -> [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)]
 sortAlts x = Data.List.sortBy (\a b -> if a `CoreSyn.ltAlt` b then Data.Ord.LT else Data.Ord.GT) x
 
--- to do: this could be moved into Coq
 coreVarToWeakVar :: Var.Var -> WeakVar
 coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
  where
@@ -78,7 +77,6 @@ nat2int (S x) = 1 + (nat2int x)
 natToString :: Nat -> Prelude.String
 natToString n = show (nat2int n)
 
--- only needs to sanitize characters which might appear in Haskell identifiers
 sanitizeForLatex :: Prelude.String -> Prelude.String
 sanitizeForLatex []      = []
 sanitizeForLatex ('_':x) = "\\_"++(sanitizeForLatex x)
@@ -101,20 +99,21 @@ coreKindToKind k =
                  else if (Coercion.isArgTypeKind k)      then KindStar
                  else if (Coercion.isUbxTupleKind k)     then KindStar
                  else if (Coercion.isOpenTypeKind k)     then KindStar
+--
+-- The "subkinding" in GHC is not dealt with in System FC, and dealing
+-- with it is not actually as simple as you'd think.
+--
 --                 else if (Coercion.isUnliftedTypeKind k) then KindUnliftedType
 --                 else if (Coercion.isOpenTypeKind k)     then KindOpenType
 --                 else if (Coercion.isArgTypeKind k)      then KindArgType
 --                 else if (Coercion.isUbxTupleKind k)     then KindUnboxedTuple
+--
                  else if (Coercion.isTySuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-types"
                  else if (Coercion.isCoSuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-coercions"
                  else                                         Prelude.error ((Prelude.++) "coreKindToKind got an unknown kind: "
                                                                                (Outputable.showSDoc (Outputable.ppr k)))
 outputableToString :: Outputable.Outputable a => a -> Prelude.String
 outputableToString = (\x -> Outputable.showSDoc (Outputable.ppr x))
-
--- I'm leaving this here (commented out) in case I ever need it again)
---checkTypeEquality :: Type.Type -> Type.Type -> Prelude.Bool
---checkTypeEquality t1 t2 = Type.tcEqType (Type.expandTypeSynonyms t1) (Type.expandTypeSynonyms t2)
 
 coreViewDeep :: Type.Type -> Type.Type
 coreViewDeep t =
@@ -191,3 +190,7 @@ bin2ascii =
      let f b i = if b then 1 `shiftL` i else 0
      in Data.Char.chr (f b0 0 .|. f b1 1 .|. f b2 2 .|. f b3 3 .|. f b4 4 .|. f b5 5 .|. f b6 6 .|. f b7 7))
 -}
+
+-- I'm leaving this here (commented out) in case I ever need it again)
+--checkTypeEquality :: Type.Type -> Type.Type -> Prelude.Bool
+--checkTypeEquality t1 t2 = Type.tcEqType (Type.expandTypeSynonyms t1) (Type.expandTypeSynonyms t2)
