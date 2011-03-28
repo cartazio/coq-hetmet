@@ -88,15 +88,111 @@ Section HaskProofCategory.
     .
   End RulePCF.
 
-  (* "RuleSystemFCa n" is the type of rules permitted in SystemFC^\alpha with n-level-deep nesting
-   * (so, "RuleSystemFCa 0" is damn close to System FC) *)
-  Inductive RuleSystemFCa : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
-  | sfc_flat : forall n h c     (r:Rule h c), Rule_Flat r -> RuleSystemFCa    n  h c
-  | sfc_nest : forall n h c Γ Δ, ND (@RulePCF Γ Δ n) h c  -> RuleSystemFCa (S n) h c
-  .
-  
+  Section RuleSystemFC.
+
+    Context {Γ:TypeEnv}{Δ:CoercionEnv Γ}.
+
+    (* "RuleSystemFCa n" is the type of rules permitted in SystemFC^\alpha with n-level-deep nesting
+     * in a fixed Γ,Δ context.  This is a subcategory of the "complete" SystemFCa, but it's enough to 
+     * do the flattening transformation *)
+    Inductive RuleSystemFCa : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+    | sfc_flat : forall n h c   (r:Rule h c), Rule_Flat r -> RuleSystemFCa    n  h c
+    | sfc_nest : forall n h c,  ND (@RulePCF Γ Δ n) h c  -> RuleSystemFCa (S n) h c
+    .
+
+    Context (ndr_systemfca:forall n, @ND_Relation _ (RuleSystemFCa n)).
+
+    Hint Constructors Rule_Flat.
+
+    Definition SystemFC_SC n : @SequentCalculus _ (RuleSystemFCa n) _ (mkJudg Γ Δ).
+      apply Build_SequentCalculus.
+      intro a.
+      induction a.
+      destruct a.
+      apply nd_rule.
+      destruct l.
+      apply sfc_flat with (r:=RVar _ _ _ _).
+      auto.
+      apply nd_rule.
+      apply sfc_flat with (r:=REmptyGroup _ _).
+      auto.
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      eapply nd_comp; [ eapply nd_prod | idtac ].
+      apply IHa1.
+      apply IHa2.
+      apply nd_rule.
+      apply sfc_flat with (r:=RBindingGroup _ _ _ _ _ _ ).
+      auto.
+      Defined.
+
+    Existing Instance SystemFC_SC.
+
+    Lemma systemfc_cut n : ∀a b c,
+           ND (RuleSystemFCa n) ([Γ > Δ > a |- b],, [Γ > Δ > b |- c]) [Γ > Δ > a |- c]. 
+      intros.
+      admit.
+      Defined.
+
+    Lemma systemfc_cutrule n
+      : @CutRule _ (RuleSystemFCa n) _ (mkJudg Γ Δ) (ndr_systemfca n) (SystemFC_SC n).
+      apply Build_CutRule with (nd_cut:=systemfc_cut n).
+      admit.
+      admit.
+      admit.
+      Defined.
+
+    Definition systemfc_left n a b c : ND (RuleSystemFCa n) [Γ > Δ > b |- c] [Γ > Δ > a,, b |- a,, c].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      eapply nd_comp; [ eapply nd_prod | idtac ].
+      Focus 3.
+      apply nd_rule.
+      apply sfc_flat with (r:=RBindingGroup _ _ _ _ _ _ ).
+      auto.
+      idtac.
+      apply nd_seq_reflexive.
+      apply nd_id.
+      Defined.
+
+    Definition systemfc_right n a b c : ND (RuleSystemFCa n) [Γ > Δ > b |- c] [Γ > Δ > b,,a |- c,,a].
+      eapply nd_comp; [ apply nd_rlecnac | idtac ].
+      eapply nd_comp; [ eapply nd_prod | idtac ].
+      apply nd_id.
+      apply (nd_seq_reflexive a).
+      apply nd_rule.
+      apply sfc_flat with (r:=RBindingGroup _ _ _ _ _ _ ).
+      auto.
+      Defined.
+
+    Definition systemfc_expansion n
+      : @SequentExpansion _ (RuleSystemFCa n) _ (mkJudg Γ Δ) (ndr_systemfca n) (SystemFC_SC n) (systemfc_cutrule n).
+    Check  (@Build_SequentExpansion).
+apply (@Build_SequentExpansion _ _ _ _ (ndr_systemfca n)  _ _ (systemfc_left n) (systemfc_right n)).
+      refine {| se_expand_left:=systemfc_left n
+        ; se_expand_right:=systemfc_right n |}.
+
+
+    (* 5.1.2 *)
+    Instance SystemFCa n : @ProgrammingLanguage _ Judg (mkJudg Γ Δ) (RuleSystemFCa n) :=
+    { pl_eqv                := ndr_systemfca n
+    ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
+    ; pl_sc                 := SystemFC_SC n
+    ; pl_subst              := systemfc_cutrule n
+    ; pl_sequent_join       := systemfc_expansion n
+    }.
+      apply Build_TreeStructuralRules; intros; unfold eqv; unfold hom; simpl.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RCossa _ a b c)); auto. apply Flat_RURule.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RAssoc _ a b c)); auto. apply Flat_RURule.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RCanL  _ a    )); auto. apply Flat_RURule.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RCanR  _ a    )); auto. apply Flat_RURule.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RuCanL _ a    )); auto. apply Flat_RURule.
+      apply sfc_flat with (r:=RURule _ _ _ _ (RuCanR _ a    )); auto. apply Flat_RURule.
+Show Existentials.
+
+  Admitted.
+
+  End RuleSystemFC.
+
   Context (ndr_pcf      :forall n Γ Δ, @ND_Relation _ (@RulePCF Γ Δ n)).
-  Context (ndr_systemfca:forall n, @ND_Relation _ (RuleSystemFCa n)).
 
   (* 5.1.3 *)
   Instance PCF n Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) (@RulePCF Γ Δ n) :=
@@ -108,15 +204,13 @@ Section HaskProofCategory.
   }.
   Admitted.
   
-  (* 5.1.2 *)
-  Instance SystemFCa n Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) (RuleSystemFCa n) :=
-  { pl_eqv                := _ (*@ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)*)
-  ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
-  ; pl_sc                 := _ (*@SequentCalculus Judg Rule _ sequent*)
-  ; pl_subst              := _ (*@CutRule Judg Rule _ sequent pl_eqv pl_sc*)
-  ; pl_sequent_join       := _ (*@SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst*)
-  }.
-  Admitted.
+
+  Definition ReificationFunctor n : Functor (JudgmentsN n) (JudgmentsN (S n)) (mapOptionTree brakify).
+    refine {| fmor := fun h c (f:h~~{JudgmentsN n}~~>c) => nd_rule (br_nest _ _ _ f) |}; intros; simpl.
+    admit.
+    admit.
+    admit.
+    Defined.
 
   Definition PCF_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
     refine {| plsmme_pl := PCF n Γ Δ |}.
@@ -128,30 +222,26 @@ Section HaskProofCategory.
     admit.
     Defined.
 
-  (* 5.1.4 *)
-  Definition PCF_SystemFCa_two_level n Γ Δ : TwoLevelLanguage (PCF_SMME n Γ Δ) (SystemFCa_SMME (S n) Γ Δ).
-    admit.
-    Defined.
-  (*  ... and the retraction exists *)
-
-  (* Any particular proof in HaskProof is only finitely large, so it uses only finitely many levels of nesting, so
-   * it falls within (SystemFCa n) for some n.  This function calculates that "n" and performs the translation *)
-  (*Definition HaskProof_to_SystemFCa :
-    forall h c (pf:ND Judg h c),
-      { n:nat & h ~~{JudgmentsL SystemFCa_SMME n *)
-
-  (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
-    (*
-  Definition ReificationFunctor n : Functor (JudgmentsN n) (JudgmentsN (S n)) (mapOptionTree brakify).
-    refine {| fmor := fun h c (f:h~~{JudgmentsN n}~~>c) => nd_rule (br_nest _ _ _ f) |}; intros; simpl.
-    admit.
-    admit.
-    admit.
-    Defined.
-
   Definition ReificationFunctorMonoidal n : MonoidalFunctor (JudgmentsN n) (JudgmentsN (S n)) (ReificationFunctor n).
     admit.
     Defined.
+
+  (* 5.1.4 *)
+  Definition PCF_SystemFCa_two_level n Γ Δ : TwoLevelLanguage (PCF_SMME n Γ Δ) (SystemFCa_SMME (S n) Γ Δ).
+    admit.
+    (*  ... and the retraction exists *)
+    Defined.
+
+  (* Any particular proof in HaskProof is only finitely large, so it uses only finitely many levels of nesting, so
+   * it falls within (SystemFCa n) for some n.  This function calculates that "n" and performs the translation *)
+  (*
+  Definition HaskProof_to_SystemFCa :
+    forall h c (pf:ND Rule h c),
+      { n:nat & h ~~{JudgmentsL (SystemFCa_SMME n)}~~> c }.
+      *)
+
+  (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
+
 
   Definition makeTree : Tree ??(LeveledHaskType Γ ★) -> HaskType Γ ★.
     admit.
