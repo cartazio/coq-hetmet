@@ -30,9 +30,8 @@ Require Import NaturalDeductionCategory.
 Require Import FreydCategories.
 
 Require Import Reification.
-Require Import GeneralizedArrow.
+Require Import GeneralizedArrows.
 Require Import GeneralizedArrowFromReification.
-Require Import ReificationFromGeneralizedArrow.
 
 Section Programming_Language.
 
@@ -95,13 +94,13 @@ Section Programming_Language.
       Defined.
 
     Definition Types_first c : EFunctor TypesL TypesL (fun x => x,,c ).
-      refine {| efunc := fun x y => (nd_rule (@se_expand_right _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)) |}.
+      refine {| efunc := fun x y => (@se_expand_right _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y) |}.
       intros; apply MonoidalCat_all_central.
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
       apply se_reflexive_right.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
-      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ [#se_expand_right _ c#] _ _ (nd_id1 (b|=c0))
-                  _ (nd_id1 (a,,c |= b,,c))  _ [#se_expand_right _ c#]).
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (se_expand_right _ c) _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (a,,c |= b,,c))  _ (se_expand_right _ c)).
       setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [a,, c |= b,, c]).
       setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
       apply se_cut_right.
@@ -109,13 +108,13 @@ Section Programming_Language.
 
     Definition Types_second c : EFunctor TypesL TypesL (fun x => c,,x).
       eapply Build_EFunctor.
-      instantiate (1:=(fun x y => (nd_rule (@se_expand_left _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)))).
+      instantiate (1:=(fun x y => ((@se_expand_left _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)))).
       intros; apply MonoidalCat_all_central.
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
       apply se_reflexive_left.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
-      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ [#se_expand_left _ c#] _ _ (nd_id1 (b|=c0))
-                  _ (nd_id1 (c,,a |= c,,b))  _ [#se_expand_left _ c#]).
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (se_expand_left _ c) _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (c,,a |= c,,b))  _ (se_expand_left _ c)).
       setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [c,,a |= c,,b]).
       setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
       apply se_cut_left.
@@ -128,9 +127,38 @@ Section Programming_Language.
          |}.
       Defined.
 
-    Definition Types_PreMonoidal : PreMonoidalCat Types_binoidal [].
+    Definition Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a.
       admit.
       Defined.
+
+    Definition Types_cancelr   : Types_first [] <~~~> functor_id _.
+      admit.
+      Defined.
+
+    Definition Types_cancell   : Types_second [] <~~~> functor_id _.
+      admit.
+      Defined.
+
+    Definition Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a.
+      admit.
+      Defined.
+
+    Definition Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b.
+      admit.
+      Defined.
+
+    Instance Types_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
+        { pmon_assoc    := Types_assoc
+        ; pmon_cancell  := Types_cancell
+        ; pmon_cancelr  := Types_cancelr
+        ; pmon_assoc_rr := Types_assoc_rr
+        ; pmon_assoc_ll := Types_assoc_ll
+        }.
+        admit. (* pentagon law *)
+        admit. (* triangle law *)
+        admit. (* assoc_rr/assoc coherence *)
+        admit. (* assoc_ll/assoc coherence *)
+        Defined.
 
     Definition TypesEnrichedInJudgments : Enrichment.
       refine {| enr_c := TypesL |}.
