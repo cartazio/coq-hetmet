@@ -40,15 +40,51 @@ Require Import HaskStrongToProof.
 Require Import HaskProofToStrong.
 Require Import ProgrammingLanguage.
 
+Open Scope nd_scope.
+
 Section HaskProofCategory.
 
-  Definition unitType {Γ} : RawHaskType Γ ★.
-    admit.
-    Defined.
+  Implicit Arguments RURule [[Γ][Δ][h][c]].
 
-  Definition brakifyType {Γ} (v:HaskTyVar Γ ★)(lt:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
+  Context (ndr_systemfc:@ND_Relation _ Rule).
+
+  (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows     *)
+  (* Rule_PCF consists of the rules allowed in flat PCF: everything except *)
+  (* AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements        *)
+  Inductive Rule_PCF {Γ}{Δ} : ∀ h c, Rule (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c) -> Type :=
+  | PCF_RCanL            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCanL t a              ))
+  | PCF_RCanR            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCanR t a              ))
+  | PCF_RuCanL           : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RuCanL t a             ))
+  | PCF_RuCanR           : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RuCanR t a             ))
+  | PCF_RAssoc           : ∀ t a b c          ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RAssoc t a b c         ))
+  | PCF_RCossa           : ∀ t a b c          ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCossa t a b c         ))
+  | PCF_RLeft            : ∀ h c x            ,  Rule (mapOptionTree (ext_tree_left  x) h) (mapOptionTree (ext_tree_left  x) c)
+  | PCF_RRight           : ∀ h c x            ,  Rule (mapOptionTree (ext_tree_right x) h) (mapOptionTree (ext_tree_right x) c)
+  | PCF_RExch            : ∀ t a b            ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RExch t a b            ))
+  | PCF_RWeak            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RWeak t a              ))
+  | PCF_RCont            : ∀ t a              ,  Rule_PCF  [_>>_>_|-_] [_>>_>_|-_] (RURule (RCont t a              ))
+
+  | PCF_RLit             : ∀ Σ τ              ,  Rule_PCF               [         ]  [_>>_>_|-_] (RLit   Γ Δ  Σ τ          )
+  | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF               [_>>_>_|-_]  [_>>_>_|-_] (RNote  Γ Δ  Σ τ       l n)
+  | PCF_RVar             : ∀ σ               l,  Rule_PCF               [         ]  [_>>_>_|-_] (RVar   Γ Δ    σ         l)
+  | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF               [_>>_>_|-_]  [_>>_>_|-_] (RLam   Γ Δ  Σ tx te   q  )
+  | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF ([_>>_>_|-_],,[_>>_>_|-_]) [_>>_>_|-_] (RApp   Γ Δ  Σ tx te   p l)
+  | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF ([_>>_>_|-_],,[_>>_>_|-_]) [_>>_>_|-_] (RLet   Γ Δ  Σ σ₁ σ₂   p l)
+  | PCF_RBindingGroup    : ∀ b c d e          ,  Rule_PCF ([_>>_>_|-_],,[_>>_>_|-_]) [_>>_>_|-_] (RBindingGroup _ _ b c d e)
+  | PCF_REmptyGroup      :                       Rule_PCF  [                      ]  [_>>_>_|-_] (REmptyGroup   _ _        ).
+
+(*  | PCF_RLetRec          : ∀ Σ₁ τ₁ τ₂ lev     ,  Rule_PCF [_>>_>_|-_] [_>>_>_|-_] (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).*)
+  Implicit Arguments Rule_PCF [ ].
+
+(* need int/boolean case *)
+(*  | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x)   (* FIXME: only for boolean and int *)*)
+
+  Definition PCFR Γ Δ h c := { r:_ & Rule_PCF Γ Δ h c r }.
+
+  (* this wraps code-brackets, with the specified environment classifier, around a type *)
+  Definition brakifyType {Γ} (ec:HaskTyVar Γ ★)(lt:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
     match lt with
-      t @@ l => HaskBrak v t @@ l
+      t @@ l => HaskBrak ec t @@ l
     end.
  
   Definition brakifyu {Γ}{Δ}(v:HaskTyVar Γ ★)(j:UJudg Γ Δ) : UJudg Γ Δ :=
@@ -56,6 +92,25 @@ Section HaskProofCategory.
       mkUJudg Σ τ =>
         Γ >> Δ > mapOptionTree (brakifyType v) Σ |- mapOptionTree (brakifyType v) τ
     end.
+
+
+  (* An organized deduction has been reorganized into contiguous blocks whose
+   * hypotheses (if any) and conclusion have the same Γ and Δ and a fixed nesting depth.  The boolean
+   * indicates if non-PCF rules have been used *)
+  Inductive OrgR : bool -> nat -> forall Γ Δ, Tree ??(UJudg Γ Δ) -> Tree ??(UJudg Γ Δ) -> Type :=
+
+  | org_pcf       : forall n Γ Δ h c b,
+    PCFR Γ Δ h c -> OrgR b n Γ Δ h c
+
+  | org_fc        : forall n Γ Δ h c,
+    ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c) -> OrgR true n Γ Δ h c
+
+  | org_nest      : forall n Γ Δ h c b v,
+    OrgR b    n  Γ Δ h c ->
+    OrgR b (S n) _ _ (mapOptionTree (brakifyu v) h) (mapOptionTree (brakifyu v) c)
+  . 
+
+  Definition OrgND b n Γ Δ := ND (OrgR b n Γ Δ).
 
   Definition mkEsc {Γ}{Δ}(j:Tree ??(UJudg Γ Δ)) v h
     : ND Rule
@@ -70,47 +125,6 @@ Section HaskProofCategory.
     (mapOptionTree (@UJudg2judg Γ Δ           ) h).
     admit.
     Defined.
-
-  Context (ndr_systemfc:@ND_Relation _ Rule).
-
-  Open Scope nd_scope.
-
-  (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows *)
-  (* Rule_PCF consists of the rules allowed in flat PCF: everything except
-     * AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements *)
-  Inductive Rule_PCF {Γ:TypeEnv}{Δ:CoercionEnv Γ} : forall {h}{c}, Rule h c -> Type :=
-  | PCF_RURule           : ∀ h c r            ,  Rule_PCF (RURule Γ Δ  h c r)
-  | PCF_RLit             : ∀ Σ τ              ,  Rule_PCF (RLit Γ Δ Σ τ  )
-  | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF (RNote Γ Δ Σ τ l n)
-  | PCF_RVar             : ∀ σ               l,  Rule_PCF (RVar Γ Δ  σ         l)
-  | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF (RLam Γ Δ  Σ tx te      q )
-  | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF (RApp Γ Δ  Σ tx te   p l)
-  | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF (RLet Γ Δ  Σ σ₁ σ₂   p l)
-  | PCF_RBindingGroup    : ∀ q a b c d e      ,  Rule_PCF (RBindingGroup q a b c d e)
-  | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x)   (* FIXME: only for boolean and int *)
-  | PCF_REmptyGroup      : ∀ q a              ,  Rule_PCF (REmptyGroup q a)
-  | PCF_RLetRec          : ∀ Σ₁ τ₁ τ₂ lev     ,  Rule_PCF (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
-  Implicit Arguments Rule_PCF [ ].
-
-  Definition PCFR Γ Δ h c := { r:_ & Rule_PCF Γ Δ h c r }.
-
-  (* An organized deduction has been reorganized into contiguous blocks whose
-   * hypotheses (if any) and conclusion have the same Γ and Δ and a fixed nesting depth.  The boolean
-   * indicates if non-PCF rules have been used *)
-  Inductive OrgR : bool -> nat -> forall Γ Δ, Tree ??(UJudg Γ Δ) -> Tree ??(UJudg Γ Δ) -> Type :=
-
-  | org_pcf       : forall n Γ Δ h c b,
-    PCFR Γ Δ (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c) -> OrgR b n Γ Δ h c
-
-  | org_fc        : forall n Γ Δ h c,
-    ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c) -> OrgR true n Γ Δ h c
-
-  | org_nest      : forall n Γ Δ h c b v,
-    OrgR b    n  Γ Δ h c ->
-    OrgR b (S n) _ _ (mapOptionTree (brakifyu v) h) (mapOptionTree (brakifyu v) c)
-  . 
-
-  Definition OrgND b n Γ Δ := ND (OrgR b n Γ Δ).
 
   (* any proof in organized form can be "dis-organized" *)
   Definition unOrgR b n Γ Δ : forall h c, OrgR b n Γ Δ h c ->
@@ -270,6 +284,32 @@ apply (@Build_SequentExpansion _ _ _ _ (ndr_systemfca n)  _ _ (systemfc_left n) 
       apply nd_rule; apply org_pcf; simpl; exists (RuCanR _ a    ); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
     Admitted.
 
+(*
+  Definition code2garrow Γ (ec t:RawHaskType Γ ★) :=
+      match t with
+(*        | TApp ★ ★ (TApp _ ★ TArrow tx) t' => code2garrow0 ec tx       t'*)
+        |                               _  => code2garrow0 ec unitType t
+      end.
+  Opaque code2garrow.
+  Fixpoint typeMap {TV}{κ}(ty:@RawHaskType TV κ) : @RawHaskType TV κ :=
+      match ty as TY in RawHaskType _ K return RawHaskType TV K with
+        | TCode ec t        => code2garrow _ ec t
+        | TApp _ _ t1 t2    => TApp (typeMap t1) (typeMap t2)
+        | TAll _ f          => TAll _ (fun tv => typeMap (f tv))
+        | TCoerc _ t1 t2 t3 => TCoerc (typeMap t1) (typeMap t2) (typeMap t3)
+        | TVar   _ v        => TVar v
+        | TArrow            => TArrow
+        | TCon  tc          => TCon tc 
+        | TyFunApp  tf rhtl => (* FIXME *) TyFunApp tf rhtl
+      end.
+          
+  Definition typeMapL {Γ}(lht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★  :=
+    match lht with
+(*      | t @@ nil       => (fun TV ite => typeMap (t TV ite)) @@ lev*)
+      | t @@ lev => (fun TV ite => typeMap (t TV ite)) @@ lev
+    end.
+*)
+
   (* gathers a tree of guest-language types into a single host-language types via the tensor *)
   Definition tensorizeType {Γ} (lt:Tree ??(LeveledHaskType Γ ★)) : HaskType Γ ★.
     admit.
@@ -291,17 +331,6 @@ apply (@Build_SequentExpansion _ _ _ _ (ndr_systemfca n)  _ _ (systemfc_left n) 
       | S n' => let t := obact n' X
                 in  [guestJudgmentAsGArrowType (Γ >> Δ > [] |- t )]
     end.
-
-(*  Definition *)
-
-
-  Definition magic {Γ}{Δ} h c n x :
-Rule_PCF Γ Δ (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c) x
--> ND (OrgR true n Γ Δ) []
-     [Γ >> Δ > mapOptionTree guestJudgmentAsGArrowType h
-      |- mapOptionTree guestJudgmentAsGArrowType c].
-  admit.
-  Defined.
 
   (*
    * Here it is, what you've all been waiting for!  When reading this,
@@ -400,7 +429,7 @@ Rule_PCF Γ Δ (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg
       clear r h c Γ Δ.
       rename r0 into r; rename h0 into h; rename c0 into c; rename Γ0 into Γ; rename Δ0 into Δ.
 
-      refine (match r as R in Rule_PCF G D H C with
+      refine (match r as R in Rule_PCF _ _ H C _ with
                 | PCF_RURule           h c r            => let case_RURule := tt in _
                 | PCF_RLit             Σ τ              => let case_RLit := tt in _
                 | PCF_RNote            Σ τ l n          => let case_RNote := tt in _
@@ -408,14 +437,111 @@ Rule_PCF Γ Δ (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg
                 | PCF_RLam             Σ tx te    q     => let case_RLam := tt in _
                 | PCF_RApp             Σ tx te   p     l=> let case_RApp := tt in _
                 | PCF_RLet             Σ σ₁ σ₂   p     l=> let case_RLet := tt in _
-                | PCF_RBindingGroup    q a b c d e      => let case_RBindingGroup := tt in _
-                | PCF_RCase            T κlen κ θ l x   => let case_RCase := tt in _
-                | PCF_REmptyGroup      q a              => let case_REmptyGroup := tt in _
-                | PCF_RLetRec          Σ₁ τ₁ τ₂ lev     => let case_RLetRec := tt in _
-              end).
-      rename Γ
+                | PCF_RBindingGroup    b c d e          => let case_RBindingGroup := tt in _
+                | PCF_REmptyGroup                       => let case_REmptyGroup := tt in _
+(*                | PCF_RCase            T κlen κ θ l x   => let case_RCase := tt in _*)
+(*                | PCF_RLetRec          Σ₁ τ₁ τ₂ lev     => let case_RLetRec := tt in _*)
+              end ); simpl in *.
+      clear x r h c.
+      rename r0 into r; rename h0 into h; rename c0 into c.
 
-      apply (magic _ _ _ _ r0).
+      destruct case_RURule.
+        refine (match r with
+          | RLeft   a b c r => let case_RLeft  := tt in _
+          | RRight  a b c r => let case_RRight := tt in _
+          | RCanL   a b     => let case_RCanL  := tt in _
+          | RCanR   a b     => let case_RCanR  := tt in _
+          | RuCanL  a b     => let case_RuCanL := tt in _
+          | RuCanR  a b     => let case_RuCanR := tt in _
+          | RAssoc  a b c d => let case_RAssoc := tt in _
+          | RCossa  a b c d => let case_RCossa := tt in _
+          | RExch   a b c   => let case_RExch  := tt in _
+          | RWeak   a b     => let case_RWeak  := tt in _
+          | RCont   a b     => let case_RCont  := tt in _
+        end).
+
+      destruct case_RCanL.
+        (* ga_cancell *)
+        admit.
+        
+      destruct case_RCanR.
+        (* ga_cancelr *)
+        admit.
+
+      destruct case_RuCanL.
+        (* ga_uncancell *)
+        admit.
+        
+      destruct case_RuCanR.
+        (* ga_uncancelr *)
+        admit.
+        
+      destruct case_RAssoc.
+        (* ga_assoc *)
+        admit.
+        
+      destruct case_RCossa.
+        (* ga_unassoc *)
+        admit.
+
+      destruct case_RLeft.
+        (* ga_second *)
+        admit.
+        
+      destruct case_RRight.
+        (* ga_first *)
+        admit.
+        
+      destruct case_RExch.
+        (* ga_swap *)
+        admit.
+        
+      destruct case_RWeak.
+        (* ga_drop *)
+        admit.
+        
+      destruct case_RCont.
+        (* ga_copy *)
+        admit.
+        
+      destruct case_RLit.
+        (* ga_literal *)
+        admit.
+
+      (* hey cool, I figured out how to pass CoreNote's through... *)
+      destruct case_RNote.
+        apply nd_rule.
+        apply org_fc.
+        eapply nd_comp.
+        eapply nd_rule.
+        apply RVar.
+        apply nd_rule.
+        apply RNote.
+        apply n.
+        
+      destruct case_RVar.
+        (* ga_id *)
+        admit.
+
+      destruct case_RLam.
+        (* ga_curry, but try to avoid this someday in the future if the argument type isn't a function *)
+        admit.
+
+      destruct case_RApp.
+        (* ga_apply *)
+        admit.
+
+      destruct case_RLet.
+        (* ga_comp! perhaps this means the ga_curry avoidance can be done by turning lambdas into lets? *)
+        admit.
+
+      destruct case_RBindingGroup.
+        (* ga_first+ga_second; technically this assumes a specific evaluation order, which is bad *)
+        admit.
+
+      destruct case_REmptyGroup.
+        (* ga_id u *)
+        admit.
       Defined.
 
   Instance FlatteningFunctor {n}{Γ}{Δ} : Functor (JudgmentsL _ _ (PCF n Γ Δ)) (TypesL _ _ (SystemFCa n Γ Δ)) obact :=
