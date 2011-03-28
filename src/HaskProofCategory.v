@@ -46,62 +46,115 @@ Section HaskProofCategory.
     admit.
     Defined.
 
-  Definition brakifyType {Γ} (lt:LeveledHaskType Γ ★) : LeveledHaskType (★ ::Γ) ★ :=
+  Definition brakifyType {Γ} (v:HaskTyVar Γ ★)(lt:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
     match lt with
-      t @@ l => HaskBrak (FreshHaskTyVar ★) (weakT t) @@ weakL l
+      t @@ l => HaskBrak v t @@ l
+    end.
+ 
+  Definition brakifyu {Γ}{Δ}(v:HaskTyVar Γ ★)(j:UJudg Γ Δ) : UJudg Γ Δ :=
+    match j with
+      mkUJudg Σ τ =>
+        Γ >> Δ > mapOptionTree (brakifyType v) Σ |- mapOptionTree (brakifyType v) τ
     end.
 
-  Definition brakify (j:Judg) : Judg :=
-    match j with
-      Γ > Δ > Σ |- τ =>
-        (★ ::Γ) > weakCE Δ > mapOptionTree brakifyType Σ |- mapOptionTree brakifyType τ
-    end.
+  Definition mkEsc {Γ}{Δ}(j:Tree ??(UJudg Γ Δ)) v h
+    : ND Rule
+    (mapOptionTree (@UJudg2judg Γ Δ) h)
+    (mapOptionTree (fun j => @UJudg2judg Γ Δ (brakifyu v j)) h).
+    admit.
+    Defined.
+
+  Definition mkBrak {Γ}{Δ}(j:Tree ??(UJudg Γ Δ)) v h
+    : ND Rule
+    (mapOptionTree (fun j => @UJudg2judg Γ Δ (brakifyu v j)) h)
+    (mapOptionTree (@UJudg2judg Γ Δ           ) h).
+    admit.
+    Defined.
+
+  Context (ndr_systemfc:@ND_Relation _ Rule).
+
+  Open Scope nd_scope.
 
   (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows *)
-  Section RulePCF.
-
-    Context {Γ:TypeEnv}{Δ:CoercionEnv Γ}.
-
-    (* Rule_PCF consists of the rules allowed in flat PCF: everything except
+  (* Rule_PCF consists of the rules allowed in flat PCF: everything except
      * AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements *)
-    Inductive Rule_PCF : forall {h}{c}, Rule h c -> Prop :=
-    | PCF_RURule           : ∀ h c r            ,  Rule_PCF (RURule Γ Δ  h c r)
-    | PCF_RLit             : ∀ Γ Δ Σ τ          ,  Rule_PCF (RLit Γ Δ Σ τ  )
-    | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF (RNote Γ Δ Σ τ l n)
-    | PCF_RVar             : ∀ σ               l,  Rule_PCF (RVar Γ Δ  σ         l)
-    | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF (RLam Γ Δ  Σ tx te      q )
-    | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF (RApp Γ Δ  Σ tx te   p l)
-    | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF (RLet Γ Δ  Σ σ₁ σ₂   p l)
-    | PCF_RBindingGroup    : ∀ q a b c d e      ,  Rule_PCF (RBindingGroup q a b c d e)
-    | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x)   (* FIXME: only for boolean and int *)
-    | Flat_REmptyGroup     : ∀ q a              ,  Rule_PCF (REmptyGroup q a)
-    | Flat_RLetRec         : ∀ Γ Δ Σ₁ τ₁ τ₂ lev ,  Rule_PCF (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
+  Inductive Rule_PCF {Γ:TypeEnv}{Δ:CoercionEnv Γ} : forall {h}{c}, Rule h c -> Type :=
+  | PCF_RURule           : ∀ h c r            ,  Rule_PCF (RURule Γ Δ  h c r)
+  | PCF_RLit             : ∀ Σ τ              ,  Rule_PCF (RLit Γ Δ Σ τ  )
+  | PCF_RNote            : ∀ Σ τ l n          ,  Rule_PCF (RNote Γ Δ Σ τ l n)
+  | PCF_RVar             : ∀ σ               l,  Rule_PCF (RVar Γ Δ  σ         l)
+  | PCF_RLam             : ∀ Σ tx te    q     ,  Rule_PCF (RLam Γ Δ  Σ tx te      q )
+  | PCF_RApp             : ∀ Σ tx te   p     l,  Rule_PCF (RApp Γ Δ  Σ tx te   p l)
+  | PCF_RLet             : ∀ Σ σ₁ σ₂   p     l,  Rule_PCF (RLet Γ Δ  Σ σ₁ σ₂   p l)
+  | PCF_RBindingGroup    : ∀ q a b c d e      ,  Rule_PCF (RBindingGroup q a b c d e)
+  | PCF_RCase            : ∀ T κlen κ θ l x   ,  Rule_PCF (RCase Γ Δ T κlen κ θ l x)   (* FIXME: only for boolean and int *)
+  | PCF_REmptyGroup      : ∀ q a              ,  Rule_PCF (REmptyGroup q a)
+  | PCF_RLetRec          : ∀ Σ₁ τ₁ τ₂ lev     ,  Rule_PCF (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
+  Implicit Arguments Rule_PCF [ ].
 
-    (* "RulePCF n" is the type of rules permitted in PCF with n-level deep nesting (so, "RulePCF 0" is flat PCF) *)
-    Inductive RulePCF : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+  Definition PCFR Γ Δ h c := { r:_ & Rule_PCF Γ Δ h c r }.
 
-    (* any proof using only PCF rules is an n-bounded proof for any n>0 *)
-    | pcf_flat : forall n h c (r:Rule h c), Rule_PCF  r  -> RulePCF n h c
+  (* An organized deduction has been reorganized into contiguous blocks whose
+   * hypotheses (if any) and conclusion have the same Γ and Δ and a fixed nesting depth.  The boolean
+   * indicates if non-PCF rules have been used *)
+  Inductive OrgR : bool -> nat -> forall Γ Δ, Tree ??(UJudg Γ Δ) -> Tree ??(UJudg Γ Δ) -> Type :=
 
-    (* any n-bounded proof may be used as an (n+1)-bounded proof by prepending Esc and appending Brak *)
-    | pfc_nest : forall n h c, ND (RulePCF n) h c    -> RulePCF (S n) (mapOptionTree brakify h) (mapOptionTree brakify c)
-    .
-  End RulePCF.
+  | org_pcf       : forall n Γ Δ h c b,
+    PCFR Γ Δ (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c) -> OrgR b n Γ Δ h c
 
-  Section RuleSystemFC.
+  | org_fc        : forall n Γ Δ h c,
+    ND Rule (mapOptionTree UJudg2judg h) (mapOptionTree UJudg2judg c) -> OrgR true n Γ Δ h c
 
-    Context {Γ:TypeEnv}{Δ:CoercionEnv Γ}.
+  | org_nest      : forall n Γ Δ h c b v,
+    OrgR b    n  Γ Δ h c ->
+    OrgR b (S n) _ _ (mapOptionTree (brakifyu v) h) (mapOptionTree (brakifyu v) c)
+  . 
 
-    (* "RuleSystemFCa n" is the type of rules permitted in SystemFC^\alpha with n-level-deep nesting
-     * in a fixed Γ,Δ context.  This is a subcategory of the "complete" SystemFCa, but it's enough to 
-     * do the flattening transformation *)
-    Inductive RuleSystemFCa : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
-    | sfc_flat : forall n h c   (r:Rule h c), Rule_Flat r -> RuleSystemFCa    n  h c
-    | sfc_nest : forall n h c,  ND (@RulePCF Γ Δ n) h c  -> RuleSystemFCa (S n) h c
-    .
+  Definition OrgND b n Γ Δ := ND (OrgR b n Γ Δ).
 
-    Context (ndr_systemfca:forall n, @ND_Relation _ (RuleSystemFCa n)).
+  (* any proof in organized form can be "dis-organized" *)
+  Definition unOrgR b n Γ Δ : forall h c, OrgR b n Γ Δ h c ->
+    ND Rule (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c).
 
+    intros.
+
+    induction X.
+      apply nd_rule.
+      destruct p.
+      apply x.
+
+    apply n0.
+
+    rewrite <- mapOptionTree_compose.
+      rewrite <- mapOptionTree_compose.
+      eapply nd_comp.
+      apply (mkBrak h).
+      eapply nd_comp; [ idtac |  apply (mkEsc c) ].
+      apply IHX.
+      Defined.
+
+    Definition unOrgND b n Γ Δ h c : 
+      ND (OrgR b n Γ Δ) h c -> ND Rule (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c)
+      := nd_map' (@UJudg2judg Γ Δ) (unOrgR b n Γ Δ).
+    
+    Instance OrgNDR b n Γ Δ : @ND_Relation _ (OrgR b n Γ Δ) :=
+    { ndr_eqv := fun a b f g => (unOrgND _ _ _ _ _ _ f) === (unOrgND _ _ _ _ _ _ g) }.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+      Defined.
+
+      (*
     Hint Constructors Rule_Flat.
 
     Definition SystemFC_SC n : @SequentCalculus _ (RuleSystemFCa n) _ (mkJudg Γ Δ).
@@ -134,7 +187,7 @@ Section HaskProofCategory.
       Defined.
 
     Lemma systemfc_cutrule n
-      : @CutRule _ (RuleSystemFCa n) _ (mkJudg Γ Δ) (ndr_systemfca n) (SystemFC_SC n).
+      : @CutRule _ (RuleSystemFCa n) _ (mkJudg Γ Δ) (ndr_systemfc n) (SystemFC_SC n).
       apply Build_CutRule with (nd_cut:=systemfc_cut n).
       admit.
       admit.
@@ -162,7 +215,8 @@ Section HaskProofCategory.
       apply sfc_flat with (r:=RBindingGroup _ _ _ _ _ _ ).
       auto.
       Defined.
-
+*)
+(*
     Definition systemfc_expansion n
       : @SequentExpansion _ (RuleSystemFCa n) _ (mkJudg Γ Δ) (ndr_systemfca n) (SystemFC_SC n) (systemfc_cutrule n).
     Check  (@Build_SequentExpansion).
@@ -170,47 +224,284 @@ apply (@Build_SequentExpansion _ _ _ _ (ndr_systemfca n)  _ _ (systemfc_left n) 
       refine {| se_expand_left:=systemfc_left n
         ; se_expand_right:=systemfc_right n |}.
 
+*)
 
     (* 5.1.2 *)
-    Instance SystemFCa n : @ProgrammingLanguage _ Judg (mkJudg Γ Δ) (RuleSystemFCa n) :=
-    { pl_eqv                := ndr_systemfca n
+    Instance SystemFCa n Γ Δ : @ProgrammingLanguage _ _ (@mkUJudg Γ Δ) (OrgR true n Γ Δ) :=
+    { pl_eqv                := OrgNDR true n Γ Δ
     ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
-    ; pl_sc                 := SystemFC_SC n
-    ; pl_subst              := systemfc_cutrule n
-    ; pl_sequent_join       := systemfc_expansion n
+    ; pl_sc                 := _
+    ; pl_subst              := _
+    ; pl_sequent_join       := _
     }.
       apply Build_TreeStructuralRules; intros; unfold eqv; unfold hom; simpl.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RCossa _ a b c)); auto. apply Flat_RURule.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RAssoc _ a b c)); auto. apply Flat_RURule.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RCanL  _ a    )); auto. apply Flat_RURule.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RCanR  _ a    )); auto. apply Flat_RURule.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RuCanL _ a    )); auto. apply Flat_RURule.
-      apply sfc_flat with (r:=RURule _ _ _ _ (RuCanR _ a    )); auto. apply Flat_RURule.
-Show Existentials.
+      apply nd_rule; apply org_fc; apply nd_rule; simpl.  apply  (RURule _ _ _ _ (RCossa _ a b c)).
+      apply nd_rule; apply org_fc; apply nd_rule; simpl;  apply  (RURule _ _ _ _ (RAssoc _ a b c)).
+      apply nd_rule; apply org_fc; apply nd_rule; simpl;  apply  (RURule _ _ _ _ (RCanL  _ a    )).
+      apply nd_rule; apply org_fc; apply nd_rule; simpl;  apply  (RURule _ _ _ _ (RCanR  _ a    )).
+      apply nd_rule; apply org_fc; apply nd_rule; simpl;  apply  (RURule _ _ _ _ (RuCanL _ a    )).
+      apply nd_rule; apply org_fc; apply nd_rule; simpl;  apply  (RURule _ _ _ _ (RuCanR _ a    )).
+      Admitted.
 
-  Admitted.
+    (* "flat" SystemFC: no brackets allowed *)
+    Instance SystemFC Γ Δ : @ProgrammingLanguage _ _ (@mkUJudg Γ Δ) (OrgR true O Γ Δ) :=
+    { pl_eqv                := OrgNDR true O Γ Δ
+    ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
+    ; pl_sc                 := _
+    ; pl_subst              := _
+    ; pl_sequent_join       := _
+    }.
+      Admitted.
+
+    (* 5.1.3 *)
+    Instance PCF n Γ Δ : @ProgrammingLanguage _ _ (@mkUJudg Γ Δ) (OrgR false n Γ Δ) :=
+    { pl_eqv                := OrgNDR false n Γ Δ
+    ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
+    ; pl_sc                 := _
+    ; pl_subst              := _
+    ; pl_sequent_join       := _
+    }.
+      apply Build_TreeStructuralRules; intros; unfold eqv; unfold hom; simpl.
+      apply nd_rule; apply org_pcf; simpl; exists (RCossa _ a b c); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+      apply nd_rule; apply org_pcf; simpl; exists (RAssoc _ a b c); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+      apply nd_rule; apply org_pcf; simpl; exists (RCanL  _ a    ); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+      apply nd_rule; apply org_pcf; simpl; exists (RCanR  _ a    ); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+      apply nd_rule; apply org_pcf; simpl; exists (RuCanL _ a    ); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+      apply nd_rule; apply org_pcf; simpl; exists (RuCanR _ a    ); apply (PCF_RURule [_>>_>_|-_] [_>>_>_|-_]).
+    Admitted.
+
+  (* gathers a tree of guest-language types into a single host-language types via the tensor *)
+  Definition tensorizeType {Γ} (lt:Tree ??(LeveledHaskType Γ ★)) : HaskType Γ ★.
+    admit.
+    Defined.
+
+  Definition mkGA {Γ} : HaskType Γ ★ -> HaskType Γ ★ -> HaskType Γ ★. 
+    admit.
+    Defined.
+
+  Definition guestJudgmentAsGArrowType {Γ}{Δ} (lt:UJudg Γ Δ) : LeveledHaskType Γ ★ :=
+    match lt with
+      mkUJudg x y =>
+      (mkGA (tensorizeType x) (tensorizeType y)) @@ nil
+    end.
+
+  Fixpoint obact n {Γ}{Δ}(X:Tree ??(UJudg Γ Δ)) : Tree ??(LeveledHaskType Γ ★) :=
+    match n with
+      | 0    => mapOptionTree guestJudgmentAsGArrowType X
+      | S n' => let t := obact n' X
+                in  [guestJudgmentAsGArrowType (Γ >> Δ > [] |- t )]
+    end.
+
+(*  Definition *)
+
+
+  Definition magic {Γ}{Δ} h c n x :
+Rule_PCF Γ Δ (mapOptionTree (@UJudg2judg Γ Δ) h) (mapOptionTree (@UJudg2judg Γ Δ) c) x
+-> ND (OrgR true n Γ Δ) []
+     [Γ >> Δ > mapOptionTree guestJudgmentAsGArrowType h
+      |- mapOptionTree guestJudgmentAsGArrowType c].
+  admit.
+  Defined.
+
+  (*
+   * Here it is, what you've all been waiting for!  When reading this,
+   * it might help to have the definition for "Inductive ND" (see
+   * NaturalDeduction.v) handy as a cross-reference.
+   *)
+  Definition FlatteningFunctor_fmor {Γ}{Δ}
+    : forall h c,
+      (h~~{JudgmentsL _ _ (PCF 0 Γ Δ)}~~>c) ->
+      ((obact 0 h)~~{TypesL _ _ (SystemFC Γ Δ)}~~>(obact 0 c)).
+    unfold hom; unfold ob; unfold ehom; simpl; unfold mon_i; unfold obact; intros.
+
+    induction X; simpl.
+
+    (* the proof from no hypotheses of no conclusions (nd_id0) becomes REmptyGroup *)
+    apply nd_rule; apply org_fc; simpl. apply nd_rule. apply REmptyGroup.
+
+    (* the proof from hypothesis X of conclusion X (nd_id1) becomes RVar *)
+    apply nd_rule; apply org_fc; simpl. apply nd_rule. destruct (guestJudgmentAsGArrowType h). apply RVar.
+
+    (* the proof from hypothesis X of no conclusions (nd_weak) becomes RWeak;;REmptyGroup *)
+    apply nd_rule; apply org_fc; simpl.
+      eapply nd_comp; [ idtac | apply (nd_rule (RURule _ _ _ _ (RWeak _ _))) ].
+      apply nd_rule. apply REmptyGroup.      
+
+    (* the proof from hypothesis X of two identical conclusions X,,X (nd_copy) becomes RVar;;RBindingGroup;;RCont *)
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply org_fc; apply (nd_rule (RURule _ _ _ _ (RCont _ _))) ].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      set (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ)) (mapOptionTree guestJudgmentAsGArrowType h)) as q.
+      eapply nd_comp.
+      eapply nd_prod.
+      apply q.
+      apply q.
+      apply nd_rule; eapply org_fc.
+      simpl.
+      apply nd_rule.
+      apply RBindingGroup.
+
+    (* nd_prod becomes nd_llecnac;;nd_prod;;RBindingGroup *)
+    eapply nd_comp.
+      apply (nd_llecnac ;; nd_prod IHX1 IHX2).
+      apply nd_rule; apply org_fc; simpl.
+      eapply nd_rule. apply RBindingGroup.
+
+    (* nd_comp becomes pl_subst (aka nd_cut) *)
+    eapply nd_comp.
+      apply (nd_llecnac ;; nd_prod IHX1 IHX2).
+      clear IHX1 IHX2 X1 X2.
+      apply (@nd_cut _ _ _ _ _ _ (@pl_subst _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_cancell becomes RVar;;RuCanL *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RuCanL _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_cancelr becomes RVar;;RuCanR *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RuCanR _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_llecnac becomes RVar;;RCanL *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RCanL _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_rlecnac becomes RVar;;RCanR *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RCanR _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_assoc becomes RVar;;RAssoc *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RAssoc _ _ _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* nd_coss becomes RVar;;RCossa *)
+    eapply nd_comp;
+      [ idtac | eapply nd_rule; apply org_fc; simpl; apply nd_rule; apply (RURule _ _ _ _ (RCossa _ _ _ _)) ].
+      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFC Γ Δ))).
+
+    (* now, the interesting stuff: the inference rules of Judgments(PCF) become GArrow-parameterized terms *)
+      refine (match r as R in OrgR B N G D H C return
+                match N with
+                  | S _ => True
+                  | O   => if B then True
+                           else ND (OrgR true 0 G D)
+                                  []
+                                  [G >> D > mapOptionTree guestJudgmentAsGArrowType H |- mapOptionTree guestJudgmentAsGArrowType C]
+                end with
+                | org_pcf  n Γ Δ h c b r => _
+                | org_fc   n Γ Δ h c r => _
+                | org_nest n Γ Δ h c b v q => _
+              end); destruct n; try destruct b; try apply I.
+      destruct r0.
+
+      clear r h c Γ Δ.
+      rename r0 into r; rename h0 into h; rename c0 into c; rename Γ0 into Γ; rename Δ0 into Δ.
+
+      refine (match r as R in Rule_PCF G D H C with
+                | PCF_RURule           h c r            => let case_RURule := tt in _
+                | PCF_RLit             Σ τ              => let case_RLit := tt in _
+                | PCF_RNote            Σ τ l n          => let case_RNote := tt in _
+                | PCF_RVar             σ               l=> let case_RVar := tt in _
+                | PCF_RLam             Σ tx te    q     => let case_RLam := tt in _
+                | PCF_RApp             Σ tx te   p     l=> let case_RApp := tt in _
+                | PCF_RLet             Σ σ₁ σ₂   p     l=> let case_RLet := tt in _
+                | PCF_RBindingGroup    q a b c d e      => let case_RBindingGroup := tt in _
+                | PCF_RCase            T κlen κ θ l x   => let case_RCase := tt in _
+                | PCF_REmptyGroup      q a              => let case_REmptyGroup := tt in _
+                | PCF_RLetRec          Σ₁ τ₁ τ₂ lev     => let case_RLetRec := tt in _
+              end).
+      rename Γ
+
+      apply (magic _ _ _ _ r0).
+      Defined.
+
+  Instance FlatteningFunctor {n}{Γ}{Δ} : Functor (JudgmentsL _ _ (PCF n Γ Δ)) (TypesL _ _ (SystemFCa n Γ Δ)) obact :=
+    { fmor := FlatteningFunctor_fmor }.
+    unfold hom; unfold ob; unfold ehom; intros; simpl.
+
+
+  Definition productifyType {Γ} (lt:Tree ??(LeveledHaskType Γ ★)) : LeveledHaskType Γ ★.
+    admit.
+    Defined.
+
+  Definition exponent {Γ} : LeveledHaskType Γ ★ -> LeveledHaskType Γ ★ -> LeveledHaskType Γ ★. 
+    admit.
+    Defined.
+
+  Definition brakify {Γ}(Σ τ:Tree ??(LeveledHaskType Γ ★))  := exponent (productifyType Σ) (productifyType τ).
+
+  Definition brakifyJudg (j:Judg) : Judg :=
+    match j with
+      Γ > Δ > Σ |- τ =>
+        Γ > Δ > [] |- [brakify Σ τ]
+    end.
+
+  Definition brakifyUJudg (j:Judg) : Judg :=
+    match j with
+      Γ > Δ > Σ |- τ =>
+        Γ > Δ > [] |- [brakify Σ τ]
+    end.
+  *)
 
   End RuleSystemFC.
 
   Context (ndr_pcf      :forall n Γ Δ, @ND_Relation _ (@RulePCF Γ Δ n)).
 
-  (* 5.1.3 *)
+
   Instance PCF n Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) (@RulePCF Γ Δ n) :=
-  { pl_eqv                := _ (*@ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)*)
+  { pl_eqv                := _
   ; pl_tsr                := _ (*@TreeStructuralRules Judg Rule T sequent*)
   ; pl_sc                 := _ (*@SequentCalculus Judg Rule _ sequent*)
   ; pl_subst              := _ (*@CutRule Judg Rule _ sequent pl_eqv pl_sc*)
   ; pl_sequent_join       := _ (*@SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst*)
   }.
   Admitted.
-  
 
-  Definition ReificationFunctor n : Functor (JudgmentsN n) (JudgmentsN (S n)) (mapOptionTree brakify).
-    refine {| fmor := fun h c (f:h~~{JudgmentsN n}~~>c) => nd_rule (br_nest _ _ _ f) |}; intros; simpl.
-    admit.
-    admit.
-    admit.
-    Defined.
+  Inductive RuleX : nat -> Tree ??Judg -> Tree ??Judg -> Type :=
+  | x_flat : forall n     h c   (r:Rule h c), Rule_Flat r -> RuleX    n  h c
+  | x_nest : forall n Γ Δ h c,  ND (@RulePCF Γ Δ n) h c   ->
+    RuleX (S n) (mapOptionTree brakifyJudg h) (mapOptionTree brakifyJudg c).
+
+  Section X.
+
+    Context (n:nat).
+    Context (ndr:@ND_Relation _ (RuleX (S n))).
+
+    Definition SystemFCa' := Judgments_Category ndr.
+
+    Definition ReificationFunctor_fmor Γ Δ
+      : forall h c,
+        (h~~{JudgmentsL _ _ (PCF n Γ Δ)}~~>c) ->
+        ((mapOptionTree brakifyJudg h)~~{SystemFCa'}~~>(mapOptionTree brakifyJudg c)).
+      unfold hom; unfold ob; simpl.
+      intros.
+      apply nd_rule.
+      eapply x_nest.
+      apply X.
+      Defined.
+
+    Definition ReificationFunctor Γ Δ : Functor (JudgmentsL _ _ (PCF n Γ Δ)) SystemFCa' (mapOptionTree brakifyJudg).
+      refine {| fmor := ReificationFunctor_fmor Γ Δ |}; unfold hom; unfold ob; simpl ; intros.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      Defined.
+
+    Definition FlatteningFunctor Γ Δ : Functor (JudgmentsL _ _ (PCF n Γ Δ)) SystemFCa' (mapOptionTree brakify).
+      refine {| fmor := ReificationFunctor_fmor Γ Δ |}; unfold hom; unfold ob; simpl ; intros.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      unfold ReificationFunctor_fmor; simpl.
+      admit.
+      Defined.
 
   Definition PCF_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
     refine {| plsmme_pl := PCF n Γ Δ |}.
@@ -574,35 +865,6 @@ idtac.
         := mapOptionTree (fun q:Tree ??(@CoreType V) * Tree ??(@CoreType V) =>
           let (a,s):=q in (Σ₁,,(``a)^^^n,[`<[ n |- encodeTypeTree_flat s ]>])).
    
-      Definition append_brak
-      : forall {c}, ND_ML
-          (mapOptionTree (ob2judgment_flat ((⟨Σ₁,n⟩) :: past))                        c )
-          (mapOptionTree (ob2judgment                   past )  (EscBrak_Functor_Fobj c)).
-        intros.
-        unfold ND_ML.
-        unfold EscBrak_Functor_Fobj.
-        rewrite mapOptionTree_comp.
-        simpl in *.
-        apply nd_replicate.
-        intro o; destruct o.
-        apply nd_rule.
-        apply MLRBrak.
-        Defined.
-    
-      Definition prepend_esc
-      : forall {h}, ND_ML
-          (mapOptionTree (ob2judgment                  past )  (EscBrak_Functor_Fobj h))
-          (mapOptionTree (ob2judgment_flat ((⟨Σ₁,n⟩) :: past))                        h ).
-        intros.
-        unfold ND_ML.
-        unfold EscBrak_Functor_Fobj.
-        rewrite mapOptionTree_comp.
-        simpl in *.
-        apply nd_replicate.
-        intro o; destruct o.
-        apply nd_rule.
-        apply MLREsc.
-        Defined.
     
       Definition EscBrak_Functor_Fmor
         : forall a b (f:a~~{SystemFC_Cat_Flat ((Σ₁,n)::past)}~~>b), 

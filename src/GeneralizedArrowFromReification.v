@@ -124,6 +124,7 @@ Section GArrowFromReification.
 
   Lemma garrow_functor_monoidal_niso
     : (garrow_functor **** garrow_functor) >>>> (mon_f C) <~~~> (mon_f (enr_v_mon K)) >>>> garrow_functor.
+    unfold garrow_functor.
     admit.
     Defined.
   Lemma garrow_functor_monoidal_iso
