@@ -362,26 +362,26 @@ Section Natural_Deduction.
     Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
     Class TreeStructuralRules :=
-    { tsr_ant_assoc     : forall {x a b c}, Rule [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
-    ; tsr_ant_cossa     : forall {x a b c}, Rule [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
-    ; tsr_ant_cancell   : forall {x a    }, Rule [  [],,a     |= x]     [        a   |= x]
-    ; tsr_ant_cancelr   : forall {x a    }, Rule [a,,[]       |= x]     [        a   |= x]
-    ; tsr_ant_llecnac   : forall {x a    }, Rule [      a     |= x]     [    [],,a   |= x]
-    ; tsr_ant_rlecnac   : forall {x a    }, Rule [      a     |= x]     [    a,,[]   |= x]
+    { tsr_ant_assoc     : forall {x a b c}, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
+    ; tsr_ant_cossa     : forall {x a b c}, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
+    ; tsr_ant_cancell   : forall {x a    }, ND [  [],,a     |= x]     [        a   |= x]
+    ; tsr_ant_cancelr   : forall {x a    }, ND [a,,[]       |= x]     [        a   |= x]
+    ; tsr_ant_llecnac   : forall {x a    }, ND [      a     |= x]     [    [],,a   |= x]
+    ; tsr_ant_rlecnac   : forall {x a    }, ND [      a     |= x]     [    a,,[]   |= x]
     }.
 
     Notation "[# a #]"  := (nd_rule a)               : nd_scope.
 
     Context `{se_cut : @CutRule _ sequent ndr sc}.
     Class SequentExpansion :=
-    { se_expand_left     : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
-    ; se_expand_right    : forall tau {Gamma Sigma}, Rule [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
+    { se_expand_left     : forall tau {Gamma Sigma}, ND [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
+    ; se_expand_right    : forall tau {Gamma Sigma}, ND [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
 
     (* left and right expansion must commute with cut *)
-    ; se_reflexive_left  : ∀ a c,     nd_seq_reflexive a;; [#se_expand_left  c#] === nd_seq_reflexive (c,, a)
-    ; se_reflexive_right : ∀ a c,     nd_seq_reflexive a;; [#se_expand_right c#] === nd_seq_reflexive (a,, c)
-    ; se_cut_left        : ∀ a b c d, [#se_expand_left _#]**[#se_expand_left _#];;nd_cut _ _ _===nd_cut a b d;;[#se_expand_left c#]
-    ; se_cut_right       : ∀ a b c d, [#se_expand_right _#]**[#se_expand_right _#];;nd_cut _ _ _===nd_cut a b d;;[#se_expand_right c#]
+    ; se_reflexive_left  : ∀ a c,     nd_seq_reflexive a;; se_expand_left  c === nd_seq_reflexive (c,, a)
+    ; se_reflexive_right : ∀ a c,     nd_seq_reflexive a;; se_expand_right c === nd_seq_reflexive (a,, c)
+    ; se_cut_left        : ∀ a b c d, (se_expand_left _)**(se_expand_left _);;nd_cut _ _ _===nd_cut a b d;;(se_expand_left c)
+    ; se_cut_right       : ∀ a b c d, (se_expand_right _)**(se_expand_right _);;nd_cut _ _ _===nd_cut a b d;;(se_expand_right c)
     }.
   End SequentsOfTrees.
 
