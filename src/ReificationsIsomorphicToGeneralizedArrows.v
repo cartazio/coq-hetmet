@@ -32,6 +32,30 @@ Require Import WeakFunctorCategory.
 
 Section ReificationsIsomorphicToGeneralizedArrows.
 
+    (*
+    Lemma step1_lemma (s0 s1 s2:SmallSMMEs.SMMEs)(r01:Reification s0 s1 (me_i s1))(r12:Reification s1 s2 (me_i s2)) :
+      ∀A : enr_v_mon s0,
+     garrow_fobj' s1 s2 r12 (ehom(ECategory:=s1) (me_i s1) (garrow_fobj s0 s1 r01 A))
+     ≅ garrow_fobj' s0 s2 (compose_reifications s0 s1 s2 r01 r12) A.
+     *)
+
+    Lemma step1_lemma (s0 s1 s2:SmallSMMEs.SMMEs)(r01:Reification s0 s1 (me_i s1))(r12:Reification s1 s2 (me_i s2)) :
+      (step1_functor s0 s1 r01 >>>>
+        InclusionFunctor (enr_v s1) (FullImage (RepresentableFunctor s1 (me_i s1)))) >>>> step1_functor s1 s2 r12
+      ≃ step1_functor s0 s2 (compose_reifications s0 s1 s2 r01 r12).
+      unfold IsomorphicFunctors.
+      simpl.
+      idtac.
+      unfold compose_reifications at 0.
+      eapply Build_IsomorphicFunctors.
+      unfold step1_functor.
+      unfold InclusionFunctor.
+      simpl.
+      unfold functor_comp.
+      simpl.
+      admit.
+      Defined.
+
     Definition M1 {c1 c2 : SmallSMMEs.SMMEs} :
       (c1 ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> c2) ->
       (c1 ~~{ MorphismsOfCategoryOfReifications }~~> c2).
@@ -42,16 +66,72 @@ Section ReificationsIsomorphicToGeneralizedArrows.
       apply g.
       Defined.
 
+    (* I tried really hard to avoid this *)
+    Require Import Coq.Logic.Eqdep.
+
+    Inductive Heq : forall {A}{B}, A -> B -> Prop :=
+      heq : forall {A} (a:A), Heq a a.
+
+    Lemma invert_ga' : forall (a b: SMME)
+      (f:a~~{MorphismsOfCategoryOfGeneralizedArrows}~~>b), a=b ->
+      (Heq f (gaoi_id a)) \/ (exists f', Heq f (gaoi_ga a b f')).
+      intros.
+      destruct f.
+      left; apply heq.
+      subst; right.
+      exists g.
+      apply heq.
+      Defined.
+
     Lemma invert_ga : forall (a: SMME)
       (f:a~~{MorphismsOfCategoryOfGeneralizedArrows}~~>a),
       (f = gaoi_id _) \/ (exists f', f = gaoi_ga _ _ f').
-      admit.
+      intros.
+      set (invert_ga' a a f (refl_equal a)) as q.
+      destruct q.
+      left.
+      inversion H.
+      apply inj_pairT2 in H2.
+      apply inj_pairT2 in H1.
+      subst; auto.
+      right.
+      destruct H.
+      exists x.
+      inversion H.
+      apply inj_pairT2 in H2.
+      apply inj_pairT2 in H1.
+      subst; auto.
       Qed.
+
+    Lemma invert_reif' : forall (a b: SMME)
+      (f:a~~{MorphismsOfCategoryOfReifications}~~>b), a=b ->
+      (Heq f (roi_id a)) \/ (exists f', Heq f (roi_reif a b f')).
+      intros.
+      destruct f.
+      left; apply heq.
+      subst; right.
+      exists r.
+      apply heq.
+      Defined.
 
     Lemma invert_reif : forall (a: SMME)
       (f:a~~{MorphismsOfCategoryOfReifications}~~>a),
       (f = roi_id _) \/ (exists f', f = roi_reif _ _ f').
-      admit.
+      intros.
+      set (invert_reif' a a f (refl_equal a)) as q.
+      destruct q.
+      left.
+      inversion H.
+      apply inj_pairT2 in H2.
+      apply inj_pairT2 in H1.
+      subst; auto.
+      right.
+      destruct H.
+      exists x.
+      inversion H.
+      apply inj_pairT2 in H2.
+      apply inj_pairT2 in H1.
+      subst; auto.
       Qed.
 
     Definition M1_Functor : Functor MorphismsOfCategoryOfGeneralizedArrows MorphismsOfCategoryOfReifications (fun x => x).
@@ -155,7 +235,34 @@ Section ReificationsIsomorphicToGeneralizedArrows.
           (G0:=(RepresentableFunctor s2 (mon_i s2)))
           (G1:=(RepresentableFunctor s2 (mon_i s2))));
         [ idtac | apply if_id ].
-        admit.
+        eapply if_comp.
+        idtac.
+        apply (if_associativity (garrow_functor s1 s0 r) (RepresentableFunctor s0 (mon_i s0)) (garrow_functor s0 s2 r0)).
+        Set Printing Coercions.
+        idtac.
+        unfold garrow_functor at 1.
+        unfold step2_functor at 1.
+        set (roundtrip_lemma'
+          (RepresentableFunctor (enr_c (smme_e s0)) (me_i (smme_mon s0)))
+          (ffme_mf_full (smme_mee s0)) (ffme_mf_faithful (smme_mee s0))
+          (step1_functor (smme_see s1) (smme_mee s0) r)
+        ) as q.
+        set (if_respects
+          (G0:=garrow_functor (smme_see s0) (smme_mee s2) r0)
+          (G1:=garrow_functor (smme_see s0) (smme_mee s2) r0)
+          q (if_id _)) as q'.
+        apply (if_comp q').
+        Unset Printing Coercions.
+        clear q' q.
+        unfold garrow_functor at 2.
+        unfold garrow_functor at 1.
+        eapply if_comp.
+        eapply if_inv.
+        apply (if_associativity _ (step1_functor s0 s2 r0) (step2_functor s2)).
+        apply (if_respects
+          (G0:=step2_functor s2)
+          (G1:=step2_functor s2)); [ idtac | apply if_id ].
+        apply step1_lemma.
         Defined.
 
     Theorem ReificationsAreGArrows : IsomorphicCategories CategoryOfGeneralizedArrows CategoryOfReifications.
