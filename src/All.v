@@ -76,7 +76,7 @@ Require Import WeakFunctorCategory.
 Require Import SmallSMMEs.
 Require Import ReificationCategory.
 Require Import GeneralizedArrowCategory.
-Require Import ReificationsEquivalentToGeneralizedArrows.
+Require Import ReificationsAndGeneralizedArrows.
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 
 Require Import HaskProofCategory.

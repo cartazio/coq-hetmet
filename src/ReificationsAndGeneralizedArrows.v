@@ -1,5 +1,5 @@
 (*********************************************************************************************************************************)
-(* ReificationsEquivalentToGeneralizedArrows:                                                                                    *)
+(* ReificationsAndGeneralizedArrows:                                                                                             *)
 (*                                                                                                                               *)
 (*   The category of generalized arrows and the category of reifications are equivalent categories.                              *)
 (*                                                                                                                               *)

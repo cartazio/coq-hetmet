@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
-(* ReificationsEquivalentToGeneralizedArrows:                                                                                    *)
+(* ReificationsIsomorphicToGeneralizedArrows:                                                                                    *)
 (*                                                                                                                               *)
-(*   The category of generalized arrows and the category of reifications are equivalent categories.                              *)
+(*   The category of generalized arrows and the category of reifications are isomorphic categories.                              *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -27,7 +27,8 @@ Require Import GeneralizedArrowFromReification.
 Require Import ReificationFromGeneralizedArrow.
 Require Import ReificationCategory.
 Require Import GeneralizedArrowCategory.
-Require Import ReificationsEquivalentToGeneralizedArrows.
+Require Import ReificationCategory.
+Require Import ReificationsAndGeneralizedArrows.
 Require Import WeakFunctorCategory.
 
 Section ReificationsIsomorphicToGeneralizedArrows.
@@ -43,16 +44,6 @@ Section ReificationsIsomorphicToGeneralizedArrows.
       (step1_functor s0 s1 r01 >>>>
         InclusionFunctor (enr_v s1) (FullImage (RepresentableFunctor s1 (me_i s1)))) >>>> step1_functor s1 s2 r12
       ≃ step1_functor s0 s2 (compose_reifications s0 s1 s2 r01 r12).
-      unfold IsomorphicFunctors.
-      simpl.
-      idtac.
-      unfold compose_reifications at 0.
-      eapply Build_IsomorphicFunctors.
-      unfold step1_functor.
-      unfold InclusionFunctor.
-      simpl.
-      unfold functor_comp.
-      simpl.
       admit.
       Defined.
 
