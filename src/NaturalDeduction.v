@@ -240,13 +240,12 @@ Section Natural_Deduction.
   (* 
    * Single-conclusion proofs; this is an alternate representation
    * where each inference has only a single conclusion.  These have
-   * worse compositionality properties than ND's, but are easier to
-   * emit as LaTeX code.
+   * worse compositionality properties than ND's (they don't form a
+   * category), but are easier to emit as LaTeX code.
    *)
   Inductive SCND : Tree ??Judgment -> Tree ??Judgment -> Type :=
-  | scnd_comp   : forall ht ct c , SCND ht ct -> Rule ct [c] -> SCND ht [c]
   | scnd_weak   : forall c       , SCND c  []
-  | scnd_leaf   : forall ht c    , SCND ht [c]  -> SCND ht [c]
+  | scnd_comp   : forall ht ct c , SCND ht ct -> Rule ct [c] -> SCND ht [c]
   | scnd_branch : forall ht c1 c2, SCND ht c1 -> SCND ht c2 -> SCND ht (c1,,c2)
   .
   Hint Constructors SCND.
@@ -273,7 +272,7 @@ Section Natural_Deduction.
       inversion k; subst; inversion X0; subst; auto.
       destruct c.
         destruct o.
-        apply scnd_leaf. eapply scnd_comp. apply k. apply r.
+        eapply scnd_comp. apply k. apply r.
         apply scnd_weak.
         set (all_rules_one_conclusion _ _ _ r) as bogus.
           inversion bogus.
@@ -291,13 +290,16 @@ Section Natural_Deduction.
   refine ((fix closedFromPnodes h c (pn2:SCND h c)(cnd:ClosedND h) {struct pn2} := 
     (match pn2 in SCND H C return H=h -> C=c -> _  with
       | scnd_weak   c                 => let case_weak := tt in _
-      | scnd_leaf   ht z pn'          => let case_leaf := tt in let qq := closedFromPnodes _ _ pn' in _
       | scnd_comp  ht ct c pn' rule   => let case_comp := tt in let qq := closedFromPnodes _ _ pn' in _
       | scnd_branch ht c1 c2 pn' pn'' => let case_branch := tt in
                                         let q1 := closedFromPnodes _ _ pn' in 
                                         let q2 := closedFromPnodes _ _ pn'' in _
 
     end (refl_equal _) (refl_equal _))) h c pn2 cnd).
+
+  destruct case_weak.
+    intros; subst.
+    apply cnd_weak.
 
   destruct case_comp.
     intros.
@@ -307,16 +309,6 @@ Section Natural_Deduction.
     subst.
     apply cnd0.
     apply rule.
-
-  destruct case_weak.
-    intros; subst.
-    apply cnd_weak.
-
-  destruct case_leaf.
-    intros.
-    apply qq.
-    subst.
-    apply cnd0.
 
   destruct case_branch.
     intros.
@@ -546,6 +538,31 @@ Inductive nd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall
     @nd_property _ _ P h0 c0 pf0 -> @nd_property _ _ P c0 c1 pf1 -> @nd_property _ _ P _ _ (nd_comp pf0 pf1)
   | nd_property_rule            : forall h c r, P h c r -> @nd_property _ _ P h c (nd_rule r).
   Hint Constructors nd_property.
+
+(* witnesses the fact that every Rule in a particular proof satisfies the given predicate *)
+Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {c}, @ClosedND Judgment Rule c -> Prop :=
+| cnd_property_weak            : @cnd_property _ _ P _ cnd_weak
+| cnd_property_rule            : forall h c r cnd',
+  P h c r ->
+  @cnd_property _ _ P h cnd' ->
+  @cnd_property _ _ P c (cnd_rule _ _ cnd' r)
+| cnd_property_branch          :
+  forall c1 c2 cnd1 cnd2,
+  @cnd_property _ _ P c1 cnd1 ->
+  @cnd_property _ _ P c2 cnd2 ->
+  @cnd_property _ _ P _  (cnd_branch _ _ cnd1 cnd2).
+
+Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {h c}, @SCND Judgment Rule h c -> Prop :=
+| scnd_property_weak            : forall c, @scnd_property _ _ P _ _ (scnd_weak c)
+| scnd_property_comp            : forall h x c r cnd',
+  P x [c] r ->
+  @scnd_property _ _ P h x cnd' ->
+  @scnd_property _ _ P h _ (scnd_comp _ _ _ cnd' r)
+| scnd_property_branch          :
+  forall x c1 c2 cnd1 cnd2,
+  @scnd_property _ _ P x c1 cnd1 ->
+  @scnd_property _ _ P x c2 cnd2 ->
+  @scnd_property _ _ P x _  (scnd_branch _ _ _ cnd1 cnd2).
 
 Close Scope pf_scope.
 Close Scope nd_scope.

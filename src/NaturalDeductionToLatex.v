@@ -30,7 +30,6 @@ Section ToLatex.
 
     Fixpoint SCND_toLatexMath {h}{c}(pns:SCND(Rule:=Rule) h c) : LatexMath :=
       match pns with
-        | scnd_leaf   ht c pn            => SCND_toLatexMath pn
         | scnd_branch ht c1 c2 pns1 pns2 => SCND_toLatexMath pns1 +++ rawLatexMath " \hspace{1cm} " +++ SCND_toLatexMath pns2
         | scnd_weak     c                => rawLatexMath ""
         | scnd_comp ht ct c pns rule     => if hideRule _ _ rule
