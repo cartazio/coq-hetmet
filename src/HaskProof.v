@@ -78,13 +78,13 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RCast   : forall Γ Δ Σ (σ₁ σ₂:HaskType Γ ★) l,
                    HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->      Rule [Γ>Δ> Σ         |- [σ₁@@l]        ]   [Γ>Δ>    Σ     |- [σ₂         @@l]]
 
-| RBindingGroup  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
+| RJoin  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
 
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁       |- [tx--->te @@l]],,[Γ>Δ> Σ₂ |- [tx@@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
 
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₂ |- [σ₂@@l]],,[Γ>Δ> Σ₁,,[σ₂@@l] |- [σ₁@@l] ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₁   @@l]]
 
-| REmptyGroup    : ∀ Γ Δ ,               Rule [] [Γ > Δ > [] |- [] ]
+| RVoid    : ∀ Γ Δ ,               Rule [] [Γ > Δ > [] |- [] ]
 
 | RAppT   : forall Γ Δ Σ κ σ (τ:HaskType Γ κ) l,      Rule [Γ>Δ> Σ   |- [HaskTAll κ σ @@l]]      [Γ>Δ>    Σ     |- [substT σ τ @@l]]
 | RAbsT   : ∀ Γ Δ Σ κ σ   l,
@@ -122,8 +122,8 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2   , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2   )
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
 | Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
-| Flat_RBindingGroup    : ∀ q a b c d e ,  Rule_Flat (RBindingGroup q a b c d e)
-| Flat_REmptyGroup      : ∀ q a                  ,  Rule_Flat (REmptyGroup q a)
+| Flat_RJoin    : ∀ q a b c d e ,  Rule_Flat (RJoin q a b c d e)
+| Flat_RVoid      : ∀ q a                  ,  Rule_Flat (RVoid q a)
 | Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x)
 | Flat_RLetRec          : ∀ Γ Δ Σ₁ τ₁ τ₂ lev,      Rule_Flat (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
 

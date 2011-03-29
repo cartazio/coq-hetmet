@@ -142,22 +142,22 @@ Section HaskProofFlattener.
 
     induction X; simpl.
 
-    (* the proof from no hypotheses of no conclusions (nd_id0) becomes REmptyGroup *)
-    apply nd_rule; apply (org_fc _ _ (REmptyGroup _ _ )). auto.
+    (* the proof from no hypotheses of no conclusions (nd_id0) becomes RVoid *)
+    apply nd_rule; apply (org_fc _ _ (RVoid _ _ )). auto.
 
     (* the proof from hypothesis X of conclusion X (nd_id1) becomes RVar *)
     apply nd_rule; apply (org_fc _ _ (RVar _ _ _ _)). auto.
 
-    (* the proof from hypothesis X of no conclusions (nd_weak) becomes RWeak;;REmptyGroup *)
+    (* the proof from hypothesis X of no conclusions (nd_weak) becomes RWeak;;RVoid *)
     eapply nd_comp;
       [ idtac
       | eapply nd_rule
       ; eapply (org_fc  _ _ (RArrange _ _ _ _ _ (RWeak _)))
       ; auto ].
       eapply nd_rule.
-      eapply (org_fc _ _ (REmptyGroup _ _)); auto.
+      eapply (org_fc _ _ (RVoid _ _)); auto.
     
-    (* the proof from hypothesis X of two identical conclusions X,,X (nd_copy) becomes RVar;;RBindingGroup;;RCont *)
+    (* the proof from hypothesis X of two identical conclusions X,,X (nd_copy) becomes RVar;;RJoin;;RCont *)
     eapply nd_comp; [ idtac | eapply nd_rule; eapply (org_fc _ _ (RArrange _ _ _ _ _ (RCont _))) ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       set (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))
@@ -167,15 +167,15 @@ Section HaskProofFlattener.
       apply q.
       apply q.
       apply nd_rule. 
-      eapply (org_fc _ _ (RBindingGroup _ _ _ _ _ _ )).
+      eapply (org_fc _ _ (RJoin _ _ _ _ _ _ )).
       auto.
       auto.
 
-    (* nd_prod becomes nd_llecnac;;nd_prod;;RBindingGroup *)
+    (* nd_prod becomes nd_llecnac;;nd_prod;;RJoin *)
     eapply nd_comp.
       apply (nd_llecnac ;; nd_prod IHX1 IHX2).
       apply nd_rule.
-      eapply (org_fc _ _ (RBindingGroup _ _ _ _ _ _ )).
+      eapply (org_fc _ _ (RJoin _ _ _ _ _ _ )).
       auto.
 
     (* nd_comp becomes pl_subst (aka nd_cut) *)
@@ -229,8 +229,8 @@ Section HaskProofFlattener.
                 | PCF_RLam             Σ tx te          => let case_RLam          := tt in _
                 | PCF_RApp             Σ tx te   p      => let case_RApp          := tt in _
                 | PCF_RLet             Σ σ₁ σ₂   p      => let case_RLet          := tt in _
-                | PCF_RBindingGroup    b c d e          => let case_RBindingGroup := tt in _
-                | PCF_REmptyGroup                       => let case_REmptyGroup   := tt in _
+                | PCF_RJoin    b c d e          => let case_RJoin := tt in _
+                | PCF_RVoid                       => let case_RVoid   := tt in _
               (*| PCF_RCase            T κlen κ θ l x   => let case_RCase         := tt in _*)
               (*| PCF_RLetRec          Σ₁ τ₁ τ₂ lev     => let case_RLetRec       := tt in _*)
               end); simpl in *.
@@ -330,11 +330,11 @@ Section HaskProofFlattener.
         (* ga_comp! perhaps this means the ga_curry avoidance can be done by turning lambdas into lets? *)
         admit.
 
-      destruct case_REmptyGroup.
+      destruct case_RVoid.
         (* ga_id u *)
         admit.
 
-      destruct case_RBindingGroup.
+      destruct case_RJoin.
         (* ga_first+ga_second; technically this assumes a specific evaluation order, which is bad *)
         admit.
 

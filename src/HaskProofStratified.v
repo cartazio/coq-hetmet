@@ -116,10 +116,10 @@ Section HaskProofStratified.
     Rule_PCF ec ([pcfjudg _ [_]],,[pcfjudg (_,,[_]) [_]]) [pcfjudg (_,,_) [_]]
     (RLet Γ Δ (Σ@@@(ec::nil)) (Σ'@@@(ec::nil)) σ₂ p (ec::nil))
 
-  | PCF_REmptyGroup      :                 Rule_PCF ec [           ] [ pcfjudg []  [] ] (REmptyGroup   Γ Δ  )
+  | PCF_RVoid      :                 Rule_PCF ec [           ] [ pcfjudg []  [] ] (RVoid   Γ Δ  )
 (*| PCF_RLetRec          : ∀ Σ₁ τ₁ τ₂   ,  Rule_PCF (ec::nil) _ _ (RLetRec Γ Δ Σ₁ τ₁ τ₂ (ec::nil) )*)
-  | PCF_RBindingGroup    : ∀ Σ₁ Σ₂ τ₁ τ₂,  Rule_PCF ec ([pcfjudg _ _],,[pcfjudg _ _]) [pcfjudg (_,,_) (_,,_)]
-    (RBindingGroup Γ Δ (Σ₁@@@(ec::nil)) (Σ₂@@@(ec::nil)) (τ₁@@@(ec::nil)) (τ₂@@@(ec::nil))).
+  | PCF_RJoin    : ∀ Σ₁ Σ₂ τ₁ τ₂,  Rule_PCF ec ([pcfjudg _ _],,[pcfjudg _ _]) [pcfjudg (_,,_) (_,,_)]
+    (RJoin Γ Δ (Σ₁@@@(ec::nil)) (Σ₂@@@(ec::nil)) (τ₁@@@(ec::nil)) (τ₂@@@(ec::nil))).
   (* need int/boolean case *)
   Implicit Arguments Rule_PCF [ ].
 
@@ -229,24 +229,24 @@ Section HaskProofStratified.
   Require Import Coq.Logic.Eqdep.
 
   Lemma magic a b c d ec e :
-    ClosedND(Rule:=Rule) [a > b > c |- [d @@  (ec :: e)]] ->
-    ClosedND(Rule:=Rule) [a > b > pcf_vars ec c @@@ (ec :: nil) |- [d @@  (ec :: nil)]].
+    ClosedSIND(Rule:=Rule) [a > b > c |- [d @@  (ec :: e)]] ->
+    ClosedSIND(Rule:=Rule) [a > b > pcf_vars ec c @@@ (ec :: nil) |- [d @@  (ec :: nil)]].
   admit.
   Defined.
 
-  Definition orgify : forall Γ Δ Σ τ (pf:ClosedND(Rule:=Rule) [Γ > Δ > Σ |- τ]), Alternating [Γ > Δ > Σ |- τ].
+  Definition orgify : forall Γ Δ Σ τ (pf:ClosedSIND(Rule:=Rule) [Γ > Δ > Σ |- τ]), Alternating [Γ > Δ > Σ |- τ].
 
     refine (
-      fix  orgify_fc' Γ Δ Σ τ (pf:ClosedND [Γ > Δ > Σ |- τ]) {struct pf} : Alternating [Γ > Δ > Σ |- τ] :=
+      fix  orgify_fc' Γ Δ Σ τ (pf:ClosedSIND [Γ > Δ > Σ |- τ]) {struct pf} : Alternating [Γ > Δ > Σ |- τ] :=
         let case_main := tt in _
-      with orgify_fc c (pf:ClosedND c) {struct pf} : Alternating c :=
+      with orgify_fc c (pf:ClosedSIND c) {struct pf} : Alternating c :=
       (match c as C return C=c -> Alternating C with
         | T_Leaf None                    => fun _ => alt_nil
         | T_Leaf (Some (Γ > Δ > Σ |- τ)) => let case_leaf := tt in fun eqpf => _
         | T_Branch b1 b2                 => let case_branch := tt in fun eqpf => _
       end (refl_equal _))
       with orgify_pcf   Γ Δ ec pcfj j (m:MatchingJudgments pcfj j)
-        (pf:ClosedND (mapOptionTree (pcfjudg2judg ec) pcfj)) {struct pf} : Alternating j :=
+        (pf:ClosedSIND (mapOptionTree (pcfjudg2judg ec) pcfj)) {struct pf} : Alternating j :=
         let case_pcf := tt in _
       for orgify_fc').
 
@@ -297,13 +297,13 @@ Section HaskProofStratified.
     Admitted.
 
   Definition pcfify Γ Δ ec : forall Σ τ,
-    ClosedND(Rule:=Rule) [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]
+    ClosedSIND(Rule:=Rule) [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]
       -> ND (PCFRule Γ Δ ec) [] [pcfjudg Σ τ].
 
     refine ((
-      fix pcfify Σ τ (pn:@ClosedND _ Rule [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]) {struct pn}
+      fix pcfify Σ τ (pn:@ClosedSIND _ Rule [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]) {struct pn}
       : ND (PCFRule Γ Δ ec) [] [pcfjudg Σ τ] :=
-     (match pn in @ClosedND _ _ J return J=[Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)] -> _ with
+     (match pn in @ClosedSIND _ _ J return J=[Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)] -> _ with
       | cnd_weak             => let case_nil    := tt in _
       | cnd_rule h c cnd' r  => let case_rule   := tt in _
       | cnd_branch _ _ c1 c2 => let case_branch := tt in _
@@ -362,14 +362,14 @@ Section HaskProofStratified.
       exists (RVar _ _ _ _).
       apply PCF_RVar.
     apply nd_rule.
-      exists (REmptyGroup _ _ ).
-      apply PCF_REmptyGroup.
+      exists (RVoid _ _ ).
+      apply PCF_RVoid.
     eapply nd_comp.
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply (nd_prod IHa1 IHa2).
       apply nd_rule.
-        exists (RBindingGroup _ _ _ _ _ _). 
-        apply PCF_RBindingGroup.
+        exists (RJoin _ _ _ _ _ _). 
+        apply PCF_RJoin.
         Defined.
 
   Definition PCF_Arrange {Γ}{Δ}{lev} : forall x y z, Arrange x y -> ND (PCFRule Γ Δ lev) [pcfjudg x z] [pcfjudg y z].
@@ -418,7 +418,7 @@ Section HaskProofStratified.
     eapply nd_comp; [ apply nd_llecnac | eapply nd_comp; [ idtac | idtac ] ].
     eapply nd_prod; [ apply nd_seq_reflexive | apply nd_id ].
     apply nd_rule.
-    set (@PCF_RBindingGroup Γ Δ lev a b a c) as q'.
+    set (@PCF_RJoin Γ Δ lev a b a c) as q'.
     refine (existT _ _ _).
     apply q'.
     Defined.
@@ -427,7 +427,7 @@ Section HaskProofStratified.
     eapply nd_comp; [ apply nd_rlecnac | eapply nd_comp; [ idtac | idtac ] ].
     eapply nd_prod; [ apply nd_id | apply nd_seq_reflexive ].
     apply nd_rule.
-    set (@PCF_RBindingGroup Γ Δ lev b a c a) as q'.
+    set (@PCF_RJoin Γ Δ lev b a c a) as q'.
     refine (existT _ _ _).
     apply q'.
     Defined.
@@ -485,13 +485,13 @@ Section HaskProofStratified.
       apply org_fc with (r:=RVar _ _ _ _).
       auto.
     apply nd_rule.
-      apply org_fc with (r:=REmptyGroup _ _ ).
+      apply org_fc with (r:=RVoid _ _ ).
       auto.
     eapply nd_comp.
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply (nd_prod IHa1 IHa2).
       apply nd_rule.
-        apply org_fc with (r:=RBindingGroup _ _ _ _ _ _). 
+        apply org_fc with (r:=RJoin _ _ _ _ _ _). 
         auto.
         Defined.
 
@@ -535,7 +535,7 @@ Section HaskProofStratified.
     eapply nd_comp; [ apply nd_llecnac | eapply nd_comp; [ idtac | idtac ] ].
     eapply nd_prod; [ apply nd_seq_reflexive | apply nd_id ].
     apply nd_rule.
-    apply org_fc with (r:=RBindingGroup Γ Δ a b a c).
+    apply org_fc with (r:=RJoin Γ Δ a b a c).
     auto.
     Defined.
 
@@ -543,7 +543,7 @@ Section HaskProofStratified.
     eapply nd_comp; [ apply nd_rlecnac | eapply nd_comp; [ idtac | idtac ] ].
     eapply nd_prod; [ apply nd_id | apply nd_seq_reflexive ].
     apply nd_rule.
-    apply org_fc with (r:=RBindingGroup Γ Δ b a c a).
+    apply org_fc with (r:=RJoin Γ Δ b a c a).
     auto.
     Defined.
 

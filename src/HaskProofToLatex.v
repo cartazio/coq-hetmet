@@ -187,12 +187,12 @@ Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
     | RAbsCo        _ _ _ _ _ _ _ _   => "AbsCo"
     | RApp          _ _ _ _ _ _ _     => "App"
     | RLet          _ _ _ _ _ _ _     => "Let"
-    | RBindingGroup _ _ _ _ _ _       => "RBindingGroup"
+    | RJoin _ _ _ _ _ _       => "RJoin"
     | RLetRec       _ _ _ _ _ _       => "LetRec"
     | RCase         _ _ _ _ _ _ _ _   => "Case"
     | RBrak         _ _ _ _ _ _       => "Brak"
     | REsc          _ _ _ _ _ _       => "Esc"
-    | REmptyGroup   _ _               => "REmptyGroup"
+    | RVoid   _ _               => "RVoid"
 end.
 
 Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
@@ -215,8 +215,8 @@ Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
 Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=
   match r with
     | RArrange      _ _ _ _ _ r => nd_hideURule r
-    | REmptyGroup   _ _         => true
-    | RBindingGroup _ _ _ _ _ _ => true
+    | RVoid   _ _         => true
+    | RJoin _ _ _ _ _ _ => true
     | _                         => false
   end.
 
@@ -224,5 +224,5 @@ Instance ToLatexMathRule h c : ToLatexMath (Rule h c) :=
   { toLatexMath := fun r => rawLatexMath (@nd_ruleToRawLatexMath h c r) }.
 
 Definition nd_ml_toLatexMath {c}(pf:@ND _ Rule [] c) :=
-@SCND_toLatexMath _ _ ToLatexMathJudgment ToLatexMathRule (@nd_hideRule) _ _
-  (mkSCND (systemfc_all_rules_one_conclusion) _ _ _ pf (scnd_weak [])).
+@SIND_toLatexMath _ _ ToLatexMathJudgment ToLatexMathRule (@nd_hideRule) _ _
+  (mkSIND (systemfc_all_rules_one_conclusion) _ _ _ pf (scnd_weak [])).

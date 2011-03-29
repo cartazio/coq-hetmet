@@ -581,12 +581,12 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
       |- (mapOptionTree (@snd _ _) tree) @@@ lev ].
   intro X; induction X; intros; simpl in *.
     apply nd_rule.
-      apply REmptyGroup.
+      apply RVoid.
     set (ξ v) as q in *.
       destruct q.
       simpl in *.
       apply n.
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RBindingGroup ].
+    eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod; auto.
   Defined.
@@ -639,7 +639,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   simpl.
 
   set (letRecSubproofsToND _ _ _ _ _ branches lrsp) as q.
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RBindingGroup ].
+    eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod; auto.
     rewrite ξlemma.

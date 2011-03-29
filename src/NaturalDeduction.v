@@ -261,16 +261,16 @@ Section Natural_Deduction.
    * properties (vertically, they look more like lists than trees) but
    * are easier to do induction over.
    *)
-  Inductive SCND : Tree ??Judgment -> Tree ??Judgment -> Type :=
-  | scnd_weak   : forall c       , SCND c  []
-  | scnd_comp   : forall ht ct c , SCND ht ct -> Rule ct [c] -> SCND ht [c]
-  | scnd_branch : forall ht c1 c2, SCND ht c1 -> SCND ht c2 -> SCND ht (c1,,c2)
+  Inductive SIND : Tree ??Judgment -> Tree ??Judgment -> Type :=
+  | scnd_weak   : forall c       , SIND c  []
+  | scnd_comp   : forall ht ct c , SIND ht ct -> Rule ct [c] -> SIND ht [c]
+  | scnd_branch : forall ht c1 c2, SIND ht c1 -> SIND ht c2 -> SIND ht (c1,,c2)
   .
-  Hint Constructors SCND.
+  Hint Constructors SIND.
 
-  (* Any ND whose primitive Rules have at most one conclusion (note that nd_prod is allowed!) can be turned into an SCND. *)
-  Definition mkSCND (all_rules_one_conclusion : forall h c1 c2, Rule h (c1,,c2) -> False)
-    : forall h x c,  ND x c -> SCND h x -> SCND h c.
+  (* Any ND whose primitive Rules have at most one conclusion (note that nd_prod is allowed!) can be turned into an SIND. *)
+  Definition mkSIND (all_rules_one_conclusion : forall h c1 c2, Rule h (c1,,c2) -> False)
+    : forall h x c,  ND x c -> SIND h x -> SIND h c.
     intros h x c nd.
     induction nd; intro k.
       apply k.
@@ -296,17 +296,17 @@ Section Natural_Deduction.
           inversion bogus.
           Defined.
 
-  (* a "ClosedND" is a proof with no open hypotheses and no multi-conclusion rules *)
-  Inductive ClosedND : Tree ??Judgment -> Type :=
-  | cnd_weak   : ClosedND []
-  | cnd_rule   : forall h c    , ClosedND h  -> Rule h c    -> ClosedND c
-  | cnd_branch : forall   c1 c2, ClosedND c1 -> ClosedND c2 -> ClosedND (c1,,c2)
+  (* a "ClosedSIND" is a proof with no open hypotheses and no multi-conclusion rules *)
+  Inductive ClosedSIND : Tree ??Judgment -> Type :=
+  | cnd_weak   : ClosedSIND []
+  | cnd_rule   : forall h c    , ClosedSIND h  -> Rule h c    -> ClosedSIND c
+  | cnd_branch : forall   c1 c2, ClosedSIND c1 -> ClosedSIND c2 -> ClosedSIND (c1,,c2)
   .
 
-  (* we can turn an SCND without hypotheses into a ClosedND *)
-  Definition closedFromSCND h c (pn2:SCND h c)(cnd:ClosedND h) : ClosedND c.
-  refine ((fix closedFromPnodes h c (pn2:SCND h c)(cnd:ClosedND h) {struct pn2} := 
-    (match pn2 in SCND H C return H=h -> C=c -> _  with
+  (* we can turn an SIND without hypotheses into a ClosedSIND *)
+  Definition closedFromSIND h c (pn2:SIND h c)(cnd:ClosedSIND h) : ClosedSIND c.
+  refine ((fix closedFromPnodes h c (pn2:SIND h c)(cnd:ClosedSIND h) {struct pn2} := 
+    (match pn2 in SIND H C return H=h -> C=c -> _  with
       | scnd_weak   c                 => let case_weak := tt in _
       | scnd_comp  ht ct c pn' rule   => let case_comp := tt in let qq := closedFromPnodes _ _ pn' in _
       | scnd_branch ht c1 c2 pn' pn'' => let case_branch := tt in
@@ -336,8 +336,8 @@ Section Natural_Deduction.
     Defined.
 
   (* undo the above *)
-  Fixpoint closedNDtoNormalND {c}(cnd:ClosedND c) : ND [] c :=
-  match cnd in ClosedND C return ND [] C with
+  Fixpoint closedNDtoNormalND {c}(cnd:ClosedSIND c) : ND [] c :=
+  match cnd in ClosedSIND C return ND [] C with
   | cnd_weak                   => nd_id0
   | cnd_rule   h c cndh rhc    => closedNDtoNormalND cndh ;; nd_rule rhc
   | cnd_branch c1 c2 cnd1 cnd2 => nd_llecnac ;; nd_prod (closedNDtoNormalND cnd1) (closedNDtoNormalND cnd2)
@@ -563,8 +563,8 @@ Inductive nd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall
   | nd_property_rule            : forall h c r, P h c r -> @nd_property _ _ P h c (nd_rule r).
   Hint Constructors nd_property.
 
-(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for ClosedND) *)
-Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {c}, @ClosedND Judgment Rule c -> Prop :=
+(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for ClosedSIND) *)
+Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {c}, @ClosedSIND Judgment Rule c -> Prop :=
 | cnd_property_weak            : @cnd_property _ _ P _ cnd_weak
 | cnd_property_rule            : forall h c r cnd',
   P h c r ->
@@ -576,8 +576,8 @@ Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : foral
   @cnd_property _ _ P c2 cnd2 ->
   @cnd_property _ _ P _  (cnd_branch _ _ cnd1 cnd2).
 
-(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for SCND) *)
-Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {h c}, @SCND Judgment Rule h c -> Prop :=
+(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for SIND) *)
+Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {h c}, @SIND Judgment Rule h c -> Prop :=
 | scnd_property_weak            : forall c, @scnd_property _ _ P _ _ (scnd_weak c)
 | scnd_property_comp            : forall h x c r cnd',
   P x [c] r ->
@@ -604,24 +604,24 @@ Section ToLatex.
   Definition eolL : LatexMath := rawLatexMath eol.
 
   (* invariant: each proof shall emit its hypotheses visibly, except nd_id0 *)
-  Section SCND_toLatex.
+  Section SIND_toLatex.
 
     (* indicates which rules should be hidden (omitted) from the rendered proof; useful for structural operations *)
     Context (hideRule : forall h c (r:Rule h c), bool).
 
-    Fixpoint SCND_toLatexMath {h}{c}(pns:SCND(Rule:=Rule) h c) : LatexMath :=
+    Fixpoint SIND_toLatexMath {h}{c}(pns:SIND(Rule:=Rule) h c) : LatexMath :=
       match pns with
-        | scnd_branch ht c1 c2 pns1 pns2 => SCND_toLatexMath pns1 +++ rawLatexMath " \hspace{1cm} " +++ SCND_toLatexMath pns2
+        | scnd_branch ht c1 c2 pns1 pns2 => SIND_toLatexMath pns1 +++ rawLatexMath " \hspace{1cm} " +++ SIND_toLatexMath pns2
         | scnd_weak     c                => rawLatexMath ""
         | scnd_comp ht ct c pns rule     => if hideRule _ _ rule
-                                            then SCND_toLatexMath pns
+                                            then SIND_toLatexMath pns
                                             else rawLatexMath "\trfrac["+++ toLatexMath rule +++ rawLatexMath "]{" +++ eolL +++
-                                              SCND_toLatexMath pns +++ rawLatexMath "}{" +++ eolL +++
+                                              SIND_toLatexMath pns +++ rawLatexMath "}{" +++ eolL +++
                                               toLatexMath c +++ rawLatexMath "}" +++ eolL
       end.
-  End SCND_toLatex.
+  End SIND_toLatex.
 
-  (* this is a work-in-progress; please use SCND_toLatexMath for now *)
+  (* this is a work-in-progress; please use SIND_toLatexMath for now *)
   Fixpoint nd_toLatexMath {h}{c}(nd:@ND _ Rule h c)(indent:string) :=
     match nd with
       | nd_id0                      => rawLatexMath indent +++

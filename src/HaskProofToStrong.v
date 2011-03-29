@@ -520,8 +520,8 @@ Section HaskProofToStrong.
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
-      | RBindingGroup Γ p lri m x q   => let case_RBindingGroup := tt in _
-      | REmptyGroup _ _               => let case_REmptyGroup := tt   in _
+      | RJoin Γ p lri m x q   => let case_RJoin := tt in _
+      | RVoid _ _               => let case_RVoid := tt   in _
       | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
       | REsc    Σ a b c n m           => let case_REsc := tt          in _
       | RCase   Γ Δ lev tc Σ avars tbranches alts => let case_RCase := tt         in _
@@ -601,7 +601,7 @@ Section HaskProofToStrong.
     apply ileaf in X. simpl in X.
     apply X.
 
-  destruct case_RBindingGroup.
+  destruct case_RJoin.
     apply ILeaf; simpl; intros.
     inversion X_.
     apply ileaf in X.
@@ -669,7 +669,7 @@ Section HaskProofToStrong.
     apply X0'.
     apply X1'.
 
-  destruct case_REmptyGroup.
+  destruct case_RVoid.
     apply ILeaf; simpl; intros.
     refine (return _).
     apply INone.
@@ -758,10 +758,10 @@ Section HaskProofToStrong.
       apply H2.
     Defined.
 
-  Definition closed2expr : forall c (pn:@ClosedND _ Rule c), ITree _ judg2exprType c.
+  Definition closed2expr : forall c (pn:@ClosedSIND _ Rule c), ITree _ judg2exprType c.
     refine ((
-      fix closed2expr' j (pn:@ClosedND _ Rule j) {struct pn} : ITree _ judg2exprType j :=
-      match pn in @ClosedND _ _ J return ITree _ judg2exprType J with
+      fix closed2expr' j (pn:@ClosedSIND _ Rule j) {struct pn} : ITree _ judg2exprType j :=
+      match pn in @ClosedSIND _ _ J return ITree _ judg2exprType J with
       | cnd_weak             => let case_nil    := tt in INone _ _
       | cnd_rule h c cnd' r  => let case_rule   := tt in rule2expr _ _ r (closed2expr' _ cnd')
       | cnd_branch _ _ c1 c2 => let case_branch := tt in IBranch _ _ (closed2expr' _ c1) (closed2expr' _ c2)
@@ -804,7 +804,7 @@ Section HaskProofToStrong.
     {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [τ]] ->
     FreshM (???{ ξ : _ & Expr Γ Δ ξ τ}).
     intro pf.
-    set (closedFromSCND _ _ (mkSCND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) cnd_weak) as cnd.
+    set (closedFromSIND _ _ (mkSIND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) cnd_weak) as cnd.
     apply closed2expr in cnd.
     apply ileaf in cnd.
     simpl in *.

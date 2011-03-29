@@ -118,7 +118,6 @@ Section GArrowFromReification.
               setoid_rewrite left_identity;
               reflexivity).
     Qed.
-    Opaque homset_tensor_iso.
 
   (* the "step2_functor" is the section of the Hom(I,-) functor *)
   Definition step2_functor := ff_functor_section_functor _ (ffme_mf_full C) (ffme_mf_faithful C).
@@ -126,19 +125,26 @@ Section GArrowFromReification.
   (* the generalized arrow is the composition of the two steps *)
   Definition garrow_functor := step1_functor >>>> step2_functor.
 
-  Lemma garrow_functor_monoidal_niso
-    : (garrow_functor **** garrow_functor) >>>> (mon_f C) <~~~> (mon_f (enr_v_mon K)) >>>> garrow_functor.
-    unfold garrow_functor.
-    admit.
-    Defined.
-  Lemma garrow_functor_monoidal_iso
+  Lemma garrow_functor_monoidal_iso_i
     : mon_i C ≅ garrow_functor (mon_i (enr_v_mon K)).
     admit.
     Defined.
 
+  Lemma garrow_functor_monoidal_iso :
+    forall X Y:enr_v_mon K, 
+      garrow_functor (bin_obj(BinoidalCat:=enr_v_mon K) X Y) ≅ bin_obj(BinoidalCat:=me_mon C) (garrow_functor X) (garrow_functor Y).
+    admit.
+    Defined.
+
+  Definition garrow_functor_monoidal_niso
+    : (garrow_functor **** garrow_functor) >>>> (mon_f C) <~~~> (mon_f (enr_v_mon K)) >>>> garrow_functor.
+    admit.
+    Defined.
+    Opaque homset_tensor_iso.
+
   Instance garrow_functor_monoidal : MonoidalFunctor (enr_v_mon K) C garrow_functor :=
-    { mf_coherence := garrow_functor_monoidal_niso
-    ; mf_id        := garrow_functor_monoidal_iso
+    { mf_coherence   := garrow_functor_monoidal_niso
+    ; mf_id          := garrow_functor_monoidal_iso_i
     }.
     admit.
     admit.
