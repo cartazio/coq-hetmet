@@ -54,7 +54,7 @@ Definition generalizedArrowOrIdentityFunc s1 s2 (f:GeneralizedArrowOrIdentity s1
   : Functor s1 s2 (generalizedArrowOrIdentityFobj _ _ f) :=
   match f with
   | gaoi_id  s       => functor_id _
-  | gaoi_ga s1 s2 f  => ga_functor f >>>> RepresentableFunctor s2 (mon_i s2)
+  | gaoi_ga s1 s2 f  => ga_functor f >>>> HomFunctor s2 (mon_i s2)
   end.
 
 Definition compose_generalizedArrows (s0 s1 s2:SMMEs) :
@@ -62,7 +62,7 @@ Definition compose_generalizedArrows (s0 s1 s2:SMMEs) :
   intro g01.
   intro g12.
   refine
-    {| ga_functor          := g01 >>>> RepresentableFunctor s1 (mon_i s1) >>>> g12 |}.
+    {| ga_functor          := g01 >>>> HomFunctor s1 (mon_i s1) >>>> g12 |}.
     apply MonoidalFunctorsCompose.
     apply MonoidalFunctorsCompose.
     apply (ga_functor_monoidal g01).

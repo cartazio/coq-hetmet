@@ -40,7 +40,6 @@ Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{ava
                   (vec2list (sac_types sac Γ avars))))
                 |- [weakLT' (branchtype @@ lev)]
 }.
-(*Coercion pcb_scb : ProofCaseBranch >-> StrongAltCon.*)
 Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
@@ -66,11 +65,11 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 (* λ^α rules *)
 | RBrak : ∀ Γ Δ t v Σ l,                              Rule [Γ > Δ > Σ      |- [t  @@ (v::l) ]]   [Γ > Δ > Σ     |- [<[v|-t]>   @@l]]
-| REsc  : ∀ Γ Δ t v Σ l,                              Rule [Γ > Δ > Σ      |- [<[v|-t]> @@ l]]   [Γ > Δ > Σ     |- [t  @@ (v::l)  ]]
+| REsc  : ∀ Γ Δ t v Σ l,                              Rule [Γ > Δ > Σ      |- [<[v|-t]> @@ l]]   [Γ > Δ > Σ     |- [t    @@ (v::l)]]
 
 (* Part of GHC, but not explicitly in System FC *)
-| RNote   : ∀ Γ Δ Σ τ l,          Note ->             Rule  [Γ > Δ > Σ |- [τ @@ l]] [Γ > Δ > Σ |- [τ @@ l]]
-| RLit    : ∀ Γ Δ v       l,                          Rule  [                                ]   [Γ > Δ > []|- [literalType v @@ l]]
+| RNote   : ∀ Γ Δ Σ τ l,          Note ->             Rule [Γ > Δ > Σ      |- [τ        @@ l]]   [Γ > Δ > Σ     |- [τ          @@l]]
+| RLit    : ∀ Γ Δ v       l,                          Rule [                                 ]   [Γ > Δ > []|- [literalType v  @@l]]
 
 (* SystemFC rules *)
 | RVar    : ∀ Γ Δ σ       l,                          Rule [                                 ]   [Γ>Δ> [σ@@l]   |- [σ          @@l]]
@@ -78,19 +77,26 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RLam    : forall Γ Δ Σ (tx:HaskType Γ ★) te l,      Rule [Γ>Δ> Σ,,[tx@@l]|- [te@@l]        ]   [Γ>Δ>    Σ     |- [tx--->te   @@l]]
 | RCast   : forall Γ Δ Σ (σ₁ σ₂:HaskType Γ ★) l,
                    HaskCoercion Γ Δ (σ₁∼∼∼σ₂) ->      Rule [Γ>Δ> Σ         |- [σ₁@@l]        ]   [Γ>Δ>    Σ     |- [σ₂         @@l]]
+
 | RBindingGroup  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
+
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁       |- [tx--->te @@l]],,[Γ>Δ> Σ₂ |- [tx@@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
+
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₂ |- [σ₂@@l]],,[Γ>Δ> Σ₁,,[σ₂@@l] |- [σ₁@@l] ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₁   @@l]]
+
 | REmptyGroup    : ∀ Γ Δ ,               Rule [] [Γ > Δ > [] |- [] ]
+
 | RAppT   : forall Γ Δ Σ κ σ (τ:HaskType Γ κ) l,      Rule [Γ>Δ> Σ   |- [HaskTAll κ σ @@l]]      [Γ>Δ>    Σ     |- [substT σ τ @@l]]
 | RAbsT   : ∀ Γ Δ Σ κ σ   l,
   Rule [(κ::Γ)> (weakCE Δ)    >   mapOptionTree weakLT Σ |- [ HaskTApp (weakF σ) (FreshHaskTyVar _) @@ (weakL l)]]
        [Γ>Δ            >    Σ     |- [HaskTAll κ σ   @@ l]]
+
 | RAppCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ₁∼∼∼σ₂)) σ l,
     Rule [Γ>Δ> Σ |- [σ₁∼∼σ₂ ⇒ σ@@l]] [Γ>Δ>    Σ     |- [σ        @@l]]
 | RAbsCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) σ l,
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ @@ l]]
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
+
 | RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- ([τ₁],,τ₂)@@@lev ] [Γ > Δ > Σ₁ |- [τ₁@@lev] ]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
   (alts:Tree ??{ sac : @StrongAltCon tc & @ProofCaseBranch tc Γ Δ lev tbranches avars sac }),
@@ -102,6 +108,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 
 (* A rule is considered "flat" if it is neither RBrak nor REsc *)
+(* TODO: change this to (if RBrak/REsc -> False) *)
 Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RArrange         : ∀ Γ Δ  h c r          a ,  Rule_Flat (RArrange Γ Δ h c r a)
 | Flat_RNote            : ∀ Γ Δ Σ τ l n            ,  Rule_Flat (RNote Γ Δ Σ τ l n)

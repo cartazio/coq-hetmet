@@ -21,7 +21,6 @@ Variable dataConExVars_    : CoreDataCon -> list CoreVar.  Extract Inlined Const
 Variable dataConEqTheta_   : CoreDataCon -> list PredType. Extract Inlined Constant dataConEqTheta_   => "DataCon.dataConEqTheta".
 Variable dataConOrigArgTys_: CoreDataCon -> list CoreType. Extract Inlined Constant dataConOrigArgTys_=>"DataCon.dataConOrigArgTys".
 
-(* TODO: might be a better idea to panic here than simply drop things that look wrong *)
 Definition dataConExTyVars cdc :=
   filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (dataConExVars_ cdc)).
   Opaque dataConExTyVars.
@@ -79,27 +78,25 @@ Section Raw.
   Inductive RawCoercionKind : Type :=
     mkRawCoercionKind : ∀ κ, RawHaskType κ -> RawHaskType κ -> RawCoercionKind.
 
-  Section CV.
-
-    (* the PHOAS type which stands for coercion variables of System FC *)
-    
-
-    (* Figure 7: γ, δ *)
-    Inductive RawHaskCoer {CV:Type} : RawCoercionKind -> Prop := (* FIXME *).
-(*
-    | CoVar          : CV                                           -> RawHaskCoer (* g      *)
-    | CoType         : RawHaskType                                  -> RawHaskCoer (* τ      *)
-    | CoApp          : RawHaskCoer -> RawHaskCoer                   -> RawHaskCoer (* γ γ    *)
-    | CoAppT         : RawHaskCoer -> RawHaskType                   -> RawHaskCoer (* γ@v    *)
-    | CoCFApp        : ∀ n, CoFunConst n -> vec RawHaskCoer n       -> RawHaskCoer (* C   γⁿ *)
-    | CoTFApp        : ∀ n, TyFunConst n -> vec RawHaskCoer n       -> RawHaskCoer (* S_n γⁿ *)
-    | CoAll          : Kind  -> (TV -> RawHaskCoer)                 -> RawHaskCoer (* ∀a:κ.γ *)
-    | CoSym          : RawHaskCoer                                  -> RawHaskCoer (* sym    *)
-    | CoComp         : RawHaskCoer -> RawHaskCoer                   -> RawHaskCoer (* ◯      *)
-    | CoLeft         : RawHaskCoer                                  -> RawHaskCoer (* left   *)
-    | CoRight        : RawHaskCoer                                  -> RawHaskCoer (* right  *).
-*)
-  End CV.
+  (* Figure 7: γ, δ; CV is the PHOAS type which stands for coercion variables of System FC *)
+  Inductive RawHaskCoer {CV:Type} : RawCoercionKind -> Prop := .
+  (*  
+   *  This has been disabled until we manage to reconcile SystemFC's
+   *  coercions with what GHC actually implements (they are not the
+   *  same!)
+   *  
+  | CoVar          : CV                                           -> RawHaskCoer (* g      *)
+  | CoType         : RawHaskType                                  -> RawHaskCoer (* τ      *)
+  | CoApp          : RawHaskCoer -> RawHaskCoer                   -> RawHaskCoer (* γ γ    *)
+  | CoAppT         : RawHaskCoer -> RawHaskType                   -> RawHaskCoer (* γ@v    *)
+  | CoCFApp        : ∀ n, CoFunConst n -> vec RawHaskCoer n       -> RawHaskCoer (* C   γⁿ *)
+  | CoTFApp        : ∀ n, TyFunConst n -> vec RawHaskCoer n       -> RawHaskCoer (* S_n γⁿ *)
+  | CoAll          : Kind  -> (TV -> RawHaskCoer)                 -> RawHaskCoer (* ∀a:κ.γ *)
+  | CoSym          : RawHaskCoer                                  -> RawHaskCoer (* sym    *)
+  | CoComp         : RawHaskCoer -> RawHaskCoer                   -> RawHaskCoer (* ◯      *)
+  | CoLeft         : RawHaskCoer                                  -> RawHaskCoer (* left   *)
+  | CoRight        : RawHaskCoer                                  -> RawHaskCoer (* right  *).
+  *)
 End Raw.
 
 Implicit Arguments TCon   [ [TV] ].
@@ -294,13 +291,6 @@ Definition weakCK' {Γ}{κ}(hck:HaskCoercionKind Γ) : HaskCoercionKind (app κ 
   apply weakCK.
   apply IHκ.
   Defined.
-(*
-Definition weakCK'' {Γ}{κ}(hck:list (HaskCoercionKind Γ)) : list (HaskCoercionKind (app κ Γ)) :=
-  match κ as K return list (HaskCoercionKind (app K Γ)) with
-  | nil => hck
-  | _   => map weakCK' hck
-  end.
-*)
 Definition weakCK'' {Γ}{κ}(hck:list (HaskCoercionKind Γ)) : list (HaskCoercionKind (app κ Γ)) :=
   map weakCK' hck.
 Definition weakCV {Γ}{Δ}{κ}(cv':HaskCoVar Γ Δ) : HaskCoVar (κ::Γ) (weakCE Δ) :=
@@ -308,10 +298,6 @@ Definition weakCV {Γ}{Δ}{κ}(cv':HaskCoVar Γ Δ) : HaskCoVar (κ::Γ) (weakCE
 Definition weakF {Γ:TypeEnv}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV κ₂) : 
   forall TV (env:@InstantiatedTypeEnv TV (κ::Γ)), TV κ -> RawHaskType TV κ₂
   := fun TV ite tv => (f TV (weakITE ite) tv).
-
-(* I keep mixing up left/right folds *)
-(* Eval compute in (fold_right (fun x y => "("+++x+++y+++")") "x" ("a"::"b"::"c"::nil)). *)
-(*Eval compute in (fold_left (fun x y => "("+++x+++y+++")") ("a"::"b"::"c"::nil) "x").*)
 
 Fixpoint caseType0 {Γ}(lk:list Kind) :
   IList _ (HaskType Γ) lk ->
@@ -492,7 +478,9 @@ end.
 Definition compareHT Γ κ (ht1 ht2:HaskType Γ κ) :=
   compareT (length Γ) (ht1 (fun _ => nat) (count' Γ O)) (ht2 (fun _ => nat) (count' Γ O)).
 
-(* This is not provable in Coq's logic because the Coq function space
+(* The PHOAS axioms
+ * 
+ * This is not provable in Coq's logic because the Coq function space
  * is "too big" - although its only definable inhabitants are Coq
  * functions, it is not provable in Coq that all function space
  * inhabitants are definable (i.e. there are no "exotic" inhabitants).

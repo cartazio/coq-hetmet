@@ -27,12 +27,6 @@ Require Import FunctorCategories_ch7_7.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
-Require Import FreydCategories.
-
-Require Import Reification.
-Require Import GeneralizedArrow.
-Require Import GeneralizedArrowFromReification.
-
 Section Programming_Language.
 
   Context {T    : Type}.               (* types of the language *)
@@ -168,12 +162,17 @@ Section Programming_Language.
     {
     }.
 
+    Lemma CartesianEnrMonoidal (e:Enrichment) `(C:CartesianCat(Ob:= _)(Hom:= _)(C:=Underlying (enr_c e))) : MonoidalEnrichment e.
+      admit.
+      Defined.
+
     (* need to prove that if we have cartesian tuples we have cartesian contexts *)
     Definition LanguagesWithProductsAreSMME : HasProductTypes -> SurjectiveMonicMonoidalEnrichment TypesEnrichedInJudgments.
       admit.
       Defined.
 
   End LanguageCategory.
+
 End Programming_Language.
 
 Structure ProgrammingLanguageSMME :=
@@ -186,56 +185,5 @@ Structure ProgrammingLanguageSMME :=
 }.
 Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
 Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
-
-Section ArrowInLanguage.
-  Context  (Host:ProgrammingLanguageSMME).
-  Context `(CC:CartesianCat (me_mon Host)).
-  Context `(K:@ECategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) C Kehom).
-  Context `(pmc:PreMonoidalCat K bobj mobj (@one _ _ _ (cartesian_terminal C))).
-    (* FIXME *)
-    (*
-    Definition ArrowInProgrammingLanguage := 
-      @FreydCategory _ _ _ _ _ _ (@car_mn _ _ _ _ _ _ _ CC) _ _ _ _ pmc.
-      *)
-End ArrowInLanguage.
-
-Section GArrowInLanguage.
-  Context (Guest:ProgrammingLanguageSMME).
-  Context (Host :ProgrammingLanguageSMME).
-  Definition GeneralizedArrowInLanguage := GeneralizedArrow Guest Host.
-
-  (* FIXME
-  Definition ArrowsAreGeneralizedArrows : ArrowInProgrammingLanguage -> GeneralizedArrowInLanguage.
-  *)
-  Definition TwoLevelLanguage := Reification Guest Host (me_i Host).
-
-  Context (GuestHost:TwoLevelLanguage).
-
-  Definition FlatObject (x:TypesL _ _ Host) :=
-    forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
-
-  Definition FlatSubCategory := FullSubcategory (TypesL _ _ Host) FlatObject.
-
-  Section Flattening.
-
-    Context  (F:Retraction (TypesL _ _ Host) FlatSubCategory).
-    Definition FlatteningOfReification := garrow_from_reification Guest Host GuestHost >>>> F.
-    Lemma FlatteningIsNotDestructive : 
-      FlatteningOfReification >>>> retraction_retraction F >>>> RepresentableFunctor _ (me_i Host) ~~~~ GuestHost.
-      admit.
-      Qed.
-
-  End Flattening.
-
-End GArrowInLanguage.
-
-Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
-| NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
-| NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
-                          TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
-
-Definition OmegaLevelLanguage : Type :=
-  { f : nat -> ProgrammingLanguageSMME
-  & forall n, TwoLevelLanguage (f n) (f (S n)) }.
-  
+ 
 Implicit Arguments ND [ Judgment ].

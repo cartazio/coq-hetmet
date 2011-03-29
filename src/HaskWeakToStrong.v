@@ -19,9 +19,6 @@ Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskCoreVars.
 
-(* can remove *)
-Require Import HaskStrongToWeak.
-
 Open Scope string_scope.
 Definition TyVarResolver Γ   := forall wt:WeakTypeVar, ???(HaskTyVar Γ wt).
 Definition CoVarResolver Γ Δ := forall wt:WeakCoerVar, ???(HaskCoVar Γ Δ).

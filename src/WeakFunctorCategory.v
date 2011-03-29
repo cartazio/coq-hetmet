@@ -21,8 +21,6 @@ Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
-(*Require Import Enrichment_ch2_8.*)
-(*Require Import RepresentableStructure_ch7_2.*)
 
 Section WeakFunctorCategory.
 

@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
 (* GeneralizedArrowFromReification:                                                                                              *)
 (*                                                                                                                               *)
-(*   Turn a generalized arrow into a reification                                                                                 *)
+(*   Turn a reification into a generalized arrow                                                                                 *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -70,19 +70,21 @@ Section GArrowFromReification.
           apply (iso_prod IHx1 IHx2).
         Defined.
 
-  Definition garrow_fobj' (vk:enr_v_mon K) : FullImage (RepresentableFunctor C (me_i C)).
+  Definition garrow_fobj' (vk:enr_v_mon K) : FullImage (HomFunctor C (me_i C)).
     exists (ehom(ECategory:=C) (me_i C) (garrow_fobj vk)).
     abstract (exists (garrow_fobj vk); auto).
     Defined.
 
-  Definition step1_mor {a b}(f:a~~{enr_v_mon K}~~>b) : (garrow_fobj' a)~~{FullImage (RepresentableFunctor C (me_i C))}~~>(garrow_fobj' b).
+  Definition step1_mor {a b}(f:a~~{enr_v_mon K}~~>b) : (garrow_fobj' a)~~{FullImage (HomFunctor C (me_i C))}~~>(garrow_fobj' b).
     exists (iso_backward (homset_tensor_iso a) 
         >>> reification_rstar reification \ f
         >>> iso_forward (homset_tensor_iso  b)).
     abstract (auto).
     Defined.
 
-  Definition step1_functor : Functor (enr_v_mon K) (FullImage (RepresentableFunctor C (me_i C))) garrow_fobj'.
+  (* The poorly-named "step1_functor" is a functor from the full subcategory in the range of the reification functor
+   * to the full subcategory in the range of the [host language's] Hom(I,-) functor *)
+  Definition step1_functor : Functor (enr_v_mon K) (FullImage (HomFunctor C (me_i C))) garrow_fobj'.
     refine {| fmor := fun a b f => step1_mor f |}.
     abstract (intros; unfold step1_mor; simpl;
               apply comp_respects; try reflexivity;
@@ -107,7 +109,7 @@ Section GArrowFromReification.
       apply (fmor_preserves_comp reification)).
       Defined.
 
-  Definition step1_niso : reification ≃ step1_functor >>>> InclusionFunctor _ (FullImage (RepresentableFunctor C (me_i C))).
+  Definition step1_niso : reification ≃ step1_functor >>>> InclusionFunctor _ (FullImage (HomFunctor C (me_i C))).
     exists (fun c1 => homset_tensor_iso c1).
     abstract (intros;
               simpl;
@@ -118,8 +120,10 @@ Section GArrowFromReification.
     Qed.
     Opaque homset_tensor_iso.
 
+  (* the "step2_functor" is the section of the Hom(I,-) functor *)
   Definition step2_functor := ff_functor_section_functor _ (ffme_mf_full C) (ffme_mf_faithful C).
 
+  (* the generalized arrow is the composition of the two steps *)
   Definition garrow_functor := step1_functor >>>> step2_functor.
 
   Lemma garrow_functor_monoidal_niso

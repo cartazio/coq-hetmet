@@ -36,6 +36,7 @@ Section Judgments_Category.
 
   Notation "pf1 === pf2" := (@ndr_eqv _ _ nd_eqv _ _ pf1 pf2).
 
+  (* there is a category whose objects are judgments and whose morphisms are proofs *)
   Instance Judgments_Category : Category (Tree ??Judgment) (fun h c => h /⋯⋯/ c) :=
   { id   := fun h          => nd_id _
   ; comp := fun a b c f g  => f ;; g
@@ -51,6 +52,7 @@ Section Judgments_Category.
   intros; apply ndr_comp_associativity.
   Defined.
 
+  (* it is monoidal, with the judgment-tree-formation operator as its tensor *)
   Definition Judgments_Category_monoidal_endofunctor_fobj : Judgments_Category ×× Judgments_Category -> Judgments_Category :=
     fun xy => (fst_obj _ _ xy),,(snd_obj _ _ xy).
   Definition Judgments_Category_monoidal_endofunctor_fmor :
@@ -200,9 +202,6 @@ Section Judgments_Category.
     apply nd_structural_id0; auto.
     apply nd_structural_cancelr; auto.
     Defined.
-
-
-  (* Structure ExpressionAlgebra (sig:Signature) := *)
 
 End Judgments_Category.
 

@@ -20,7 +20,6 @@ Section HaskStrong.
   Context `{EQD_VV:EqDecidable VV}.
 
   (* a StrongCaseBranchWithVVs contains all the data found in a case branch except the expression itself *)
-
   Record StrongCaseBranchWithVVs {tc:TyCon}{Γ}{atypes:IList _ (HaskType Γ) (tyConKind tc)}{sac:@StrongAltCon tc} :=
   { scbwv_exprvars          :  vec VV (sac_numExprVars sac)
   ; scbwv_exprvars_distinct :  distinct (vec2list scbwv_exprvars)
@@ -28,7 +27,6 @@ Section HaskStrong.
   ; scbwv_ξ                 := fun ξ lev =>  update_ξ (weakLT'○ξ) (weakL' lev) (vec2list scbwv_varstypes)
   }.
   Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
-  (*Coercion scbwv_sac : StrongCaseBranchWithVVs >-> StrongAltCon.*)
 
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ ★) -> LeveledHaskType Γ ★ -> Type :=
 

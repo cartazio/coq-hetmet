@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
-(* ReificationFromGeneralizedArrow:                                                                                              *)
+(* ProgrammingLanguageReification                                                                                                *)
 (*                                                                                                                               *)
-(*   Turn a reification into a generalized arrow                                                                                 *)
+(*   Reifications in ProgrammingLanguages.                                                                                       *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -9,6 +9,7 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import Categories_ch1_3.
+Require Import InitialTerminal_ch2_2.
 Require Import Functors_ch1_4.
 Require Import Isomorphisms_ch1_5.
 Require Import ProductCategories_ch1_6_1.
@@ -21,18 +22,18 @@ Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
+Require Import FunctorCategories_ch7_7.
+
 Require Import Reification.
-Require Import GeneralizedArrow.
+Require Import NaturalDeduction.
+Require Import NaturalDeductionCategory.
+Require Import ProgrammingLanguage.
 
-Definition reification_from_garrow (K:Enrichment) {ce} (C:MonoidalEnrichment ce) (garrow : GeneralizedArrow K C)
- : Reification K C (mon_i C).
-  refine
-  {| reification_r         := fun k:K => HomFunctor K k >>>> garrow
-   ; reification_rstar_f   :=                                garrow >>>> me_mf C
-   ; reification_rstar     := MonoidalFunctorsCompose _ _ _ _ _ garrow (me_mf C)
-   |}.
-   abstract (intros; set (@ni_associativity) as q; apply q).
-   Defined.
+Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
+| NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
+| NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
+                          TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
 
-
-
+Definition OmegaLevelLanguage : Type :=
+  { f : nat -> ProgrammingLanguageSMME
+  & forall n, TwoLevelLanguage (f n) (f (S n)) }.

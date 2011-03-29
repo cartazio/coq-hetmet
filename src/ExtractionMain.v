@@ -42,8 +42,6 @@ Require Import HaskProofCategory.
 
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 
-(*Require Import HaskStrongCategory.*)
-
 Open Scope string_scope.
 Extraction Language Haskell.
 
@@ -63,7 +61,6 @@ Extract Inductive unit    => "()" [ "()" ].
 Extract Inlined Constant string_dec => "(==)".
 Extract Inlined Constant ascii_dec => "(==)".
 
-(* adapted from ExtrOcamlString.v *)
 Extract Inductive ascii => "Char" [ "you_forgot_to_patch_coq" ] "you_forgot_to_patch_coq".
 Extract Constant zero   => "'\000'".
 Extract Constant one    => "'\001'".
@@ -111,8 +108,6 @@ Section core2proof.
     end.
 
 
-  (* core-to-string (-dcoqpass) *)
-
   Definition header : string :=
     "\documentclass[9pt]{article}"+++eol+++
     "\usepackage{amsmath}"+++eol+++
@@ -131,7 +126,7 @@ Section core2proof.
     eol+++"\end{document}"+++
     eol.
 
-
+  (* core-to-string (-dcoqpass) *)
   Definition coreToStringExpr' (ce:@CoreExpr CoreVar) : ???string :=
     addErrorMessage ("input CoreSyn: " +++ toString ce)
     (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
@@ -229,52 +224,6 @@ Section core2proof.
       exact O.
       apply t.
       Defined.
-
-(*
-    Definition env := ★::nil.
-    Definition freshTV : HaskType env ★ := haskTyVarToType (FreshHaskTyVar _).
-    Definition idproof0 : ND Rule [] [env > nil > [] |- [freshTV--->freshTV @@ nil]].
-      eapply nd_comp.
-      eapply nd_comp.
-      eapply nd_rule.
-      apply RVar.
-      eapply nd_rule
-      eapply (RArrange _ _ _ _ (RuCanL _ _)) .
-      eapply nd_rule.
-      eapply RLam.
-      Defined.
-
-
-    Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
-    addErrorMessage ("input CoreSyn: " +++ toString ce)
-    (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
-      coreExprToWeakExpr ce >>= fun we =>
-        addErrorMessage ("WeakExpr: " +++ toString we)
-          ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
-            ((weakTypeOfWeakExpr we) >>= fun t =>
-              (addErrorMessage ("WeakType: " +++ toString t)
-                ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
-                  addErrorMessage ("HaskType: " +++ toString τ)
-                  ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
-                        (let haskProof := @expr2proof _ _ _ _ _ _ e
-                          in (* insert HaskProof-to-HaskProof manipulations here *)
-                   (unFresh (@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof))
-                  >>= fun e' => Error (@toString _ (ExprToString _ _ _ _) (projT2 e'))
-(*
-                  >>= fun e' =>
-                    Prelude_error (@toString _ (@ExprToString nat _ _ _ _ _ _) (projT2 e'))
-  *)                  
-)
-)))))))).
-(*                    Error "X").*)
-(*
-                   strongExprToWeakExpr hetmet_brak hetmet_esc mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
-                   (projT2 e')
-                         INil
-                         >>= fun q => Error (toString q)
-                  ))))))))).
-*)*)
-
 
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
       addErrorMessage ("input CoreSyn: " +++ toString ce)

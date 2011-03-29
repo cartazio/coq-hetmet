@@ -33,16 +33,9 @@ Require Import WeakFunctorCategory.
 
 Section ReificationsIsomorphicToGeneralizedArrows.
 
-    (*
-    Lemma step1_lemma (s0 s1 s2:SmallSMMEs.SMMEs)(r01:Reification s0 s1 (me_i s1))(r12:Reification s1 s2 (me_i s2)) :
-      ∀A : enr_v_mon s0,
-     garrow_fobj' s1 s2 r12 (ehom(ECategory:=s1) (me_i s1) (garrow_fobj s0 s1 r01 A))
-     ≅ garrow_fobj' s0 s2 (compose_reifications s0 s1 s2 r01 r12) A.
-     *)
-
     Lemma step1_lemma (s0 s1 s2:SmallSMMEs.SMMEs)(r01:Reification s0 s1 (me_i s1))(r12:Reification s1 s2 (me_i s2)) :
       (step1_functor s0 s1 r01 >>>>
-        InclusionFunctor (enr_v s1) (FullImage (RepresentableFunctor s1 (me_i s1)))) >>>> step1_functor s1 s2 r12
+        InclusionFunctor (enr_v s1) (FullImage (HomFunctor s1 (me_i s1)))) >>>> step1_functor s1 s2 r12
       ≃ step1_functor s0 s2 (compose_reifications s0 s1 s2 r01 r12).
       admit.
       Defined.
@@ -152,7 +145,7 @@ Section ReificationsIsomorphicToGeneralizedArrows.
         apply if_id.
         unfold mf_f; simpl.
         apply (if_associativity 
-          ((ga_functor g0 >>>> RepresentableFunctor s0 (mon_i s0))) (ga_functor g) (RepresentableFunctor s2 (me_i s2))).
+          ((ga_functor g0 >>>> HomFunctor s0 (mon_i s0))) (ga_functor g) (HomFunctor s2 (me_i s2))).
         Defined.
 
     Definition M2 (c1 c2 : SmallSMMEs.SMMEs) :
@@ -221,20 +214,19 @@ Section ReificationsIsomorphicToGeneralizedArrows.
         apply if_id.
         unfold mf_f; simpl.
         apply (if_respects
-          (F0:=((garrow_functor s1 s0 r >>>> RepresentableFunctor s0 (mon_i s0)) >>>> garrow_functor s0 s2 r0))
+          (F0:=((garrow_functor s1 s0 r >>>> HomFunctor s0 (mon_i s0)) >>>> garrow_functor s0 s2 r0))
           (F1:=(garrow_functor s1 s2 (compose_reifications s1 s0 s2 r r0)))
-          (G0:=(RepresentableFunctor s2 (mon_i s2)))
-          (G1:=(RepresentableFunctor s2 (mon_i s2))));
+          (G0:=(HomFunctor s2 (mon_i s2)))
+          (G1:=(HomFunctor s2 (mon_i s2))));
         [ idtac | apply if_id ].
         eapply if_comp.
         idtac.
-        apply (if_associativity (garrow_functor s1 s0 r) (RepresentableFunctor s0 (mon_i s0)) (garrow_functor s0 s2 r0)).
-        Set Printing Coercions.
+        apply (if_associativity (garrow_functor s1 s0 r) (HomFunctor s0 (mon_i s0)) (garrow_functor s0 s2 r0)).
         idtac.
         unfold garrow_functor at 1.
         unfold step2_functor at 1.
         set (roundtrip_lemma'
-          (RepresentableFunctor (enr_c (smme_e s0)) (me_i (smme_mon s0)))
+          (HomFunctor (enr_c (smme_e s0)) (me_i (smme_mon s0)))
           (ffme_mf_full (smme_mee s0)) (ffme_mf_faithful (smme_mee s0))
           (step1_functor (smme_see s1) (smme_mee s0) r)
         ) as q.
@@ -243,7 +235,6 @@ Section ReificationsIsomorphicToGeneralizedArrows.
           (G1:=garrow_functor (smme_see s0) (smme_mee s2) r0)
           q (if_id _)) as q'.
         apply (if_comp q').
-        Unset Printing Coercions.
         clear q' q.
         unfold garrow_functor at 2.
         unfold garrow_functor at 1.
@@ -268,7 +259,7 @@ Section ReificationsIsomorphicToGeneralizedArrows.
         clear H.
         unfold mf_f in q.
         apply (if_respects(F0:=ga_functor g)(F1:=garrow_functor s1 s2 (reification_from_garrow s1 s2 g))
-          (G0:=RepresentableFunctor s2 (mon_i s2))(G1:=RepresentableFunctor s2 (mon_i s2))).
+          (G0:=HomFunctor s2 (mon_i s2))(G1:=HomFunctor s2 (mon_i s2))).
         apply q.
         apply if_id.
         

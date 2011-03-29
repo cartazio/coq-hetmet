@@ -142,7 +142,7 @@ Lemma strip_twice_lemma x y t : stripOutVars x (stripOutVars y t) = stripOutVars
   rewrite app_comm_cons.
   reflexivity.
 *)
-admit.
+  admit.
   Qed.
 
 Lemma strip_distinct a y : (not (In a (leaves y))) -> stripOutVars (a :: nil) y = y.
@@ -363,21 +363,6 @@ Fixpoint eLetRecTypes {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ
   | ELR_leaf   Γ Δ ξ  lev  v t e => [t]
   | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => (eLetRecTypes b1),,(eLetRecTypes b2)
   end.
-(*
-Fixpoint eLetRecVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??VV :=
-  match elrb with
-  | ELR_nil    Γ Δ ξ lev  => []
-  | ELR_leaf   Γ Δ ξ  lev  v _ _ e => [v]
-  | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => (eLetRecVars b1),,(eLetRecVars b2)
-  end.
-
-Fixpoint eLetRecTypesVars {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(VV * HaskType Γ ★):=
-  match elrb with
-  | ELR_nil    Γ Δ ξ lev  => []
-  | ELR_leaf   Γ Δ ξ  lev  v t _ e => [(v, t)]
-  | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => (eLetRecTypesVars b1),,(eLetRecTypesVars b2)
-  end.
-*)
 
 Lemma stripping_nothing_is_inert
   {Γ:TypeEnv}
@@ -579,7 +564,7 @@ Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v t
   reflexivity.
   Qed.
 
-(* IDEA: use multi-conclusion proofs instead *)
+(* TODO: use multi-conclusion proofs instead *)
 Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ lev tree -> Type := 
   | lrsp_nil  : LetRecSubproofs Γ Δ ξ lev [] (ELR_nil _ _ _ _)
   | lrsp_leaf : forall v t e ,

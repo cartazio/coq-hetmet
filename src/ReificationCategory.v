@@ -26,10 +26,13 @@ Require Import Reification.
 Require Import WeakFunctorCategory.
 Require Import SmallSMMEs.
 
-(* Technically reifications form merely a *semicategory* (no identity
+(*
+ * Technically reifications form merely a *semicategory* (no identity
  * maps), but one can always freely adjoin identity maps (and nothing
  * else) to a semicategory to get a category whose non-identity-map
- * portion is identical to the original semicategory
+ * portion is identical to the original semicategory (closing under
+ * composition after putting in the identity maps never produces any
+ * additional maps)
  *
  * Also, technically this category has ALL enrichments (not just the
  * surjective monic monoidal ones), though there maps OUT OF only the
@@ -67,19 +70,19 @@ Definition compose_reifications (s0 s1 s2:SMMEs) :
      ; reification_r       := fun K => (reification_r X K) >>>> (reification_r X0 (mon_i s1))
     |}.
   intro K.
-  set (ni_associativity (reification_r X K) (reification_r X0 (mon_i s1)) (RepresentableFunctor s2 (mon_i s2))) as q.
+  set (ni_associativity (reification_r X K) (reification_r X0 (mon_i s1)) (HomFunctor s2 (mon_i s2))) as q.
   eapply ni_comp.
   apply q.
   clear q.
   set (reification_commutes X K) as comm1.
   set (reification_commutes X0 (mon_i s1)) as comm2.
-  set (RepresentableFunctor s0 K) as a in *.
+  set (HomFunctor s0 K) as a in *.
   set (reification_rstar_f X) as a' in *.
   set (reification_rstar_f X0) as x in *.
   set (reification_r X K) as b in *.
   set (reification_r X0 (mon_i s1)) as c in *.
-  set (RepresentableFunctor s2 (mon_i s2)) as c' in *.
-  set (RepresentableFunctor s1 (mon_i s1)) as b' in *.
+  set (HomFunctor s2 (mon_i s2)) as c' in *.
+  set (HomFunctor s1 (mon_i s1)) as b' in *.
   apply (ni_comp(F2:=b >>>> (b' >>>> x))).
   apply (@ni_respects _ _ _ _ _ _ _ _ _ _ b _ b _ (c >>>> c') _ (b' >>>> x)).
   apply ni_id.

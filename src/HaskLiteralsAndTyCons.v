@@ -15,16 +15,16 @@ Variable TyCon           : Type.                      Extract Inlined Constant T
 Variable TyFun           : Type.                      Extract Inlined Constant TyFun                => "TyCon.TyCon".
 
 (* Since GHC is written in Haskell, compile-time Haskell constants are represented using Haskell (Prelude) types *)
-Variable HaskInt                 : Type.      Extract Inlined Constant HaskInt             => "Prelude.Int".
-Variable HaskChar                : Type.      Extract Inlined Constant HaskChar            => "Prelude.Char".
-Variable HaskFastString          : Type.      Extract Inlined Constant HaskFastString      => "FastString.FastString".
-Variable HaskInteger             : Type.      Extract Inlined Constant HaskInteger         => "Prelude.Integer".
-Variable HaskRational            : Type.      Extract Inlined Constant HaskRational        => "Prelude.Rational".
+Variable HaskInt         : Type.                      Extract Inlined Constant HaskInt               => "Prelude.Int".
+Variable HaskChar        : Type.                      Extract Inlined Constant HaskChar              => "Prelude.Char".
+Variable HaskFastString  : Type.                      Extract Inlined Constant HaskFastString        => "FastString.FastString".
+Variable HaskInteger     : Type.                      Extract Inlined Constant HaskInteger           => "Prelude.Integer".
+Variable HaskRational    : Type.                      Extract Inlined Constant HaskRational          => "Prelude.Rational".
 
-Variable CoreName            : Type.                      Extract Inlined Constant CoreName              => "Name.Name".
-Variable Class_              : Type.                      Extract Inlined Constant Class_                => "Class.Class".
-Variable CoreIPName          : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
-                                                          Extraction Inline CoreIPName.
+Variable CoreName        : Type.                      Extract Inlined Constant CoreName              => "Name.Name".
+Variable Class_          : Type.                      Extract Inlined Constant Class_                => "Class.Class".
+Variable CoreIPName      : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
+                                                      Extraction Inline CoreIPName.
 
 (* This type extracts exactly onto GHC's Literal.Literal type *)
 Inductive HaskLiteral :=

@@ -12,9 +12,7 @@ Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 
 (*
- * IMPORTANT!!!
- *
- * Unlike most formalizations, this library offers TWO different ways
+ * Unlike most formalizations, this library offers two different ways
  * to represent a natural deduction proof.  To demonstrate this,
  * consider the signature of the propositional calculus:
  *
@@ -82,6 +80,22 @@ Require Import Coq.Strings.String.
  *    (NaturalDeduction.v) and are designed specifically in order to
  *    circumvent the problem in the previous paragraph.
  *
+ *    These proofs are actually structurally explicit on (potentially)
+ *    two different levels.  The beginning of this file formalizes
+ *    natural deduction proofs with explicit structural operations for
+ *    manipulating lists of judgments – for example, the open
+ *    hypotheses of an incomplete proof.  The class
+ *    TreeStructuralRules further down in the file instantiates ND
+ *    such that Judgments is actually a pair of trees of propositions,
+ *    and there will be a whole *other* set of rules for manipulating
+ *    the structure of a tree of propositions *within* a single
+ *    judgment.
+ *
+ *    The flattening functor ends up mapping the first kind of
+ *    structural operation (moving around judgments) onto the second
+ *    kind (moving around propositions/types).  That's why everything
+ *    is so laboriously explicit - there's important information in
+ *    those structural operations.
  *)
 
 (*
@@ -116,8 +130,10 @@ Section Natural_Deduction.
       forall conclusions:Tree ??Judgment,
         Type :=
 
-    (* natural deduction: you may infer anything from itself -- "identity proof" *)
+    (* natural deduction: you may infer nothing from nothing *)
     | nd_id0    :             [   ] /⋯⋯/ [   ]
+
+    (* natural deduction: you may infer anything from itself -- "identity proof" *)
     | nd_id1    : forall  h,  [ h ] /⋯⋯/ [ h ]
   
     (* natural deduction: you may discard conclusions *)
@@ -139,7 +155,9 @@ Section Natural_Deduction.
       `(pf2: x /⋯⋯/ c),
        (     h /⋯⋯/ c)
   
-    (* structural rules on lists of judgments *)
+    (* Structural rules on lists of judgments - note that this is completely separate from the structural
+     * rules for *contexts* within a sequent.  The rules below manipulate lists of *judgments* rather than
+     * lists of *propositions*. *)
     | nd_cancell : forall {a},       [] ,, a /⋯⋯/ a
     | nd_cancelr : forall {a},       a ,, [] /⋯⋯/ a
     | nd_llecnac : forall {a},             a /⋯⋯/ [] ,, a
@@ -238,10 +256,10 @@ Section Natural_Deduction.
   }.
 
   (* 
-   * Single-conclusion proofs; this is an alternate representation
-   * where each inference has only a single conclusion.  These have
-   * worse compositionality properties than ND's (they don't form a
-   * category), but are easier to emit as LaTeX code.
+   * Natural Deduction proofs which are Structurally Implicit on the
+   * level of judgments.  These proofs have poor compositionality
+   * properties (vertically, they look more like lists than trees) but
+   * are easier to do induction over.
    *)
   Inductive SCND : Tree ??Judgment -> Tree ??Judgment -> Type :=
   | scnd_weak   : forall c       , SCND c  []
@@ -292,8 +310,8 @@ Section Natural_Deduction.
       | scnd_weak   c                 => let case_weak := tt in _
       | scnd_comp  ht ct c pn' rule   => let case_comp := tt in let qq := closedFromPnodes _ _ pn' in _
       | scnd_branch ht c1 c2 pn' pn'' => let case_branch := tt in
-                                        let q1 := closedFromPnodes _ _ pn' in 
-                                        let q2 := closedFromPnodes _ _ pn'' in _
+                                         let q1 := closedFromPnodes _ _ pn' in 
+                                         let q2 := closedFromPnodes _ _ pn'' in _
 
     end (refl_equal _) (refl_equal _))) h c pn2 cnd).
 
@@ -325,6 +343,7 @@ Section Natural_Deduction.
   | cnd_branch c1 c2 cnd1 cnd2 => nd_llecnac ;; nd_prod (closedNDtoNormalND cnd1) (closedNDtoNormalND cnd2)
   end.
 
+  (* Natural Deduction systems whose judgments happen to be pairs of the same type *)
   Section Sequents.
     Context {S:Type}.   (* type of sequent components *)
     Context {sequent:S->S->Judgment}.
@@ -332,10 +351,12 @@ Section Natural_Deduction.
     Notation "a |= b" := (sequent a b).
     Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
+    (* Sequent systems with initial sequents *)
     Class SequentCalculus :=
     { nd_seq_reflexive : forall a, ND [ ] [ a |= a ]
     }.
-    
+
+    (* Sequent systems with a cut rule *)
     Class CutRule (nd_cutrule_seq:SequentCalculus) :=
     { nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
     ; nd_cut_left_identity  : forall a b, ((    (nd_seq_reflexive a)**(nd_id _));; nd_cut _ _ b) === nd_cancell
@@ -345,14 +366,16 @@ Section Natural_Deduction.
     }.
 
   End Sequents.
-(*Implicit Arguments SequentCalculus [ S ]*)
-(*Implicit Arguments CutRule [ S ]*)
+
+  (* Sequent systems in which each side of the sequent is a tree of something *)
   Section SequentsOfTrees.
     Context {T:Type}{sequent:Tree ??T -> Tree ??T -> Judgment}.
     Context (ndr:ND_Relation).
     Notation "a |= b" := (sequent a b).
     Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
+    (* Sequent systems in which we can re-arrange the tree to the left of the turnstile - note that these rules
+     * mirror nd_{cancell,cancelr,rlecnac,llecnac,assoc,cossa} but are completely separate from them *)
     Class TreeStructuralRules :=
     { tsr_ant_assoc     : forall {x a b c}, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
     ; tsr_ant_cossa     : forall {x a b c}, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
@@ -364,6 +387,7 @@ Section Natural_Deduction.
 
     Notation "[# a #]"  := (nd_rule a)               : nd_scope.
 
+    (* Sequent systems in which we can add any proposition to both sides of the sequent (sort of a "horizontal weakening") *)
     Context `{se_cut : @CutRule _ sequent ndr sc}.
     Class SequentExpansion :=
     { se_expand_left     : forall tau {Gamma Sigma}, ND [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
@@ -539,7 +563,7 @@ Inductive nd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall
   | nd_property_rule            : forall h c r, P h c r -> @nd_property _ _ P h c (nd_rule r).
   Hint Constructors nd_property.
 
-(* witnesses the fact that every Rule in a particular proof satisfies the given predicate *)
+(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for ClosedND) *)
 Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {c}, @ClosedND Judgment Rule c -> Prop :=
 | cnd_property_weak            : @cnd_property _ _ P _ cnd_weak
 | cnd_property_rule            : forall h c r cnd',
@@ -552,6 +576,7 @@ Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : foral
   @cnd_property _ _ P c2 cnd2 ->
   @cnd_property _ _ P _  (cnd_branch _ _ cnd1 cnd2).
 
+(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for SCND) *)
 Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {h c}, @SCND Judgment Rule h c -> Prop :=
 | scnd_property_weak            : forall c, @scnd_property _ _ P _ _ (scnd_weak c)
 | scnd_property_comp            : forall h x c r cnd',
@@ -563,6 +588,85 @@ Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : fora
   @scnd_property _ _ P x c1 cnd1 ->
   @scnd_property _ _ P x c2 cnd2 ->
   @scnd_property _ _ P x _  (scnd_branch _ _ _ cnd1 cnd2).
+
+(* renders a proof as LaTeX code *)
+Section ToLatex.
+
+  Context {Judgment : Type}.
+  Context {Rule     : forall (hypotheses:Tree ??Judgment)(conclusion:Tree ??Judgment), Type}.
+  Context {JudgmentToLatexMath : ToLatexMath Judgment}.
+  Context {RuleToLatexMath     : forall h c, ToLatexMath (Rule h c)}.
+  
+  Open Scope string_scope.
+
+  Definition judgments2latex (j:Tree ??Judgment) := treeToLatexMath (mapOptionTree toLatexMath j).
+
+  Definition eolL : LatexMath := rawLatexMath eol.
+
+  (* invariant: each proof shall emit its hypotheses visibly, except nd_id0 *)
+  Section SCND_toLatex.
+
+    (* indicates which rules should be hidden (omitted) from the rendered proof; useful for structural operations *)
+    Context (hideRule : forall h c (r:Rule h c), bool).
+
+    Fixpoint SCND_toLatexMath {h}{c}(pns:SCND(Rule:=Rule) h c) : LatexMath :=
+      match pns with
+        | scnd_branch ht c1 c2 pns1 pns2 => SCND_toLatexMath pns1 +++ rawLatexMath " \hspace{1cm} " +++ SCND_toLatexMath pns2
+        | scnd_weak     c                => rawLatexMath ""
+        | scnd_comp ht ct c pns rule     => if hideRule _ _ rule
+                                            then SCND_toLatexMath pns
+                                            else rawLatexMath "\trfrac["+++ toLatexMath rule +++ rawLatexMath "]{" +++ eolL +++
+                                              SCND_toLatexMath pns +++ rawLatexMath "}{" +++ eolL +++
+                                              toLatexMath c +++ rawLatexMath "}" +++ eolL
+      end.
+  End SCND_toLatex.
+
+  (* this is a work-in-progress; please use SCND_toLatexMath for now *)
+  Fixpoint nd_toLatexMath {h}{c}(nd:@ND _ Rule h c)(indent:string) :=
+    match nd with
+      | nd_id0                      => rawLatexMath indent +++
+                                       rawLatexMath "% nd_id0 " +++ eolL
+      | nd_id1  h'                  => rawLatexMath indent +++
+                                       rawLatexMath "% nd_id1 "+++ judgments2latex h +++ eolL
+      | nd_weak h'                  => rawLatexMath indent +++
+                                       rawLatexMath "\inferrule*[Left=ndWeak]{" +++ toLatexMath h' +++ rawLatexMath "}{ }" +++ eolL
+      | nd_copy h'                  => rawLatexMath indent +++
+                                       rawLatexMath "\inferrule*[Left=ndCopy]{"+++judgments2latex h+++
+                                                         rawLatexMath "}{"+++judgments2latex c+++rawLatexMath "}" +++ eolL
+      | nd_prod h1 h2 c1 c2 pf1 pf2 => rawLatexMath indent +++
+                                       rawLatexMath "% prod " +++ eolL +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath "\begin{array}{c c}" +++ eolL +++
+                                       (nd_toLatexMath pf1 ("  "+++indent)) +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath " & " +++ eolL +++
+                                       (nd_toLatexMath pf2 ("  "+++indent)) +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath "\end{array}"
+      | nd_comp h  m     c  pf1 pf2 => rawLatexMath indent +++
+                                       rawLatexMath "% comp " +++ eolL +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath "\begin{array}{c}" +++ eolL +++
+                                       (nd_toLatexMath pf1 ("  "+++indent)) +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath " \\ " +++ eolL +++
+                                       (nd_toLatexMath pf2 ("  "+++indent)) +++
+                                       rawLatexMath indent +++
+                                       rawLatexMath "\end{array}"
+      | nd_cancell a                => rawLatexMath indent +++
+                                       rawLatexMath "% nd-cancell " +++ (judgments2latex a) +++ eolL
+      | nd_cancelr a                => rawLatexMath indent +++
+                                       rawLatexMath "% nd-cancelr " +++ (judgments2latex a) +++ eolL
+      | nd_llecnac a                => rawLatexMath indent +++
+                                       rawLatexMath "% nd-llecnac " +++ (judgments2latex a) +++ eolL
+      | nd_rlecnac a                => rawLatexMath indent +++
+                                       rawLatexMath "% nd-rlecnac " +++ (judgments2latex a) +++ eolL
+      | nd_assoc   a b c            => rawLatexMath ""
+      | nd_cossa   a b c            => rawLatexMath ""
+      | nd_rule    h c r            => toLatexMath r
+    end.
+
+End ToLatex.
 
 Close Scope pf_scope.
 Close Scope nd_scope.

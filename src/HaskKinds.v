@@ -12,7 +12,6 @@ Variable Note                : Type.                         Extract Inlined Con
 Variable natToString         : nat         -> string.        Extract Inlined Constant natToString => "natToString".
 Instance NatToStringInstance : ToString nat := { toString := natToString }.
 
-(* Figure 7: production κ, ι *)
 Inductive Kind : Type := 
   | KindStar          : Kind                      (* ★  - the kind of coercions and the kind of types inhabited by [boxed] values *)
   | KindArrow         : Kind  -> Kind  -> Kind    (* ⇛  - type-function-space; things of kind X⇛Y are NOT inhabited by expressions*)

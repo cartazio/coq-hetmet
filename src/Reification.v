@@ -1,8 +1,8 @@
 (*********************************************************************************************************************************)
 (* Reification:                                                                                                                  *)
 (*                                                                                                                               *)
-(*   A reification is a functor R from one enrichING category A to another enrichING category B which forms a commuting square   *)
-(*   with every pair of hom-functors Hom(X,-):a->A and Hom(Y,-):b->B up to natural isomorphism.                                  *)
+(*   A reification is a functor R from one enrichING category A to another enrichING category B which, for every X, forms        *)
+(*   a commuting square with Hom(X,-):a->A and Hom(I,-):b->B (up to natural isomorphism).                                        *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -23,7 +23,7 @@ Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 
-Opaque RepresentableFunctor.
+Opaque HomFunctor.
 Opaque functor_comp.
 Structure Reification (K:Enrichment) (C:Enrichment) (CI:C) :=
 { reification_r_obj     : K -> K -> C
@@ -31,9 +31,9 @@ Structure Reification (K:Enrichment) (C:Enrichment) (CI:C) :=
 ; reification_r         : forall k:K, Functor K C (reification_r_obj k)
 ; reification_rstar_f   :             Functor (enr_v K) (enr_v C) reification_rstar_obj
 ; reification_rstar     :             MonoidalFunctor (enr_v_mon K) (enr_v_mon C) reification_rstar_f
-; reification_commutes : ∀ k, reification_r k >>>> RepresentableFunctor C CI <~~~> RepresentableFunctor K k >>>> reification_rstar_f
+; reification_commutes : ∀ k, reification_r k >>>> HomFunctor C CI <~~~> HomFunctor K k >>>> reification_rstar_f
 }.
-Transparent RepresentableFunctor.
+Transparent HomFunctor.
 Transparent functor_comp.
 
 Coercion reification_rstar : Reification >-> MonoidalFunctor.
