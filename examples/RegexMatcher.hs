@@ -110,13 +110,12 @@ staged_accept (Times e1 e2) emptyOk k    =
 staged_accept (Star e) emptyOk' k  =
    loop emptyOk'
     where
-    -- loop :: Bool -> <[s -> Bool]>@g
+     -- Note that the type of "loop" is NOT (forall c s. <[s -> Bool]>@c)
+     -- because "k" is free here; this restrictionis analogous to the free
+     -- environment variable in Nanevski's example.  
      loop emptyOk = if emptyOk
                     then <[ \s -> ~~k s || ~~(staged_accept e True  (loop False)) s ]>
                     else <[ \s ->          ~~(staged_accept e False (loop False)) s ]>
-    -- note that loop is not (forall c s. <[s -> Bool]>@c)
-    -- because "k" is free in loop; it is analogous to the free
-    -- environment variable in Nanevski's example
 
 staged_accept (Const c) emptyOk k  =
     <[ \s -> if gs_empty s 
