@@ -13,7 +13,6 @@ Require Import Preamble.
 Require Import General.
 
 Require Import NaturalDeduction.
-Require Import NaturalDeductionToLatex.
 
 Require Import HaskKinds.
 Require Import HaskLiteralsAndTyCons.
