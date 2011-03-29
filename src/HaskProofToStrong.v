@@ -25,12 +25,6 @@ Section HaskProofToStrong.
 
   Definition ExprVarResolver Γ := VV -> LeveledHaskType Γ ★.
 
-  Definition ujudg2exprType {Γ}{Δ}(ξ:ExprVarResolver Γ)(j:UJudg Γ Δ) : Type :=
-    match j with
-      mkUJudg Σ τ => forall vars, Σ = mapOptionTree ξ vars ->
-        FreshM (ITree _ (fun t => Expr Γ Δ ξ t) τ)
-      end.
-
   Definition judg2exprType (j:Judg) : Type :=
     match j with
       (Γ > Δ > Σ |- τ) => forall (ξ:ExprVarResolver Γ) vars, Σ = mapOptionTree ξ vars ->
@@ -228,16 +222,21 @@ Section HaskProofToStrong.
       inversion pf2.
     Defined.
 
+  Definition ujudg2exprType Γ (ξ:ExprVarResolver Γ)(Δ:CoercionEnv Γ) Σ τ : Type :=
+    forall vars, Σ = mapOptionTree ξ vars -> FreshM (ITree _ (fun t => Expr Γ Δ ξ t) τ).
+
   Definition urule2expr  : forall Γ Δ h j t (r:@Arrange _ h j) (ξ:VV -> LeveledHaskType Γ ★),
-    ujudg2exprType ξ (Γ >> Δ > h |- t) ->
-    ujudg2exprType ξ (Γ >> Δ > j |- t)
+    ujudg2exprType Γ ξ Δ h t ->
+    ujudg2exprType Γ ξ Δ j t
     .
     intros Γ Δ.
       refine (fix urule2expr h j t (r:@Arrange _ h j) ξ {struct r} : 
-        ujudg2exprType ξ (Γ >> Δ > h |- t) ->
-        ujudg2exprType ξ (Γ >> Δ > j |- t) :=
-        match r as R in Arrange H C return ujudg2exprType ξ (Γ >> Δ > H |- t) ->
-        ujudg2exprType ξ (Γ >> Δ > C |- t) with
+    ujudg2exprType Γ ξ Δ h t ->
+    ujudg2exprType Γ ξ Δ j t :=
+        match r as R in Arrange H C return
+    ujudg2exprType Γ ξ Δ H t ->
+    ujudg2exprType Γ ξ Δ C t
+ with
           | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ r)
           | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ r)
           | RCanL   a       => let case_RCanL  := tt in _
@@ -253,31 +252,31 @@ Section HaskProofToStrong.
           end); clear urule2expr; intros.
 
       destruct case_RCanL.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X ([],,vars)).
         simpl; rewrite <- H; auto.
 
       destruct case_RCanR.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X (vars,,[])).
         simpl; rewrite <- H; auto.
 
       destruct case_RuCanL.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         destruct vars; try destruct o; inversion H.
         simpl in X.
         apply (X vars2); auto.
 
       destruct case_RuCanR.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         destruct vars; try destruct o; inversion H.
         simpl in X.
         apply (X vars1); auto.
 
       destruct case_RAssoc.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
         destruct vars1; try destruct o; inversion H.
@@ -285,7 +284,7 @@ Section HaskProofToStrong.
         subst; auto.
 
       destruct case_RCossa.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
         destruct vars2; try destruct o; inversion H.
@@ -293,20 +292,20 @@ Section HaskProofToStrong.
         subst; auto.
 
       destruct case_RExch.
-        simpl; intros.
+        simpl; unfold ujudg2exprType ; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
         apply (X (vars2,,vars1)).
         inversion H; subst; auto.
         
       destruct case_RWeak.
-        simpl; intros.
+        simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X []).
         auto.
         
       destruct case_RCont.
-        simpl; intros.
+        simpl; unfold ujudg2exprType ; intros.
         simpl in X.
         apply (X (vars,,vars)).
         simpl.
@@ -314,12 +313,13 @@ Section HaskProofToStrong.
         auto.
 
       destruct case_RLeft.
-        intro vars; intro H.
+        intro vars; unfold ujudg2exprType; intro H.
         destruct vars; try destruct o; inversion H.
         apply (fun q => e ξ q vars2 H2).
         clear r0 e H2.
           simpl in X.
           simpl.
+          unfold ujudg2exprType.
           intros.
           apply X with (vars:=vars1,,vars).
           rewrite H0.
@@ -328,12 +328,13 @@ Section HaskProofToStrong.
           reflexivity.
 
       destruct case_RRight.
-        intro vars; intro H.
+        intro vars; unfold ujudg2exprType; intro H.
         destruct vars; try destruct o; inversion H.
         apply (fun q => e ξ q vars1 H1).
         clear r0 e H2.
           simpl in X.
           simpl.
+          unfold ujudg2exprType.
           intros.
           apply X with (vars:=vars,,vars2).
           rewrite H0.
@@ -534,6 +535,7 @@ Section HaskProofToStrong.
       simpl in q'.
       apply q' with (vars:=vars).
       clear q' q.
+      unfold ujudg2exprType.
       intros.
       apply X_ with (vars:=vars0).
       auto.
@@ -645,10 +647,11 @@ Section HaskProofToStrong.
     apply ileaf in X.
     apply ileaf in X0.
     simpl in *.
-    refine (X0 ξ  vars2 _ >>>= fun X0' => _).
+    refine (X ξ  vars2 _ >>>= fun X0' => _).
     apply FreshMon.
     auto.
-    refine (X  ξ' (vars1,,[vnew]) _ >>>= fun X1' => _).
+
+    refine (X0 ξ' (vars1,,[vnew]) _ >>>= fun X1' => _).
     apply FreshMon.
     rewrite H1.
     simpl.
@@ -656,6 +659,7 @@ Section HaskProofToStrong.
     rewrite pf1.
     rewrite H1.
     reflexivity.
+
     refine (return _).
     apply ILeaf.
     apply ileaf in X0'.

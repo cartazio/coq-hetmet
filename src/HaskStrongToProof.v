@@ -826,10 +826,11 @@ Definition expr2proof  :
     destruct case_ELet; intros; simpl in *.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
-      apply nd_prod; [ idtac | apply pf_let].
-      clear pf_let.
-      eapply nd_comp; [ apply pf_body | idtac ].
-      clear pf_body.
+      apply nd_prod.
+        apply pf_let.
+        clear pf_let.
+        eapply nd_comp; [ apply pf_body | idtac ].
+        clear pf_body.
       fold (@mapOptionTree VV).
       fold (mapOptionTree ξ).
       set (update_ξ ξ v ((lev,tv)::nil)) as ξ'.
