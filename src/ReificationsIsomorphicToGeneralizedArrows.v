@@ -30,15 +30,9 @@ Require Import GeneralizedArrowCategory.
 Require Import ReificationCategory.
 Require Import ReificationsAndGeneralizedArrows.
 Require Import WeakFunctorCategory.
+Require Import BijectionLemma.
 
 Section ReificationsIsomorphicToGeneralizedArrows.
-
-    Lemma step1_lemma (s0 s1 s2:SmallSMMEs.SMMEs)(r01:Reification s0 s1 (me_i s1))(r12:Reification s1 s2 (me_i s2)) :
-      (step1_functor s0 s1 r01 >>>>
-        InclusionFunctor (enr_v s1) (FullImage (HomFunctor s1 (me_i s1)))) >>>> step1_functor s1 s2 r12
-      ≃ step1_functor s0 s2 (compose_reifications s0 s1 s2 r01 r12).
-      admit.
-      Defined.
 
     Definition M1 {c1 c2 : SmallSMMEs.SMMEs} :
       (c1 ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> c2) ->
@@ -157,6 +151,44 @@ Section ReificationsIsomorphicToGeneralizedArrows.
       apply (garrow_from_reification s1 s2 r).
       Defined.
 
+    Lemma eqv1 a b (f : a ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> b)
+      (f' : a ~~{ MorphismsOfCategoryOfGeneralizedArrows }~~> b)
+      (H : generalizedArrowOrIdentityFunc a b f ≃ generalizedArrowOrIdentityFunc a b f') :
+      generalizedArrowOrIdentityFunc a b (M2 a b (M1 f)) ≃ generalizedArrowOrIdentityFunc a b f'.
+        unfold hom in *.
+        set (@roundtrip_garrow_to_garrow _ a _ _ b) as q.
+        destruct f; simpl in *.
+        apply H.
+        apply if_inv.
+        apply (if_comp (if_inv H)).
+        clear H.
+        unfold mf_f in q.
+        apply (if_respects(F0:=ga_functor g)(F1:=garrow_functor s1 s2 (reification_from_garrow s1 s2 g))
+          (G0:=HomFunctor s2 (mon_i s2))(G1:=HomFunctor s2 (mon_i s2))).
+        apply q.
+        apply if_id.
+      Qed.
+
+
+    Lemma eqv2 a b (f : a ~~{ MorphismsOfCategoryOfReifications }~~> b)
+      (f' : a ~~{ MorphismsOfCategoryOfReifications }~~> b)
+      (H : reificationOrIdentityFunc a b f ≃ reificationOrIdentityFunc a b f') :
+      reificationOrIdentityFunc _ _ (M1 (M2 _ _ f)) ≃ reificationOrIdentityFunc _ _ f'.
+        unfold hom in *.
+        set (@roundtrip_reification_to_reification _ a _ _ b) as q.
+        destruct f; simpl.
+        apply H.
+        apply if_inv.
+        apply (if_comp (if_inv H)).
+        clear H.
+        simpl.
+        unfold mf_f; simpl.
+        simpl in q.
+        unfold mf_f in q.
+        simpl in q.
+        apply q.
+      Qed.
+
     Lemma M2_respects :
       forall a b (f f':a~~{MorphismsOfCategoryOfReifications}~~>b),
          f ~~ f' ->
@@ -194,89 +226,32 @@ Section ReificationsIsomorphicToGeneralizedArrows.
         unfold garrow_functor.
         unfold step2_functor.
         apply if_inv in H.
-        set (if_comp H (@step1_niso _ s1 _ _ s2 r)) as yy.
-        set (if_comp (if_inv (@step1_niso _ s1 _ _ s2 r0)) yy) as yy'.
         apply (if_comp (@roundtrip_lemma _ s1 _ _ s2 r)).
         apply if_inv.
         apply (if_comp (@roundtrip_lemma _ s1 _ _ s2 r0)).
-        apply yy'.
+        apply (if_comp (if_inv (@step1_niso _ s1 _ _ s2 r0)) (if_comp H (@step1_niso _ s1 _ _ s2 r))).
         Qed.
 
     Definition M2_Functor : Functor MorphismsOfCategoryOfReifications MorphismsOfCategoryOfGeneralizedArrows (fun x => x).
       refine {| fmor := fun a b f => M2 _ _ f |}.
       apply M2_respects.
       intros; simpl; apply if_id.
-      intros.
-        simpl.
-        destruct f; simpl.
-        apply if_id.
-        destruct g; simpl.
-        apply if_id.
-        unfold mf_f; simpl.
-        apply (if_respects
-          (F0:=((garrow_functor s1 s0 r >>>> HomFunctor s0 (mon_i s0)) >>>> garrow_functor s0 s2 r0))
-          (F1:=(garrow_functor s1 s2 (compose_reifications s1 s0 s2 r r0)))
-          (G0:=(HomFunctor s2 (mon_i s2)))
-          (G1:=(HomFunctor s2 (mon_i s2))));
-        [ idtac | apply if_id ].
-        eapply if_comp.
-        idtac.
-        apply (if_associativity (garrow_functor s1 s0 r) (HomFunctor s0 (mon_i s0)) (garrow_functor s0 s2 r0)).
-        idtac.
-        unfold garrow_functor at 1.
-        unfold step2_functor at 1.
-        set (roundtrip_lemma'
-          (HomFunctor (enr_c (smme_e s0)) (me_i (smme_mon s0)))
-          (ffme_mf_full (smme_mee s0)) (ffme_mf_faithful (smme_mee s0))
-          (step1_functor (smme_see s1) (smme_mee s0) r)
-        ) as q.
-        set (if_respects
-          (G0:=garrow_functor (smme_see s0) (smme_mee s2) r0)
-          (G1:=garrow_functor (smme_see s0) (smme_mee s2) r0)
-          q (if_id _)) as q'.
-        apply (if_comp q').
-        clear q' q.
-        unfold garrow_functor at 2.
-        unfold garrow_functor at 1.
-        eapply if_comp.
-        eapply if_inv.
-        apply (if_associativity _ (step1_functor s0 s2 r0) (step2_functor s2)).
-        apply (if_respects
-          (G0:=step2_functor s2)
-          (G1:=step2_functor s2)); [ idtac | apply if_id ].
-        apply step1_lemma.
-        Defined.
+      intros; apply (@bijection_lemma _ _ _ _ _ M1_Functor M2); intros.
+      apply M2_respects; auto.
+      unfold fmor; simpl.
+      apply (@eqv1 _ _ f0 f0).
+      apply if_id.
+      unfold fmor; simpl.
+      apply (@eqv2 _ _ f0 f0).
+      apply if_id.
+      Defined.
 
     Theorem ReificationsAreGArrows : IsomorphicCategories CategoryOfGeneralizedArrows CategoryOfReifications.
       refine {| ic_f := M1_Functor ; ic_g := M2_Functor |}.
       unfold EqualFunctors; intros; apply heq_morphisms_intro; unfold eqv in *; simpl in *.
-        unfold hom in *.
-        set (@roundtrip_garrow_to_garrow _ a _ _ b) as q.
-        destruct f; simpl in *.
-        apply H.
-        apply if_inv.
-        apply (if_comp (if_inv H)).
-        clear H.
-        unfold mf_f in q.
-        apply (if_respects(F0:=ga_functor g)(F1:=garrow_functor s1 s2 (reification_from_garrow s1 s2 g))
-          (G0:=HomFunctor s2 (mon_i s2))(G1:=HomFunctor s2 (mon_i s2))).
-        apply q.
-        apply if_id.
-        
+      apply (eqv1 _ _ f f'); auto.
       unfold EqualFunctors; intros; apply heq_morphisms_intro; unfold eqv in *; simpl in *.
-        unfold hom in *.
-        set (@roundtrip_reification_to_reification _ a _ _ b) as q.
-        destruct f; simpl.
-        apply H.
-        apply if_inv.
-        apply (if_comp (if_inv H)).
-        clear H.
-        simpl.
-        unfold mf_f; simpl.
-        simpl in q.
-        unfold mf_f in q.
-        simpl in q.
-        apply q.
-        Qed.
+      apply (eqv2 _ _ f f'); auto.
+      Qed.
 
 End ReificationsIsomorphicToGeneralizedArrows.
