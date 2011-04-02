@@ -24,7 +24,7 @@ build/Makefile.coq: $(coqfiles) src/categories/src
 
 src/categories/src:
 	git submodule update --init src/categories
-	cd compiler/categories; git checkout master
+	cd src/categories; git checkout master
 
 clean:
 	rm -rf build
