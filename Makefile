@@ -6,7 +6,11 @@ default: build/CoqPass.hs
 
 build/CoqPass.hs: $(allfiles)
 	make build/Makefile.coq
-	cd build; make -f Makefile.coq OPT="-opt -dont-load-proofs" ExtractionMain.vo
+	cd build; make -f Makefile.coq OPT="-opt -dont-load-proofs" \
+	  ExtractionMain.vo \
+	  ProgrammingLanguageGeneralizedArrow.vo \
+	  ProgrammingLanguageArrow.vo \
+	  ProgrammingLanguageFlattening.vo
 	cd build; make -f Makefile.coq Extraction.vo
 	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
 	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
