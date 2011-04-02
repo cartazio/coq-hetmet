@@ -29,34 +29,20 @@ Require Import NaturalDeductionCategory.
 
 Require Import FreydCategories.
 
+Require Import Reification.
+Require Import GeneralizedArrow.
 Require Import GeneralizedArrowFromReification.
-Section GArrowInLanguage.
+Require Import ProgrammingLanguage.
 
-  Definition GeneralizedArrowInLanguage (Guest:ProgrammingLanguageSMME) (Host :ProgrammingLanguageSMME)
+Require Import ReificationsAndGeneralizedArrows.
+Require Import ReificationFromGeneralizedArrow.
+
+Section ProgrammingLanguageGeneralizedArrow.
+
+  Context (Guest:ProgrammingLanguageSMME) (Host :ProgrammingLanguageSMME).
+
+  Definition GeneralizedArrowInLanguage 
     := GeneralizedArrow Guest Host.
 
-  Definition ArrowsAreGeneralizedArrows (Host:ProgrammingLanguageSMME)
-    {mf}{mn}{cc}{kehom}{CC}
-    (arrow:ArrowInProgrammingLanguage Host _ _ CC mf mn cc kehom) :  GeneralizedArrowInLanguage.
+End ProgrammingLanguageGeneralizedArrow.
 
-  Definition TwoLevelLanguage := Reification Guest Host (me_i Host).
-
-  Context (GuestHost:TwoLevelLanguage).
-
-  Definition FlatObject (x:TypesL _ _ Host) :=
-    forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
-
-  Definition FlatSubCategory := FullSubcategory (TypesL _ _ Host) FlatObject.
-
-  Section Flattening.
-
-    Context  (F:Retraction (TypesL _ _ Host) FlatSubCategory).
-    Definition FlatteningOfReification := garrow_from_reification Guest Host GuestHost >>>> F.
-    Lemma FlatteningIsNotDestructive : 
-      FlatteningOfReification >>>> retraction_retraction F >>>> HomFunctor _ (me_i Host) ~~~~ GuestHost.
-      admit.
-      Qed.
-
-  End Flattening.
-
-End GArrowInLanguage.

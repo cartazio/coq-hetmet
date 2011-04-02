@@ -29,6 +29,9 @@ Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import ProgrammingLanguage.
 
+Definition TwoLevelLanguage (Guest Host:ProgrammingLanguageSMME)
+  := Reification Guest Host (me_i Host).
+
 Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
 | NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
 | NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
@@ -37,3 +40,4 @@ Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
 Definition OmegaLevelLanguage : Type :=
   { f : nat -> ProgrammingLanguageSMME
   & forall n, TwoLevelLanguage (f n) (f (S n)) }.
+
