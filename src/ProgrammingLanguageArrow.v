@@ -122,7 +122,7 @@ Section ArrowInLanguage.
   (* an Arrow In A Programming Language consists of... *)
 
   (* a host language: *)
-  Context (Host:ProgrammingLanguageSMME).
+  Context `(Host:ProgrammingLanguage).
 
   (* ... for which Types(L) is cartesian: *)
   Context {MF}(center_of_TypesL:MonoidalCat (TypesL _ _ Host) (fun x => (fst_obj _ _ x),,(snd_obj _ _ x)) MF []).
@@ -131,13 +131,20 @@ Section ArrowInLanguage.
   Context (VK:MonoidalSubCat center_of_TypesL).
 
   (* a premonoidal category enriched in aforementioned full subcategory *)
-  Context {Kehom:center_of_TypesL -> center_of_TypesL -> VK}.
+  Context (Kehom:center_of_TypesL -> center_of_TypesL -> @ob _ _ VK).
+Check (@ECategory).
+  Context (KE:@ECategory (@ob _ _ VK) (@hom _ _ VK) VK _ VK (mon_i (full_subcat_is_monoidal VK)) (full_subcat_is_monoidal VK) center_of_TypesL Kehom).
 
-  Context {KE:@ECategory _ _ VK _ _ _ VK center_of_TypesL Kehom}.
+Check (Underlying KE).
 
+  Context {kbo:center_of_TypesL -> center_of_TypesL -> center_of_TypesL}.
+
+  Context (kbc:@BinoidalCat center_of_TypesL _ (Underlying KE) kbo).
+
+  Check (@PreMonoidalCat)
+  Definition one' := @one _ _ _ (car_terminal(CartesianCat:=CC))
+  Context (K:@PreMonoidalCat _ _ KE kbo kbc ).
   Context (CC:CartesianCat center_of_TypesL).
-
-  Context {kbo}{kbc}(K:@PreMonoidalCat _ _ KE kbo kbc (@one _ _ _ (car_terminal(CartesianCat:=CC)))).
 
   (*
   Definition K_enrichment : Enrichment.
@@ -145,6 +152,7 @@ Section ArrowInLanguage.
     Defined.
   Context (K_surjective:SurjectiveEnrichment K_enrichment).
     *)
+Check (@FreydCategory).
 
   Definition ArrowInProgrammingLanguage :=
     @FreydCategory _ _ _ _ _ _ center_of_TypesL _ _ _ _ K.

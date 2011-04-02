@@ -20,9 +20,11 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
-Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import InitialTerminal_ch2_2.
+Require Import BinoidalCategories.
+Require Import PreMonoidalCategories.
+Require Import MonoidalCategories_ch7_8.
 
 Open Scope nd_scope.
 Open Scope pf_scope.
