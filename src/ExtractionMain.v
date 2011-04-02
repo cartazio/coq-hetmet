@@ -35,8 +35,9 @@ Require Import HaskProofToStrong.
 
 Require Import ProgrammingLanguage.
 
-Require Import HaskProofStratified.
 Require Import HaskProofFlattener.
+Require Import HaskProofStratified.
+Require Import HaskProofCategory.
 
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 
@@ -107,20 +108,19 @@ Section core2proof.
 
 
   Definition header : string :=
-    "\documentclass[9pt]{article}"+++eol+++
+    "\documentclass{article}"+++eol+++
     "\usepackage{amsmath}"+++eol+++
     "\usepackage{amssymb}"+++eol+++
     "\usepackage{proof}"+++eol+++
-    "\usepackage{mathpartir}   % http://cristal.inria.fr/~remy/latex/"+++eol+++
+(*    "\usepackage{mathpartir}   % http://cristal.inria.fr/~remy/latex/"+++eol+++*)
     "\usepackage{trfrac}       % http://www.utdallas.edu/~hamlen/trfrac.sty"+++eol+++
     "\def\code#1#2{\Box_{#1} #2}"+++eol+++
-    "\usepackage[paperwidth=200in,centering]{geometry}"+++eol+++
-    "\usepackage[displaymath,tightpage,active]{preview}"+++eol+++
+    "\usepackage[paperwidth=\maxdimen,paperheight=\maxdimen]{geometry}"+++eol+++
+    "\usepackage[tightpage,active]{preview}"+++eol+++
     "\begin{document}"+++eol+++
-    "\begin{preview}"+++eol.
+    "\setlength\PreviewBorder{5pt}"+++eol+++.
 
   Definition footer : string :=
-    eol+++"\end{preview}"+++
     eol+++"\end{document}"+++
     eol.
 
@@ -136,7 +136,12 @@ Section core2proof.
                 ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
                   addErrorMessage ("HaskType: " +++ toString τ)
                   ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => false) τ nil we) >>= fun e =>
-                    OK (eol+++"$$"+++ toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ e))+++"$$"+++eol)
+                    OK (eol+++eol+++eol+++
+                        "\begin{preview}"+++eol
+                        "$\displaystyle "+++
+                        toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ e))+++
+                        " $"+++eol+++
+                        "\end{preview}"+++eol+++eol+++eol)
                   )))))))).
 
   Definition coreToStringExpr (ce:@CoreExpr CoreVar) : string :=
