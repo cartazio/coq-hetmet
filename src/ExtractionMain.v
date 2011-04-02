@@ -35,9 +35,8 @@ Require Import HaskProofToStrong.
 
 Require Import ProgrammingLanguage.
 
-Require Import HaskProofFlattener.
 Require Import HaskProofStratified.
-Require Import HaskProofCategory.
+Require Import HaskProofFlattener.
 
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 

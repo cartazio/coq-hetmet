@@ -79,7 +79,8 @@ Require Import GeneralizedArrowCategory.
 Require Import ReificationsAndGeneralizedArrows.
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 
-Require Import HaskProofCategory.
+Require Import HaskProofStratified.
+Require Import HaskProofFlattener.
 Require Import ProgrammingLanguage.
 
 (* very slow! *)
