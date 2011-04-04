@@ -37,7 +37,6 @@ Require Import ProgrammingLanguage.
 
 Require Import HaskProofFlattener.
 Require Import HaskProofStratified.
-Require Import HaskProofCategory.
 
 Require Import ReificationsIsomorphicToGeneralizedArrows.
 
@@ -118,7 +117,7 @@ Section core2proof.
     "\usepackage[paperwidth=\maxdimen,paperheight=\maxdimen]{geometry}"+++eol+++
     "\usepackage[tightpage,active]{preview}"+++eol+++
     "\begin{document}"+++eol+++
-    "\setlength\PreviewBorder{5pt}"+++eol+++.
+    "\setlength\PreviewBorder{5pt}"+++eol.
 
   Definition footer : string :=
     eol+++"\end{document}"+++
@@ -137,7 +136,7 @@ Section core2proof.
                   addErrorMessage ("HaskType: " +++ toString τ)
                   ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => false) τ nil we) >>= fun e =>
                     OK (eol+++eol+++eol+++
-                        "\begin{preview}"+++eol
+                        "\begin{preview}"+++eol+++
                         "$\displaystyle "+++
                         toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ e))+++
                         " $"+++eol+++

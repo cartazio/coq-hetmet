@@ -117,6 +117,7 @@ Section MonoidalSubCat.
 End MonoidalSubCat.
 Coercion full_subcat_is_monoidal : MonoidalSubCat >-> MonoidalCat.
 
+(*
 Section ArrowInLanguage.
 
   (* an Arrow In A Programming Language consists of... *)
@@ -162,3 +163,4 @@ Check (@FreydCategory).
     Defined.
 
 End GArrowInLanguage.
+*)

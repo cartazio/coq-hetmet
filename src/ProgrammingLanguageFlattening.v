@@ -24,13 +24,16 @@ Require Import FunctorCategories_ch7_7.
 Require Import Reification.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
+Require Import GeneralizedArrow.
+Require Import GeneralizedArrowFromReification.
 Require Import ProgrammingLanguage.
-Require Import ProgrammingReification.
+Require Import ProgrammingLanguageReification.
+Require Import ReificationsAndGeneralizedArrows.
 
 Section Flattening.
 
   Context (Guest:ProgrammingLanguageSMME) (Host :ProgrammingLanguageSMME).
-  Context (GuestHost:TwoLevelLanguage).
+  Context (GuestHost:TwoLevelLanguage Guest Host).
 
   Definition FlatObject (x:TypesL _ _ Host) :=
     forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
@@ -42,6 +45,7 @@ Section Flattening.
     Definition FlatteningOfReification :=
       garrow_from_reification Guest Host GuestHost >>>> F.
 
+(*
     Lemma FlatteningIsNotDestructive : 
       FlatteningOfReification >>>> retraction_retraction F >>>> HomFunctor _ (me_i Host) ≃ GuestHost.
       apply if_inv.
@@ -65,7 +69,7 @@ Section Flattening.
       apply if_inv.
       apply retraction_composes.
       Qed.
-
+*)
 End Flattening.
 
 

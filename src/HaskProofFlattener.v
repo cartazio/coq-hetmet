@@ -30,6 +30,8 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
+Require Import BinoidalCategories.
+Require Import PreMonoidalCategories.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 
@@ -138,7 +140,7 @@ Section HaskProofFlattener.
 
     set (@nil (HaskTyVar Γ ★)) as lev.
 
-    unfold hom; unfold ob; unfold ehom; simpl; unfold mon_i; unfold obact; intros.
+    unfold hom; unfold ob; unfold ehom; simpl; unfold pmon_I; unfold obact; intros.
 
     induction X; simpl.
 

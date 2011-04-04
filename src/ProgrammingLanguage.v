@@ -73,13 +73,14 @@ Section Programming_Language.
       apply pl_subst.
       Defined.
 
+    Existing Instance pl_eqv.
     Definition TypesL : ECategory JudgmentsL (Tree ??T) (fun x y => [x|=y]).
       refine
       {| eid   := identityProof
        ; ecomp := cutProof
       |}; intros.
-      apply MonoidalCat_all_central.
-      apply MonoidalCat_all_central.
+      apply (mon_commutative(MonoidalCat:=JudgmentsL)).
+      apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       unfold identityProof; unfold cutProof; simpl.
       apply nd_cut_left_identity.
       unfold identityProof; unfold cutProof; simpl.
@@ -91,7 +92,7 @@ Section Programming_Language.
 
     Definition Types_first c : EFunctor TypesL TypesL (fun x => x,,c ).
       refine {| efunc := fun x y => (@se_expand_right _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y) |}.
-      intros; apply MonoidalCat_all_central.
+      intros; apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
       apply se_reflexive_right.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
@@ -105,7 +106,7 @@ Section Programming_Language.
     Definition Types_second c : EFunctor TypesL TypesL (fun x => c,,x).
       eapply Build_EFunctor.
       instantiate (1:=(fun x y => ((@se_expand_left _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)))).
-      intros; apply MonoidalCat_all_central.
+      intros; apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
       apply se_reflexive_left.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
@@ -123,23 +124,52 @@ Section Programming_Language.
          |}.
       Defined.
 
-    Definition Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a.
+    Instance Types_assoc_iso a b c : Isomorphic(C:=TypesL) ((a,,b),,c) (a,,(b,,c)) :=
+      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_cossa _ a b c
+      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_assoc _ a b c
+      }.
+      admit.
       admit.
       Defined.
 
-    Definition Types_cancelr   : Types_first [] <~~~> functor_id _.
+    Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
+      { ni_iso := fun c => Types_assoc_iso a c b }.
       admit.
       Defined.
 
-    Definition Types_cancell   : Types_second [] <~~~> functor_id _.
+    Instance Types_cancelr_iso a : Isomorphic(C:=TypesL) (a,,[]) a :=
+      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_rlecnac _ a
+      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_cancelr _ a
+      }.
+      admit.
       admit.
       Defined.
 
-    Definition Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a.
+    Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
+      { ni_iso := Types_cancelr_iso }.
       admit.
       Defined.
 
-    Definition Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b.
+    Instance Types_cancell_iso a : Isomorphic(C:=TypesL) ([],,a) a :=
+      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_llecnac _ a
+      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_cancell _ a
+      }.
+      admit.
+      admit.
+      Defined.
+
+    Instance Types_cancell   : Types_second [] <~~~> functor_id _ :=
+      { ni_iso := Types_cancell_iso }.
+      admit.
+      Defined.
+
+    Instance Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a :=
+      { ni_iso := fun c => Types_assoc_iso a b c }.
+      admit.
+      Defined.
+
+    Instance Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b :=
+      { ni_iso := fun c => iso_inv _ _ (Types_assoc_iso c a b) }.
       admit.
       Defined.
 
@@ -152,10 +182,14 @@ Section Programming_Language.
         }.
         admit. (* pentagon law *)
         admit. (* triangle law *)
-        admit. (* assoc_rr/assoc coherence *)
-        admit. (* assoc_ll/assoc coherence *)
+        intros; simpl; reflexivity.
+        intros; simpl; reflexivity.
+        admit.  (* assoc   central *)
+        admit.  (* cancelr central *)
+        admit.  (* cancell central *)
         Defined.
 
+    (*
     Definition TypesEnrichedInJudgments : Enrichment.
       refine {| enr_c := TypesL |}.
       Defined.
@@ -172,11 +206,11 @@ Section Programming_Language.
     Definition LanguagesWithProductsAreSMME : HasProductTypes -> SurjectiveMonicMonoidalEnrichment TypesEnrichedInJudgments.
       admit.
       Defined.
-
+      *)
   End LanguageCategory.
 
 End Programming_Language.
-
+(*
 Structure ProgrammingLanguageSMME :=
 { plsmme_t       : Type
 ; plsmme_judg    : Type
@@ -187,5 +221,5 @@ Structure ProgrammingLanguageSMME :=
 }.
 Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
 Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
- 
+*) 
 Implicit Arguments ND [ Judgment ].

@@ -248,6 +248,11 @@ Section Natural_Deduction.
   (* products and duplication must distribute over each other *)
   ; ndr_prod_preserves_copy  : forall `(f:a/⋯⋯/b),                                        nd_copy a;; f**f === f ;; nd_copy b
 
+  ; ndr_comp_preserves_cancell   : forall `(f:a/⋯⋯/b),                     nd_cancell;; f === nd_id _ **  f ;; nd_cancell
+  ; ndr_comp_preserves_cancelr   : forall `(f:a/⋯⋯/b),                     nd_cancelr;; f === f ** nd_id _  ;; nd_cancelr
+  ; ndr_comp_preserves_assoc     : forall `(f:a/⋯⋯/b)`(g:a1/⋯⋯/b1)`(h:a2/⋯⋯/b2),
+    nd_assoc;; (f ** (g ** h)) === ((f ** g) ** h) ;; nd_assoc
+
   (* any two _structural_ proofs with the same hypotheses/conclusions must be considered equal *)
   ; ndr_structural_indistinguishable : forall `(f:a/⋯⋯/b)(g:a/⋯⋯/b), Structural f -> Structural g -> f===g
 
@@ -377,12 +382,12 @@ Section Natural_Deduction.
     (* Sequent systems in which we can re-arrange the tree to the left of the turnstile - note that these rules
      * mirror nd_{cancell,cancelr,rlecnac,llecnac,assoc,cossa} but are completely separate from them *)
     Class TreeStructuralRules :=
-    { tsr_ant_assoc     : forall {x a b c}, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
-    ; tsr_ant_cossa     : forall {x a b c}, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
-    ; tsr_ant_cancell   : forall {x a    }, ND [  [],,a     |= x]     [        a   |= x]
-    ; tsr_ant_cancelr   : forall {x a    }, ND [a,,[]       |= x]     [        a   |= x]
-    ; tsr_ant_llecnac   : forall {x a    }, ND [      a     |= x]     [    [],,a   |= x]
-    ; tsr_ant_rlecnac   : forall {x a    }, ND [      a     |= x]     [    a,,[]   |= x]
+    { tsr_ant_assoc     : forall x a b c, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
+    ; tsr_ant_cossa     : forall x a b c, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
+    ; tsr_ant_cancell   : forall x a    , ND [  [],,a     |= x]     [        a   |= x]
+    ; tsr_ant_cancelr   : forall x a    , ND [a,,[]       |= x]     [        a   |= x]
+    ; tsr_ant_llecnac   : forall x a    , ND [      a     |= x]     [    [],,a   |= x]
+    ; tsr_ant_rlecnac   : forall x a    , ND [      a     |= x]     [    a,,[]   |= x]
     }.
 
     Notation "[# a #]"  := (nd_rule a)               : nd_scope.
