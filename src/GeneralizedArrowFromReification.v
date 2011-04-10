@@ -513,7 +513,7 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
     apply (fmor_respects (-⋉ F b)).
     apply iso_comp2.
     Qed.
-
+*)
   Lemma cancell_coherent (b:enr_v K) :
    #(pmon_cancell(PreMonoidalCat:=enr_c_pm C) (garrow_functor b)) ~~
    (#(iso_id (enr_c_i C)) ⋉ garrow_functor b >>>
@@ -624,20 +624,23 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
     set (@comp_respects) as qq.
     unfold Proper in qq.
     unfold respectful in qq.
-    set (qq _ _ _ _ _ _ (iso_backward (mf_i F) ⋉ F b) (iso_backward (mf_i F) ⋉ F b) (reflexivity _) _ _ q) as q'.
+    set (qq _ _ _ _ _ _ (F b ⋊ iso_backward (mf_i F)) (F b ⋊ iso_backward (mf_i F)) (reflexivity _) _ _ q) as q'.
     setoid_rewrite <- associativity in q'.
     clear q qq.
-    setoid_rewrite (fmor_preserves_comp (-⋉ F b)) in q'.
+    setoid_rewrite (fmor_preserves_comp (F b ⋊ -)) in q'.
     eapply transitivity; [ apply q' | idtac ].
     clear q'.
     setoid_rewrite <- associativity.
     apply comp_respects; try reflexivity.
     symmetry.
     apply iso_shift_left.
+    eapply transitivity.
+      apply comp_respects; [ idtac | reflexivity ].
+      apply mf_consistent.
     setoid_rewrite iso_comp1.
     symmetry.
-    eapply transitivity; [ idtac | eapply (fmor_preserves_id (-⋉ F b))].
-    apply (fmor_respects (-⋉ F b)).
+    eapply transitivity; [ idtac | eapply (fmor_preserves_id (F b ⋊ - ))].
+    apply (fmor_respects (F b ⋊ -)).
     apply iso_comp2.
     Qed.
 
