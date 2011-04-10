@@ -2,11 +2,15 @@ coqc     := coqc -noglob -opt
 coqfiles := $(shell find src -name \*.v  | grep -v \\\#)
 allfiles := $(coqfiles) $(shell find src -name \*.hs | grep -v \\\#)
 
-default: build/CoqPass.hs
+default: all
+
+all: $(allfiles)
+	make build/Makefile.coq
+	cd build; make -f Makefile.coq OPT="-opt -dont-load-proofs" All.vo
 
 build/CoqPass.hs: $(allfiles)
 	make build/Makefile.coq
-	cd build; make -f Makefile.coq OPT="-opt -dont-load-proofs" All.vo
+	cd build; make -f Makefile.coq OPT="-opt -dont-load-proofs" ExtractionMain.vo
 	cd build; make -f Makefile.coq Extraction.vo
 	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
 	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
