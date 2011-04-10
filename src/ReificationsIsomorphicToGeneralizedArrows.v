@@ -212,7 +212,6 @@ Section ReificationsIsomorphicToGeneralizedArrows.
           eapply if_comp.
           apply (step1_niso smme (smme_mee smme) (smme_mon smme) x).
           apply if_inv.
-          set (roundtrip_lemma smme (smme_mee smme) (smme_mon smme) x) as q.
           apply if_inv.
           eapply if_comp.
           apply (if_associativity (RestrictToImage x) (R' smme smme x) (FullImage_InclusionFunctor _)).
@@ -224,9 +223,17 @@ Section ReificationsIsomorphicToGeneralizedArrows.
           apply (if_respects (RestrictToImage x) (RestrictToImage x)).
           apply (if_id (RestrictToImage x)).
           unfold mf_F.
-          unfold me_homfunctor in q.
-          unfold pmon_I.
-          apply q.
+          eapply if_comp.
+            apply (if_associativity (R' smme smme x) (ff_functor_section_functor me_homfunctor me_full me_faithful)
+              (HomFunctor (senr_c smme) (senr_c_i smme))).
+          set (roundtrip_lemma (me_full(MonicEnrichment:=smme_mee smme))) as q.
+          set (R' smme smme x) as f.
+          set (me_faithful(MonicEnrichment:=smme_mee smme)) as ff.
+          unfold HomFunctor_fullimage in f.
+          unfold mf_F in f.
+          set (q ff _ _ (FullImage x) _ f) as q'.
+          unfold me_homfunctor in q'.
+          exact q'.
 
       simpl in *.
         destruct f'; simpl in *.
@@ -253,11 +260,19 @@ Section ReificationsIsomorphicToGeneralizedArrows.
         apply (if_id (RestrictToImage x)).
 
         unfold mf_F.
-        set (roundtrip_lemma smme (smme_mee smme) (smme_mon smme) x) as q.
         apply if_inv.
-        unfold me_homfunctor in q.
-        unfold pmon_I.
-        apply q.
+
+        eapply if_comp.
+          apply (if_associativity (R' smme smme x) (ff_functor_section_functor me_homfunctor me_full me_faithful)
+            (HomFunctor (senr_c smme) (senr_c_i smme))).
+        set (roundtrip_lemma (me_full(MonicEnrichment:=smme_mee smme))) as q.
+          set (R' smme smme x) as f.
+          set (me_faithful(MonicEnrichment:=smme_mee smme)) as ff.
+          unfold HomFunctor_fullimage in f.
+          unfold mf_F in f.
+          set (q ff _ _ (FullImage x) _ f) as q'.
+          unfold me_homfunctor in q'.
+          exact q'.
 
       simpl in *.
         unfold garrow_functor.
