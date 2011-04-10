@@ -23,10 +23,10 @@ Require Import PreMonoidalCategories.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
+Require Import Enrichments.
 Require Import RepresentableStructure_ch7_2.
 Require Import GeneralizedArrow.
 Require Import WeakFunctorCategory.
-Require Import SmallSMMEs.
 
 (*
  * Technically reifications form merely a *semicategory* (no identity
@@ -49,28 +49,19 @@ Inductive GeneralizedArrowOrIdentity : SMMEs -> SMMEs -> Type :=
 Definition generalizedArrowOrIdentityFobj (s1 s2:SMMEs) (f:GeneralizedArrowOrIdentity s1 s2) : s1 -> s2 :=
   match f in GeneralizedArrowOrIdentity S1 S2 return S1 -> S2 with
   | gaoi_id  s       => fun x => x
-  | gaoi_ga s1 s2 f  => fun a => ehom(ECategory:=s2) (mon_i (smme_mon s2)) (ga_functor_obj f a)
+  | gaoi_ga s1 s2 f  => fun a => ehom(ECategory:=s2) (enr_c_i (smme_e s2)) (ga_functor_obj f a)
   end.
 
 Definition generalizedArrowOrIdentityFunc s1 s2 (f:GeneralizedArrowOrIdentity s1 s2)
   : Functor s1 s2 (generalizedArrowOrIdentityFobj _ _ f) :=
   match f with
   | gaoi_id  s       => functor_id _
-  | gaoi_ga s1 s2 f  => ga_functor f >>>> HomFunctor s2 (mon_i s2)
+  | gaoi_ga s1 s2 f  => ga_functor f >>>> HomFunctor s2 (enr_c_i s2)
   end.
 
-Definition compose_generalizedArrows (s0 s1 s2:SMMEs) :
-  GeneralizedArrow s0 s1 -> GeneralizedArrow s1 s2 -> GeneralizedArrow s0 s2.
-  intro g01.
-  intro g12.
-  refine
-    {| ga_functor          := g01 >>>> HomFunctor s1 (mon_i s1) >>>> g12 |}.
-    apply MonoidalFunctorsCompose.
-    apply MonoidalFunctorsCompose.
-    apply (ga_functor_monoidal g01).
-    apply (me_mf s1).
-    apply (ga_functor_monoidal g12).
-    Defined.
+Instance compose_generalizedArrows (s0 s1 s2:SMMEs) 
+  (g01:GeneralizedArrow s0 s1)(g12:GeneralizedArrow s1 s2) : GeneralizedArrow s0 s2 :=
+    { ga_functor_monoidal := g01 >>⊗>> smme_mon s1 >>⊗>> g12 }.
 
 Definition generalizedArrowOrIdentityComp
   : forall s1 s2 s3, GeneralizedArrowOrIdentity s1 s2 -> GeneralizedArrowOrIdentity s2 s3 -> GeneralizedArrowOrIdentity s1 s3.
@@ -97,7 +88,6 @@ Definition MorphismsOfCategoryOfGeneralizedArrows : @SmallFunctors SMMEs.
     apply if_right_identity.
   unfold mf_F.
   idtac.
-  unfold mf_f.
   apply if_associativity.
   Defined.
 

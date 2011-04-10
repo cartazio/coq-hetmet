@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
 (* NaturalDeductionCategory:                                                                                                     *)
 (*                                                                                                                               *)
-(*   Natural Deduction proofs form a category (under mild assumptions, see below)                                                *)
+(*   Natural Deduction proofs form a category                                                                                    *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -48,96 +48,86 @@ Section Judgments_Category.
     | unfold Symmetric; intros; symmetry; auto
     | unfold Transitive; intros; transitivity y; auto ].
   unfold Proper; unfold respectful; intros; simpl; apply ndr_comp_respects; auto.
-  intros; apply ndr_comp_left_identity.
-  intros; apply ndr_comp_right_identity.
+  intros; apply (ndr_builtfrom_structural f); auto.
+  intros; apply (ndr_builtfrom_structural f); auto.
   intros; apply ndr_comp_associativity.
   Defined.
 
-  Hint Extern 1 => apply nd_structural_id0.     
-  Hint Extern 1 => apply nd_structural_id1.     
-  Hint Extern 1 => apply nd_structural_weak.
-  Hint Extern 1 => apply nd_structural_copy.    
-  Hint Extern 1 => apply nd_structural_prod.    
-  Hint Extern 1 => apply nd_structural_comp.    
-  Hint Extern 1 => apply nd_structural_cancell. 
-  Hint Extern 1 => apply nd_structural_cancelr. 
-  Hint Extern 1 => apply nd_structural_llecnac. 
-  Hint Extern 1 => apply nd_structural_rlecnac. 
-  Hint Extern 1 => apply nd_structural_assoc.   
-  Hint Extern 1 => apply nd_structural_cossa.   
-  Hint Extern 1 => apply weak'_structural.
-
+  (* Judgments form a binoidal category *)
   Instance jud_first (a:Judgments_Category) : Functor Judgments_Category Judgments_Category (fun x => x,,a) :=
     { fmor := fun b c (f:b /⋯⋯/ c) => f ** (nd_id a) }.
-    intros; unfold eqv; simpl.
-      apply ndr_prod_respects; auto.
-    intros; unfold eqv in *; simpl in *.
-      reflexivity.
+    intros; unfold eqv; simpl; apply ndr_prod_respects; auto.
+    intros; unfold eqv in *; simpl in *; reflexivity.
+    intros; unfold eqv in *; simpl in *; apply (ndr_builtfrom_structural (nd_id a)); auto.
     intros; unfold eqv in *; simpl in *.
       setoid_rewrite <- ndr_prod_preserves_comp.
-      setoid_rewrite ndr_comp_left_identity.
-      reflexivity.
+      apply (ndr_builtfrom_structural (f;;g)); auto.
     Defined.
   Instance jud_second (a:Judgments_Category) : Functor Judgments_Category Judgments_Category (fun x => a,,x) :=
     { fmor := fun b c (f:b /⋯⋯/ c) => (nd_id a) ** f }.
-    intros; unfold eqv; simpl.
-      apply ndr_prod_respects; auto.
-    intros; unfold eqv in *; simpl in *.
-      reflexivity.
+    intros; unfold eqv; simpl; apply ndr_prod_respects; auto.
+    intros; unfold eqv in *; simpl in *; reflexivity.
+    intros; unfold eqv in *; simpl in *; apply (ndr_builtfrom_structural (nd_id a)); auto.
     intros; unfold eqv in *; simpl in *.
       setoid_rewrite <- ndr_prod_preserves_comp.
-      setoid_rewrite ndr_comp_left_identity.
-      reflexivity.
+      apply (ndr_builtfrom_structural (f;;g)); auto.
     Defined.
   Instance Judgments_Category_binoidal : BinoidalCat Judgments_Category (fun x y => x,,y) :=
     { bin_first  := jud_first
     ; bin_second := jud_second }.
+
+  (* and that category is commutative (all morphisms central) *)
+  Instance Judgments_Category_Commutative : CommutativeCat Judgments_Category_binoidal.
+    apply Build_CommutativeCat.
+    intros; apply Build_CentralMorphism; intros; unfold eqv; simpl in *.
+    setoid_rewrite <- (ndr_prod_preserves_comp (nd_id a) g f (nd_id d)).
+      setoid_rewrite <- (ndr_prod_preserves_comp f (nd_id _) (nd_id _) g).
+      setoid_rewrite ndr_comp_left_identity.
+      setoid_rewrite ndr_comp_right_identity.
+      reflexivity.
+    setoid_rewrite <- (ndr_prod_preserves_comp (nd_id _) f g (nd_id _)).
+      setoid_rewrite <- (ndr_prod_preserves_comp g (nd_id _) (nd_id _) f).
+      setoid_rewrite ndr_comp_left_identity.
+      setoid_rewrite ndr_comp_right_identity.
+      reflexivity.
+      Defined.
+
+  (* Judgments form a premonoidal category *)
   Definition jud_assoc_iso (a b c:Judgments_Category) : @Isomorphic _ _ Judgments_Category ((a,,b),,c) (a,,(b,,c)).
-    refine
-    {| iso_forward  := nd_assoc
-     ; iso_backward := nd_cossa |};
-    abstract (simpl; auto).
+    refine {| iso_forward  := nd_assoc ; iso_backward := nd_cossa |}.
+    unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural nd_id0); auto.
+    unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural nd_id0); auto.
     Defined.
   Definition jud_cancelr_iso (a:Judgments_Category) : @Isomorphic _ _ Judgments_Category (a,,[]) a.
-    refine
-    {| iso_forward  := nd_cancelr
-     ; iso_backward := nd_rlecnac |};
-    abstract (simpl; auto).
+    refine {| iso_forward  := nd_cancelr ; iso_backward := nd_rlecnac |};
+    unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural nd_id0); auto.
     Defined.
   Definition jud_cancell_iso (a:Judgments_Category) : @Isomorphic _ _ Judgments_Category ([],,a) a.
-    refine
-    {| iso_forward  := nd_cancell
-     ; iso_backward := nd_llecnac |};
-    abstract (simpl; auto).
+    refine {| iso_forward  := nd_cancell ; iso_backward := nd_llecnac |};
+    unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural nd_id0); auto.
     Defined.
   Instance jud_mon_cancelr : jud_first [] <~~~> functor_id Judgments_Category :=
     { ni_iso := jud_cancelr_iso }.
-    intros; unfold eqv in *; simpl in *.
-    apply ndr_comp_preserves_cancelr.
+    intros; unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural f); auto.
     Defined.
   Instance jud_mon_cancell : jud_second [] <~~~> functor_id Judgments_Category :=
     { ni_iso := jud_cancell_iso }.
-    intros; unfold eqv in *; simpl in *.
-    apply ndr_comp_preserves_cancell.
+    intros; unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural f); auto.
     Defined.
   Instance jud_mon_assoc : forall a b, a ⋊- >>>> - ⋉b <~~~> - ⋉b >>>> a ⋊- :=
     { ni_iso := fun c => jud_assoc_iso a c b }.
-    intros; unfold eqv in *; simpl in *.
-    apply ndr_comp_preserves_assoc.
+    intros; unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural f); auto.
     Defined.
   Instance jud_mon_assoc_rr : forall a b, - ⋉(a ⊗ b) <~~~> - ⋉a >>>> - ⋉b.
     intros.
     apply ni_inv.
     refine {| ni_iso := fun c => (jud_assoc_iso _ _ _) |}.
-    intros; unfold eqv in *; simpl in *.
-    apply ndr_comp_preserves_assoc.
+    intros; unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural f); auto.
     Defined.
   Instance jud_mon_assoc_ll : forall a b, (a ⊗ b) ⋊- <~~~> b ⋊- >>>> a ⋊- :=
     { ni_iso := fun c => jud_assoc_iso _ _ _ }.
-    intros; unfold eqv in *; simpl in *.
-    apply ndr_comp_preserves_assoc.
+    intros; unfold eqv; unfold comp; simpl; apply (ndr_builtfrom_structural f); auto.
     Defined.
-
   Instance Judgments_Category_premonoidal : PreMonoidalCat Judgments_Category_binoidal [] :=
   { pmon_cancelr  := jud_mon_cancelr
   ; pmon_cancell  := jud_mon_cancell
@@ -146,97 +136,27 @@ Section Judgments_Category.
   ; pmon_assoc_ll := jud_mon_assoc_ll
   }.
     unfold functor_fobj; unfold fmor; simpl;
-      apply Build_Pentagon; simpl; intros; apply ndr_structural_indistinguishable; auto.
-     
+      apply Build_Pentagon; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto.
     unfold functor_fobj; unfold fmor; simpl;
-      apply Build_Triangle; simpl; intros; apply ndr_structural_indistinguishable; auto.
-    
-    intros; unfold eqv; simpl; auto.
-
-    intros; unfold eqv; simpl; auto.
-
-    intros; unfold eqv; simpl.
-      apply Build_CentralMorphism; intros; unfold eqv; simpl in *; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-
-    intros; unfold eqv; simpl.
-      apply Build_CentralMorphism; intros; unfold eqv; simpl in *; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-      
-    intros; unfold eqv; simpl.
-      apply Build_CentralMorphism; intros; unfold eqv; simpl in *; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      symmetry.
-      etransitivity; [ idtac | apply ndr_prod_preserves_comp ].
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      apply ndr_prod_respects; try reflexivity.
-      apply ndr_structural_indistinguishable; auto.
-
+      apply Build_Triangle; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto.
+    intros; unfold eqv; simpl; auto; reflexivity.
+    intros; unfold eqv; simpl; auto; reflexivity.
+    intros; unfold eqv; simpl; apply Judgments_Category_Commutative.
+    intros; unfold eqv; simpl; apply Judgments_Category_Commutative.
+    intros; unfold eqv; simpl; apply Judgments_Category_Commutative.
       Defined.
 
-  Instance Judgments_Category_monoidal : MonoidalCat Judgments_Category_premonoidal.
-    apply Build_MonoidalCat.
-    apply Build_CommutativeCat.
-    intros; apply Build_CentralMorphism; intros; unfold eqv; simpl in *.
+  (* commutative premonoidal categories are monoidal *)
+  Instance Judgments_Category_monoidal : MonoidalCat Judgments_Category_premonoidal :=
+    { mon_commutative := Judgments_Category_Commutative }.
 
-    setoid_rewrite <- (ndr_prod_preserves_comp (nd_id a) g f (nd_id d)).
-      setoid_rewrite <- (ndr_prod_preserves_comp f (nd_id _) (nd_id _) g).
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      reflexivity.
-
-    setoid_rewrite <- (ndr_prod_preserves_comp (nd_id _) f g (nd_id _)).
-      setoid_rewrite <- (ndr_prod_preserves_comp g (nd_id _) (nd_id _) f).
-      setoid_rewrite ndr_comp_left_identity.
-      setoid_rewrite ndr_comp_right_identity.
-      reflexivity.
-    Defined.
-    
+  (* Judgments also happens to have a terminal object - the empty list of judgments *)
   Instance Judgments_Category_Terminal : TerminalObject Judgments_Category [].
-    refine {| drop := nd_weak' ; drop_unique := _ |}.
+    refine {| drop := nd_weak ; drop_unique := _ |}.
       abstract (intros; unfold eqv; simpl; apply ndr_void_proofs_irrelevant).
     Defined.
 
+  (* Judgments is also a diagonal category via nd_copy *)
   Instance Judgments_Category_Diagonal : DiagonalCat Judgments_Category_monoidal.
     intros.
     refine {| copy := nd_copy |}; intros; simpl.
@@ -260,13 +180,11 @@ Section Judgments_Category.
       reflexivity.
       Defined.
 
+  (* Judgments is a cartesian category: it has a terminal object, diagonal morphisms, and the right naturalities *) 
   Instance Judgments_Category_CartesianCat : CartesianCat Judgments_Category_monoidal :=
     { car_terminal := Judgments_Category_Terminal ; car_diagonal := Judgments_Category_Diagonal }.
-
-    intros; unfold hom; simpl; unfold functor_fobj; unfold fmor; simpl.
-      apply ndr_structural_indistinguishable; auto.
-    intros; unfold hom; simpl; unfold functor_fobj; unfold fmor; simpl.
-      apply ndr_structural_indistinguishable; auto.
+    intros; unfold eqv; simpl; symmetry; apply ndr_copy_then_weak_left.
+    intros; unfold eqv; simpl; symmetry; apply ndr_copy_then_weak_right.
     Defined.
 
 End Judgments_Category.

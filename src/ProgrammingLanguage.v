@@ -26,6 +26,7 @@ Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 Require Import FunctorCategories_ch7_7.
 
+Require Import Enrichments.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
@@ -46,11 +47,11 @@ Section Programming_Language.
   Open Scope pl_scope.
 
   Class ProgrammingLanguage :=
-  { pl_eqv                :  @ND_Relation Judg Rule where "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2)
-  ; pl_tsr                :> @TreeStructuralRules Judg Rule T sequent
-  ; pl_sc                 :> @SequentCalculus Judg Rule _ sequent
-  ; pl_subst              :> @CutRule Judg Rule _ sequent pl_eqv pl_sc
-  ; pl_sequent_join       :> @SequentExpansion Judg Rule T sequent pl_eqv pl_sc pl_subst
+  { pl_eqv0               :  @ND_Relation Judg Rule
+  ; pl_snd                :> @SequentND Judg Rule _ sequent
+  ; pl_cnd                :> @ContextND Judg Rule T sequent pl_snd
+  ; pl_eqv1               :> @SequentND_Relation Judg Rule _ sequent pl_snd pl_eqv0
+  ; pl_eqv                :> @ContextND_Relation Judg Rule _ sequent pl_snd pl_cnd pl_eqv0 pl_eqv1
   }.
   Notation "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2) : temporary_scope3.
 
@@ -65,15 +66,16 @@ Section Programming_Language.
 
     Definition identityProof t : [] ~~{JudgmentsL}~~> [t |= t].
       unfold hom; simpl.
-      apply nd_seq_reflexive.
+      apply snd_initial.
       Defined.
 
     Definition cutProof a b c : [a |= b],,[b |= c] ~~{JudgmentsL}~~> [a |= c].
       unfold hom; simpl.
-      apply pl_subst.
+      apply snd_cut.
       Defined.
 
     Existing Instance pl_eqv.
+
     Definition TypesL : ECategory JudgmentsL (Tree ??T) (fun x y => [x|=y]).
       refine
       {| eid   := identityProof
@@ -81,80 +83,101 @@ Section Programming_Language.
       |}; intros.
       apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       apply (mon_commutative(MonoidalCat:=JudgmentsL)).
-      unfold identityProof; unfold cutProof; simpl.
-      apply nd_cut_left_identity.
-      unfold identityProof; unfold cutProof; simpl.
-      apply nd_cut_right_identity.
-      unfold identityProof; unfold cutProof; simpl.
-      symmetry.
-      apply nd_cut_associativity.
+      unfold identityProof; unfold cutProof; simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
+      unfold identityProof; unfold cutProof; simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
+      unfold identityProof; unfold cutProof; simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
+      apply ndpc_comp; auto.
+      apply ndpc_comp; auto.
       Defined.
 
-    Definition Types_first c : EFunctor TypesL TypesL (fun x => x,,c ).
-      refine {| efunc := fun x y => (@se_expand_right _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y) |}.
+    Instance Types_first c : EFunctor TypesL TypesL (fun x => x,,c ) :=
+      { efunc := fun x y => cnd_expand_right(ContextND:=pl_cnd) x y c }.
       intros; apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
-      apply se_reflexive_right.
+      apply (cndr_inert pl_cnd); auto.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
-      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (se_expand_right _ c) _ _ (nd_id1 (b|=c0))
-                  _ (nd_id1 (a,,c |= b,,c))  _ (se_expand_right _ c)).
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (cnd_expand_right _ _ c) _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (a,,c |= b,,c))  _ (cnd_expand_right _ _ c)).
       setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [a,, c |= b,, c]).
       setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
-      apply se_cut_right.
+      simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
       Defined.
 
-    Definition Types_second c : EFunctor TypesL TypesL (fun x => c,,x).
-      eapply Build_EFunctor.
-      instantiate (1:=(fun x y => ((@se_expand_left _ _ _ _ _ _ _ (@pl_sequent_join PL) c x y)))).
+    Instance Types_second c : EFunctor TypesL TypesL (fun x => c,,x) :=
+      { efunc := fun x y => ((@cnd_expand_left _ _ _ _ _ _ x y c)) }.
       intros; apply (mon_commutative(MonoidalCat:=JudgmentsL)).
       intros. unfold ehom. unfold hom. unfold identityProof. unfold eid. simpl. unfold identityProof.
-      apply se_reflexive_left.
+      eapply cndr_inert; auto. apply pl_eqv.
       intros. unfold ehom. unfold comp. simpl. unfold cutProof.
-      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (se_expand_left _ c) _ _ (nd_id1 (b|=c0))
-                  _ (nd_id1 (c,,a |= c,,b))  _ (se_expand_left _ c)).
+      rewrite <- (@ndr_prod_preserves_comp _ _ pl_eqv _ _ (cnd_expand_left _ _ c) _ _ (nd_id1 (b|=c0))
+                  _ (nd_id1 (c,,a |= c,,b))  _ (cnd_expand_left _ _ c)).
       setoid_rewrite (@ndr_comp_right_identity _ _ pl_eqv _ [c,,a |= c,,b]).
       setoid_rewrite (@ndr_comp_left_identity  _ _ pl_eqv [b |= c0]).
-      apply se_cut_left.
+      simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
       Defined.
 
-    Definition Types_binoidal : BinoidalCat TypesL (@T_Branch _).
+    Definition Types_binoidal : EBinoidalCat TypesL.
       refine
-        {| bin_first  := Types_first
-         ; bin_second := Types_second
+        {| ebc_first  := Types_first
+         ; ebc_second := Types_second
          |}.
       Defined.
 
     Instance Types_assoc_iso a b c : Isomorphic(C:=TypesL) ((a,,b),,c) (a,,(b,,c)) :=
-      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_cossa _ a b c
-      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_assoc _ a b c
+      { iso_forward  := snd_initial _ ;; cnd_ant_cossa _ a b c
+      ; iso_backward := snd_initial _ ;; cnd_ant_assoc _ a b c
       }.
-      admit.
-      admit.
+      simpl; eapply cndr_inert. unfold identityProof; apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
+      simpl; eapply cndr_inert. unfold identityProof; apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
+        Defined.
+
+    Instance Types_cancelr_iso a : Isomorphic(C:=TypesL) (a,,[]) a :=
+      { iso_forward  := snd_initial _ ;; cnd_ant_rlecnac _ a
+      ; iso_backward := snd_initial _ ;; cnd_ant_cancelr _ a
+      }.
+      unfold eqv; unfold comp; simpl.
+      eapply cndr_inert. apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
+      unfold eqv; unfold comp; simpl.
+      eapply cndr_inert. apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
+      Defined.
+
+    Instance Types_cancell_iso a : Isomorphic(C:=TypesL) ([],,a) a :=
+      { iso_forward  := snd_initial _ ;; cnd_ant_llecnac _ a
+      ; iso_backward := snd_initial _ ;; cnd_ant_cancell _ a
+      }.
+      unfold eqv; unfold comp; simpl.
+      eapply cndr_inert. apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
+      unfold eqv; unfold comp; simpl.
+      eapply cndr_inert. apply pl_eqv. auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        auto.
       Defined.
 
     Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a c b }.
-      admit.
-      Defined.
-
-    Instance Types_cancelr_iso a : Isomorphic(C:=TypesL) (a,,[]) a :=
-      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_rlecnac _ a
-      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_cancelr _ a
-      }.
-      admit.
+      intros; unfold eqv; simpl.
       admit.
       Defined.
 
     Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
       { ni_iso := Types_cancelr_iso }.
-      admit.
-      Defined.
-
-    Instance Types_cancell_iso a : Isomorphic(C:=TypesL) ([],,a) a :=
-      { iso_forward  := nd_seq_reflexive _ ;; tsr_ant_llecnac _ a
-      ; iso_backward := nd_seq_reflexive _ ;; tsr_ant_cancell _ a
-      }.
-      admit.
+      intros; simpl.
       admit.
       Defined.
 
@@ -174,35 +197,81 @@ Section Programming_Language.
       Defined.
 
     Instance Types_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
-        { pmon_assoc    := Types_assoc
-        ; pmon_cancell  := Types_cancell
-        ; pmon_cancelr  := Types_cancelr
-        ; pmon_assoc_rr := Types_assoc_rr
-        ; pmon_assoc_ll := Types_assoc_ll
-        }.
-        admit. (* pentagon law *)
-        admit. (* triangle law *)
-        intros; simpl; reflexivity.
-        intros; simpl; reflexivity.
-        admit.  (* assoc   central *)
-        admit.  (* cancelr central *)
-        admit.  (* cancell central *)
-        Defined.
+      { pmon_assoc    := Types_assoc
+      ; pmon_cancell  := Types_cancell
+      ; pmon_cancelr  := Types_cancelr
+      ; pmon_assoc_rr := Types_assoc_rr
+      ; pmon_assoc_ll := Types_assoc_ll
+      }.
+(*
+      apply Build_Pentagon.
+        intros; simpl.
+        eapply cndr_inert. apply pl_eqv.
+        apply ndpc_comp.
+        apply ndpc_comp.
+        auto.
+        apply ndpc_comp.
+        apply ndpc_prod.
+        apply ndpc_comp.
+        apply ndpc_comp.
+        auto.
+        apply ndpc_comp.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+        apply ndpc_comp.
+        apply ndpc_comp.
+        auto.
+        apply ndpc_comp.
+        auto.
+        auto.
+        auto.
+      apply Build_Triangle; intros; simpl.
+        eapply cndr_inert. apply pl_eqv.
+        auto.
+        apply ndpc_comp.
+        apply ndpc_comp.
+        auto.
+        apply ndpc_comp.
+        auto.
+        auto.
+        auto.
+        eapply cndr_inert. apply pl_eqv. auto.
+          auto.
+*)
+admit.
+admit.
+      intros; simpl; reflexivity.
+      intros; simpl; reflexivity.
+      admit.  (* assoc   central *)
+      admit.  (* cancelr central *)
+      admit.  (* cancell central *)
+      Defined.
 
-    (*
     Definition TypesEnrichedInJudgments : Enrichment.
-      refine {| enr_c := TypesL |}.
+      refine
+        {| enr_v_mon := Judgments_Category_monoidal _
+         ; enr_c_pm  := Types_PreMonoidal
+         ; enr_c_bin := Types_binoidal
+        |}.
       Defined.
 
     Structure HasProductTypes :=
     {
     }.
 
-    Lemma CartesianEnrMonoidal (e:Enrichment) `(C:CartesianCat(Ob:= _)(Hom:= _)(C:=Underlying (enr_c e))) : MonoidalEnrichment e.
+    (*
+    Lemma CartesianEnrMonoidal (e:PreMonoidalEnrichment)
+      `(C:CartesianCat(Ob:= _)(Hom:= _)(C:=Underlying (enr_c e))) : MonoidalEnrichment e.
       admit.
       Defined.
+      *)
 
     (* need to prove that if we have cartesian tuples we have cartesian contexts *)
+    (*
     Definition LanguagesWithProductsAreSMME : HasProductTypes -> SurjectiveMonicMonoidalEnrichment TypesEnrichedInJudgments.
       admit.
       Defined.

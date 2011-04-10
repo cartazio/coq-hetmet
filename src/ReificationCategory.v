@@ -18,13 +18,14 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
+Require Import PreMonoidalCategories.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
+Require Import Enrichments.
 Require Import RepresentableStructure_ch7_2.
 Require Import Reification.
 Require Import WeakFunctorCategory.
-Require Import SmallSMMEs.
 
 (*
  * Technically reifications form merely a *semicategory* (no identity
@@ -43,8 +44,8 @@ Require Import SmallSMMEs.
  * use it as a host language.  But that's for the next paper...
  *)
 Inductive ReificationOrIdentity : SMMEs -> SMMEs -> Type :=
-  | roi_id   : forall smme:SMMEs,                                  ReificationOrIdentity smme smme
-  | roi_reif : forall s1 s2:SMMEs, Reification s1 s2 (mon_i s2) -> ReificationOrIdentity s1   s2.
+  | roi_id   : forall smme:SMMEs,                                    ReificationOrIdentity smme smme
+  | roi_reif : forall s1 s2:SMMEs, Reification s1 s2 (enr_c_i s2) -> ReificationOrIdentity s1   s2.
 
 Definition reificationOrIdentityFobj s1 s2 (f:ReificationOrIdentity s1 s2) : s1 -> s2 :=
   match f with
@@ -62,30 +63,29 @@ Definition reificationOrIdentityFunc
   Defined.
 
 Definition compose_reifications (s0 s1 s2:SMMEs) :
-  Reification s0 s1 (mon_i s1) -> Reification s1 s2 (mon_i s2) -> Reification s0 s2 (mon_i s2).
+  Reification s0 s1 (enr_c_i s1) -> Reification s1 s2 (enr_c_i s2) -> Reification s0 s2 (enr_c_i s2).
   intros.
   refine
     {| reification_rstar_f := reification_rstar_f X >>>> reification_rstar_f X0
-     ; reification_rstar   := MonoidalFunctorsCompose _ _ _ _ _ (reification_rstar X) (reification_rstar X0)
-     ; reification_r       := fun K => (reification_r X K) >>>> (reification_r X0 (mon_i s1))
+     ; reification_rstar   := PreMonoidalFunctorsCompose (reification_rstar X) (reification_rstar X0)
+     ; reification_r       := fun K => (reification_r X K) >>>> (reification_r X0 (enr_c_i s1))
     |}.
   intro K.
-  set (ni_associativity (reification_r X K) (reification_r X0 (mon_i s1)) (HomFunctor s2 (mon_i s2))) as q.
+  set (ni_associativity (reification_r X K) (reification_r X0 (enr_c_i s1)) (HomFunctor s2 (enr_c_i s2))) as q.
   eapply ni_comp.
   apply q.
   clear q.
   set (reification_commutes X K) as comm1.
-  set (reification_commutes X0 (mon_i s1)) as comm2.
+  set (reification_commutes X0 (enr_c_i s1)) as comm2.
   set (HomFunctor s0 K) as a in *.
   set (reification_rstar_f X) as a' in *.
   set (reification_rstar_f X0) as x in *.
   set (reification_r X K) as b in *.
-  set (reification_r X0 (mon_i s1)) as c in *.
-  set (HomFunctor s2 (mon_i s2)) as c' in *.
-  set (HomFunctor s1 (mon_i s1)) as b' in *.
+  set (reification_r X0 (enr_c_i s1)) as c in *.
+  set (HomFunctor s2 (enr_c_i s2)) as c' in *.
+  set (HomFunctor s1 (enr_c_i s1)) as b' in *.
   apply (ni_comp(F2:=b >>>> (b' >>>> x))).
-  apply (@ni_respects _ _ _ _ _ _ _ _ _ _ b _ b _ (c >>>> c') _ (b' >>>> x)).
-  apply ni_id.
+  apply (ni_respects1 b (c >>>> c') (b' >>>> x)).
   apply comm2.
   eapply ni_comp.
   eapply ni_inv.
@@ -94,10 +94,9 @@ Definition compose_reifications (s0 s1 s2:SMMEs) :
   eapply ni_comp.
   eapply ni_inv.
   apply (ni_associativity a a' x).
-  apply (@ni_respects _ _ _ _ _ _ _ _ _ _ (a >>>> a') _ (b >>>> b') _ x _ x).
+  apply (ni_respects2 (a >>>> a') (b >>>> b') x).
   apply ni_inv.
   apply comm1.
-  apply ni_id.
   Defined.
 
 Definition reificationOrIdentityComp

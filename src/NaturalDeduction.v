@@ -137,7 +137,7 @@ Section Natural_Deduction.
     | nd_id1    : forall  h,  [ h ] /⋯⋯/ [ h ]
   
     (* natural deduction: you may discard conclusions *)
-    | nd_weak   : forall  h,  [ h ] /⋯⋯/ [   ]
+    | nd_weak1  : forall  h,  [ h ] /⋯⋯/ [   ]
   
     (* natural deduction: you may duplicate conclusions *)
     | nd_copy   : forall  h,    h   /⋯⋯/ (h,,h)
@@ -176,14 +176,13 @@ Section Natural_Deduction.
     Open Scope nd_scope.
     Open Scope pf_scope.
 
-  (* a proof is "structural" iff it does not contain any invocations of nd_rule *)
+  (* a predicate on proofs *)
+  Definition NDPredicate := forall h c, h /⋯⋯/ c -> Prop.
+
+  (* the structural inference rules are those which do not change, add, remove, or re-order the judgments *)
   Inductive Structural : forall {h c}, h /⋯⋯/ c -> Prop :=
   | nd_structural_id0     :                                                                            Structural nd_id0
   | nd_structural_id1     : forall h,                                                                  Structural (nd_id1 h)
-  | nd_structural_weak    : forall h,                                                                  Structural (nd_weak h)
-  | nd_structural_copy    : forall h,                                                                  Structural (nd_copy h)
-  | nd_structural_prod    : forall `(pf1:h1/⋯⋯/c1)`(pf2:h2/⋯⋯/c2), Structural pf1 -> Structural pf2 -> Structural (pf1**pf2)
-  | nd_structural_comp    : forall `(pf1:h1/⋯⋯/x) `(pf2: x/⋯⋯/c2), Structural pf1 -> Structural pf2 -> Structural (pf1;;pf2)
   | nd_structural_cancell : forall {a},                                                                Structural (@nd_cancell a)
   | nd_structural_cancelr : forall {a},                                                                Structural (@nd_cancelr a)
   | nd_structural_llecnac : forall {a},                                                                Structural (@nd_llecnac a)
@@ -191,6 +190,26 @@ Section Natural_Deduction.
   | nd_structural_assoc   : forall {a b c},                                                            Structural (@nd_assoc a b c)
   | nd_structural_cossa   : forall {a b c},                                                            Structural (@nd_cossa a b c)
   .
+
+  (* the closure of an NDPredicate under nd_comp and nd_prod *)
+  Inductive NDPredicateClosure (P:NDPredicate) : forall {h c}, h /⋯⋯/ c -> Prop :=
+  | ndpc_p       : forall h c f, P h c f                                                   -> NDPredicateClosure P f
+  | ndpc_prod    : forall `(pf1:h1/⋯⋯/c1)`(pf2:h2/⋯⋯/c2),
+    NDPredicateClosure P pf1 -> NDPredicateClosure P pf2 -> NDPredicateClosure P (pf1**pf2)
+  | ndpc_comp    : forall `(pf1:h1/⋯⋯/x) `(pf2: x/⋯⋯/c2),
+    NDPredicateClosure P pf1 -> NDPredicateClosure P pf2 -> NDPredicateClosure P (pf1;;pf2).
+
+  (* proofs built up from structural rules via comp and prod *)
+  Definition StructuralND {h}{c} f := @NDPredicateClosure (@Structural) h c f.
+
+  (* The Predicate (BuiltFrom f P h) asserts that "h" was built from a single occurrence of "f" and proofs which satisfy P *)
+  Inductive BuiltFrom {h'}{c'}(f:h'/⋯⋯/c')(P:NDPredicate) : forall {h c}, h/⋯⋯/c -> Prop :=
+  | builtfrom_refl  : BuiltFrom f P f
+  | builtfrom_P     : forall h c g, @P h c g -> BuiltFrom f P g
+  | builtfrom_prod1 : forall h1 c1 f1 h2 c2 f2, P h1 c1 f1 -> @BuiltFrom _ _ f P h2 c2 f2 -> BuiltFrom f P (f1 ** f2)
+  | builtfrom_prod2 : forall h1 c1 f1 h2 c2 f2, P h1 c1 f1 -> @BuiltFrom _ _ f P h2 c2 f2 -> BuiltFrom f P (f2 ** f1)
+  | builtfrom_comp1 : forall h x c       f1 f2, P h  x  f1 -> @BuiltFrom _ _ f P x  c  f2 -> BuiltFrom f P (f1 ;; f2)
+  | builtfrom_comp2 : forall h x c       f1 f2, P x  c  f1 -> @BuiltFrom _ _ f P h  x  f2 -> BuiltFrom f P (f2 ;; f1).
 
   (* multi-judgment generalization of nd_id0 and nd_id1; making nd_id0/nd_id1 primitive and deriving all other *)
   Fixpoint nd_id (sl:Tree ??Judgment) : sl /⋯⋯/ sl :=
@@ -200,29 +219,34 @@ Section Natural_Deduction.
       | T_Branch a b     => nd_prod (nd_id a) (nd_id b)
     end.
 
-  Fixpoint nd_weak' (sl:Tree ??Judgment) : sl /⋯⋯/ [] :=
+  Fixpoint nd_weak (sl:Tree ??Judgment) : sl /⋯⋯/ [] :=
     match sl as SL return SL /⋯⋯/ [] with
       | T_Leaf None      => nd_id0
-      | T_Leaf (Some x)  => nd_weak x
-      | T_Branch a b     => nd_prod (nd_weak' a) (nd_weak' b) ;; nd_cancelr
+      | T_Leaf (Some x)  => nd_weak1 x
+      | T_Branch a b     => nd_prod (nd_weak a) (nd_weak b) ;; nd_cancelr
     end.
 
   Hint Constructors Structural.
-  Lemma nd_id_structural : forall sl, Structural (nd_id sl).
+  Hint Constructors BuiltFrom.
+  Hint Constructors NDPredicateClosure.
+
+  Hint Extern 1 => apply nd_structural_id0.     
+  Hint Extern 1 => apply nd_structural_id1.     
+  Hint Extern 1 => apply nd_structural_cancell. 
+  Hint Extern 1 => apply nd_structural_cancelr. 
+  Hint Extern 1 => apply nd_structural_llecnac. 
+  Hint Extern 1 => apply nd_structural_rlecnac. 
+  Hint Extern 1 => apply nd_structural_assoc.   
+  Hint Extern 1 => apply nd_structural_cossa.   
+  Hint Extern 1 => apply ndpc_p.
+  Hint Extern 1 => apply ndpc_prod.
+  Hint Extern 1 => apply ndpc_comp.
+
+  Lemma nd_id_structural : forall sl, StructuralND (nd_id sl).
     intros.
     induction sl; simpl; auto.
     destruct a; auto.
     Defined.
-
-  Lemma weak'_structural : forall a, Structural (nd_weak' a).
-    intros.
-    induction a.
-    destruct a; auto.
-    simpl.
-    auto.
-    simpl.
-    auto.
-    Qed.
 
   (* An equivalence relation on proofs which is sensitive only to the logical content of the proof -- insensitive to
    * structural variations  *)
@@ -233,31 +257,31 @@ Section Natural_Deduction.
   (* the relation must respect composition, be associative wrt composition, and be left and right neutral wrt the identity proof *)
   ; ndr_comp_respects        : forall {a b c}(f f':a/⋯⋯/b)(g g':b/⋯⋯/c),      f === f' -> g === g' -> f;;g === f';;g'
   ; ndr_comp_associativity   : forall `(f:a/⋯⋯/b)`(g:b/⋯⋯/c)`(h:c/⋯⋯/d),                         (f;;g);;h === f;;(g;;h)
-  ; ndr_comp_left_identity   : forall `(f:a/⋯⋯/c),                                          nd_id _ ;; f   === f
-  ; ndr_comp_right_identity  : forall `(f:a/⋯⋯/c),                                          f ;; nd_id _   === f
 
   (* the relation must respect products, be associative wrt products, and be left and right neutral wrt the identity proof *)
   ; ndr_prod_respects        : forall {a b c d}(f f':a/⋯⋯/b)(g g':c/⋯⋯/d),     f===f' -> g===g' ->    f**g === f'**g'
   ; ndr_prod_associativity   : forall `(f:a/⋯⋯/a')`(g:b/⋯⋯/b')`(h:c/⋯⋯/c'),       (f**g)**h === nd_assoc ;; f**(g**h) ;; nd_cossa
-  ; ndr_prod_left_identity   : forall `(f:a/⋯⋯/b),                       (nd_id0 ** f ) === nd_cancell ;; f ;; nd_llecnac
-  ; ndr_prod_right_identity  : forall `(f:a/⋯⋯/b),                       (f ** nd_id0)  === nd_cancelr ;; f ;; nd_rlecnac
 
   (* products and composition must distribute over each other *)
   ; ndr_prod_preserves_comp  : forall `(f:a/⋯⋯/b)`(f':a'/⋯⋯/b')`(g:b/⋯⋯/c)`(g':b'/⋯⋯/c'), (f;;g)**(f';;g') === (f**f');;(g**g')
 
+  (* Given a proof f, any two proofs built from it using only structural rules are indistinguishable.  Keep in mind that
+   * nd_weak and nd_copy aren't considered structural, so the hypotheses and conclusions of such proofs will be an identical
+   * list, differing only in the "parenthesization" and addition or removal of empty leaves. *)
+  ; ndr_builtfrom_structural : forall `(f:a/⋯⋯/b){a' b'}(g1 g2:a'/⋯⋯/b'),
+    BuiltFrom f (@StructuralND) g1 ->
+    BuiltFrom f (@StructuralND) g2 ->
+    g1 === g2
+
+  (* proofs of nothing are not distinguished from each other *)
+  ; ndr_void_proofs_irrelevant : forall `(f:a/⋯⋯/[])(g:a/⋯⋯/[]), f === g
+
   (* products and duplication must distribute over each other *)
   ; ndr_prod_preserves_copy  : forall `(f:a/⋯⋯/b),                                        nd_copy a;; f**f === f ;; nd_copy b
 
-  ; ndr_comp_preserves_cancell   : forall `(f:a/⋯⋯/b),                     nd_cancell;; f === nd_id _ **  f ;; nd_cancell
-  ; ndr_comp_preserves_cancelr   : forall `(f:a/⋯⋯/b),                     nd_cancelr;; f === f ** nd_id _  ;; nd_cancelr
-  ; ndr_comp_preserves_assoc     : forall `(f:a/⋯⋯/b)`(g:a1/⋯⋯/b1)`(h:a2/⋯⋯/b2),
-    nd_assoc;; (f ** (g ** h)) === ((f ** g) ** h) ;; nd_assoc
-
-  (* any two _structural_ proofs with the same hypotheses/conclusions must be considered equal *)
-  ; ndr_structural_indistinguishable : forall `(f:a/⋯⋯/b)(g:a/⋯⋯/b), Structural f -> Structural g -> f===g
-
-  (* any two proofs of nothing are "equally good" *)
-  ; ndr_void_proofs_irrelevant : forall `(f:a/⋯⋯/[])(g:a/⋯⋯/[]), f === g
+  (* duplicating a hypothesis and discarding it is irrelevant *)
+  ; ndr_copy_then_weak_left   : forall a,                            nd_copy a;; (nd_weak _ ** nd_id _) ;; nd_cancell === nd_id _
+  ; ndr_copy_then_weak_right  : forall a,                            nd_copy a;; (nd_id _ ** nd_weak _) ;; nd_cancelr === nd_id _
   }.
 
   (* 
@@ -349,74 +373,161 @@ Section Natural_Deduction.
   end.
 
   (* Natural Deduction systems whose judgments happen to be pairs of the same type *)
-  Section Sequents.
-    Context {S:Type}.   (* type of sequent components *)
-    Context {sequent:S->S->Judgment}.
-    Context {ndr:ND_Relation}.
+  Section SequentND.
+    Context {S:Type}.                   (* type of sequent components *)
+    Context {sequent:S->S->Judgment}.   (* pairing operation which forms a sequent from its halves *)
     Notation "a |= b" := (sequent a b).
-    Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
-    (* Sequent systems with initial sequents *)
-    Class SequentCalculus :=
-    { nd_seq_reflexive : forall a, ND [ ] [ a |= a ]
+    (* a SequentND is a natural deduction whose judgments are sequents, has initial sequents, and has a cut rule *)
+    Class SequentND :=
+    { snd_initial : forall a,                           [ ] /⋯⋯/ [ a |= a ]
+    ; snd_cut     : forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
     }.
 
-    (* Sequent systems with a cut rule *)
-    Class CutRule (nd_cutrule_seq:SequentCalculus) :=
-    { nd_cut               :  forall a b c,  [ a |= b ] ,, [ b |= c ] /⋯⋯/ [ a |= c ]
-    ; nd_cut_left_identity  : forall a b, ((    (nd_seq_reflexive a)**(nd_id _));; nd_cut _ _ b) === nd_cancell
-    ; nd_cut_right_identity : forall a b, (((nd_id _)**(nd_seq_reflexive a)    );; nd_cut b _ _) === nd_cancelr
-    ; nd_cut_associativity :  forall {a b c d},
-      (nd_id1 (a|=b) ** nd_cut b c d) ;; (nd_cut a b d) === nd_cossa ;; (nd_cut a b c ** nd_id1 (c|=d)) ;; nd_cut a c d
-    }.
-
-  End Sequents.
-
-  (* Sequent systems in which each side of the sequent is a tree of something *)
-  Section SequentsOfTrees.
-    Context {T:Type}{sequent:Tree ??T -> Tree ??T -> Judgment}.
+    Context (sequentND:SequentND).
     Context (ndr:ND_Relation).
+
+    (*
+     * A predicate singling out structural rules, initial sequents,
+     * and cut rules.
+     *
+     * Proofs using only structural rules cannot add or remove
+     * judgments - their hypothesis and conclusion judgment-trees will
+     * differ only in "parenthesization" and the presence/absence of
+     * empty leaves.  This means that a proof involving only
+     * structural rules, cut, and initial sequents can ADD new
+     * non-empty judgment-leaves only via snd_initial, and can only
+     * REMOVE non-empty judgment-leaves only via snd_cut.  Since the
+     * initial sequent is a left and right identity for cut, and cut
+     * is associative, any two proofs (with the same hypotheses and
+     * conclusions) using only structural rules, cut, and initial
+     * sequents are logically indistinguishable - their differences
+     * are logically insignificant.
+     *
+     * Note that it is important that nd_weak and nd_copy aren't
+     * considered to be "structural".
+     *)
+    Inductive SequentND_Inert : forall h c, h/⋯⋯/c -> Prop :=
+    | snd_inert_initial   : forall a,                     SequentND_Inert _ _ (snd_initial a)
+    | snd_inert_cut       : forall a b c,                 SequentND_Inert _ _ (snd_cut a b c)
+    | snd_inert_structural: forall a b f, Structural f -> SequentND_Inert a b f
+    .
+
+    (* An ND_Relation for a sequent deduction should not distinguish between two proofs having the same hypotheses and conclusions
+     * if those proofs use only initial sequents, cut, and structural rules (see comment above) *)
+    Class SequentND_Relation :=
+    { sndr_ndr   := ndr
+    ; sndr_inert : forall a b (f g:a/⋯⋯/b),
+      NDPredicateClosure SequentND_Inert f -> 
+      NDPredicateClosure SequentND_Inert g -> 
+      ndr_eqv f g }.
+
+  End SequentND.
+
+  (* Deductions on sequents whose antecedent is a tree of propositions (i.e. a context) *)
+  Section ContextND.
+    Context {P:Type}{sequent:Tree ??P -> Tree ??P -> Judgment}.
+    Context {snd:SequentND(sequent:=sequent)}.
     Notation "a |= b" := (sequent a b).
-    Notation "a === b"  := (@ndr_eqv ndr _ _ a b)  : nd_scope.
 
-    (* Sequent systems in which we can re-arrange the tree to the left of the turnstile - note that these rules
-     * mirror nd_{cancell,cancelr,rlecnac,llecnac,assoc,cossa} but are completely separate from them *)
-    Class TreeStructuralRules :=
-    { tsr_ant_assoc     : forall x a b c, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x]
-    ; tsr_ant_cossa     : forall x a b c, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x]
-    ; tsr_ant_cancell   : forall x a    , ND [  [],,a     |= x]     [        a   |= x]
-    ; tsr_ant_cancelr   : forall x a    , ND [a,,[]       |= x]     [        a   |= x]
-    ; tsr_ant_llecnac   : forall x a    , ND [      a     |= x]     [    [],,a   |= x]
-    ; tsr_ant_rlecnac   : forall x a    , ND [      a     |= x]     [    a,,[]   |= x]
+    (* Note that these rules mirror nd_{cancell,cancelr,rlecnac,llecnac,assoc,cossa} but are completely separate from them *)
+    Class ContextND :=
+    { cnd_ant_assoc     : forall x a b c, ND [((a,,b),,c) |= x]     [(a,,(b,,c)) |= x   ]
+    ; cnd_ant_cossa     : forall x a b c, ND [(a,,(b,,c)) |= x]     [((a,,b),,c) |= x   ]
+    ; cnd_ant_cancell   : forall x a    , ND [  [],,a     |= x]     [        a   |= x   ]
+    ; cnd_ant_cancelr   : forall x a    , ND [a,,[]       |= x]     [        a   |= x   ]
+    ; cnd_ant_llecnac   : forall x a    , ND [      a     |= x]     [    [],,a   |= x   ]
+    ; cnd_ant_rlecnac   : forall x a    , ND [      a     |= x]     [    a,,[]   |= x   ]
+    ; cnd_expand_left   : forall a b c  , ND [          a |= b]     [ c,,a       |= c,,b]
+    ; cnd_expand_right  : forall a b c  , ND [          a |= b]     [ a,,c       |= b,,c]
+    ; cnd_snd           := snd
     }.
 
-    Notation "[# a #]"  := (nd_rule a)               : nd_scope.
+    Context `(ContextND).
 
-    (* Sequent systems in which we can add any proposition to both sides of the sequent (sort of a "horizontal weakening") *)
-    Context `{se_cut : @CutRule _ sequent ndr sc}.
-    Class SequentExpansion :=
-    { se_expand_left     : forall tau {Gamma Sigma}, ND [        Gamma |=        Sigma ] [tau,,Gamma|=tau,,Sigma]
-    ; se_expand_right    : forall tau {Gamma Sigma}, ND [        Gamma |=        Sigma ] [Gamma,,tau|=Sigma,,tau]
+    (*
+     * A predicate singling out initial sequents, cuts, context expansion,
+     * and structural rules.
+     *
+     * Any two proofs (with the same hypotheses and conclusions) whose
+     * non-structural rules do nothing other than expand contexts,
+     * re-arrange contexts, or introduce additional initial-sequent
+     * conclusions are indistinguishable.  One important consequence
+     * is that asking for a small initial sequent and then expanding
+     * it using cnd_expand_{right,left} is no different from simply
+     * asking for the larger initial sequent in the first place.
+     *
+     *)
+    Inductive ContextND_Inert : forall h c, h/⋯⋯/c -> Prop :=
+    | cnd_inert_initial           : forall a,                     ContextND_Inert _ _ (snd_initial a)
+    | cnd_inert_cut               : forall a b c,                 ContextND_Inert _ _ (snd_cut a b c)
+    | cnd_inert_structural        : forall a b f, Structural f -> ContextND_Inert a b f
+    | cnd_inert_cnd_ant_assoc     : forall x a b c, ContextND_Inert _ _ (cnd_ant_assoc   x a b c)
+    | cnd_inert_cnd_ant_cossa     : forall x a b c, ContextND_Inert _ _ (cnd_ant_cossa   x a b c)
+    | cnd_inert_cnd_ant_cancell   : forall x a    , ContextND_Inert _ _ (cnd_ant_cancell x a)
+    | cnd_inert_cnd_ant_cancelr   : forall x a    , ContextND_Inert _ _ (cnd_ant_cancelr x a)
+    | cnd_inert_cnd_ant_llecnac   : forall x a    , ContextND_Inert _ _ (cnd_ant_llecnac x a)
+    | cnd_inert_cnd_ant_rlecnac   : forall x a    , ContextND_Inert _ _ (cnd_ant_rlecnac x a)
+    | cnd_inert_se_expand_left    : forall t g s  , ContextND_Inert _ _ (@cnd_expand_left  _ t g s)
+    | cnd_inert_se_expand_right   : forall t g s  , ContextND_Inert _ _ (@cnd_expand_right _ t g s).
 
-    (* left and right expansion must commute with cut *)
-    ; se_reflexive_left  : ∀ a c,     nd_seq_reflexive a;; se_expand_left  c === nd_seq_reflexive (c,, a)
-    ; se_reflexive_right : ∀ a c,     nd_seq_reflexive a;; se_expand_right c === nd_seq_reflexive (a,, c)
-    ; se_cut_left        : ∀ a b c d, (se_expand_left _)**(se_expand_left _);;nd_cut _ _ _===nd_cut a b d;;(se_expand_left c)
-    ; se_cut_right       : ∀ a b c d, (se_expand_right _)**(se_expand_right _);;nd_cut _ _ _===nd_cut a b d;;(se_expand_right c)
+    Class ContextND_Relation {ndr}{sndr:SequentND_Relation _ ndr} :=
+    { cndr_inert : forall {a}{b}(f g:a/⋯⋯/b),
+                           NDPredicateClosure ContextND_Inert f -> 
+                           NDPredicateClosure ContextND_Inert g -> 
+                           ndr_eqv f g
+    ; cndr_sndr  := sndr
     }.
-  End SequentsOfTrees.
+
+  End ContextND.
 
   Close Scope nd_scope.
   Open Scope pf_scope.
 
 End Natural_Deduction.
 
-Coercion nd_cut : CutRule >-> Funclass.
+Coercion snd_cut   : SequentND >-> Funclass.
+Coercion cnd_snd   : ContextND >-> SequentND.
+Coercion sndr_ndr  : SequentND_Relation >-> ND_Relation.
+Coercion cndr_sndr : ContextND_Relation >-> SequentND_Relation.
 
 Implicit Arguments ND [ Judgment ].
 Hint Constructors Structural.
 Hint Extern 1 => apply nd_id_structural.
-Hint Extern 1 => apply ndr_structural_indistinguishable.
+Hint Extern 1 => apply ndr_builtfrom_structural.
+Hint Extern 1 => apply nd_structural_id0.     
+Hint Extern 1 => apply nd_structural_id1.     
+Hint Extern 1 => apply nd_structural_cancell. 
+Hint Extern 1 => apply nd_structural_cancelr. 
+Hint Extern 1 => apply nd_structural_llecnac. 
+Hint Extern 1 => apply nd_structural_rlecnac. 
+Hint Extern 1 => apply nd_structural_assoc.   
+Hint Extern 1 => apply nd_structural_cossa.   
+Hint Extern 1 => apply ndpc_p.
+Hint Extern 1 => apply ndpc_prod.
+Hint Extern 1 => apply ndpc_comp.
+Hint Extern 1 => apply builtfrom_refl.
+Hint Extern 1 => apply builtfrom_prod1.
+Hint Extern 1 => apply builtfrom_prod2.
+Hint Extern 1 => apply builtfrom_comp1.
+Hint Extern 1 => apply builtfrom_comp2.
+Hint Extern 1 => apply builtfrom_P.
+
+Hint Extern 1 => apply snd_inert_initial.
+Hint Extern 1 => apply snd_inert_cut.
+Hint Extern 1 => apply snd_inert_structural.
+
+Hint Extern 1 => apply cnd_inert_initial.
+Hint Extern 1 => apply cnd_inert_cut.
+Hint Extern 1 => apply cnd_inert_structural.
+Hint Extern 1 => apply cnd_inert_cnd_ant_assoc.
+Hint Extern 1 => apply cnd_inert_cnd_ant_cossa.
+Hint Extern 1 => apply cnd_inert_cnd_ant_cancell.
+Hint Extern 1 => apply cnd_inert_cnd_ant_cancelr.
+Hint Extern 1 => apply cnd_inert_cnd_ant_llecnac.
+Hint Extern 1 => apply cnd_inert_cnd_ant_rlecnac.
+Hint Extern 1 => apply cnd_inert_se_expand_left.
+Hint Extern 1 => apply cnd_inert_se_expand_right.
 
 (* This first notation gets its own scope because it can be confusing when we're working with multiple different kinds
  * of proofs.  When only one kind of proof is in use, it's quite helpful though. *)
@@ -445,6 +556,21 @@ Add Parametric Relation {jt rt ndr h c} : (h/⋯⋯/c) (@ndr_eqv jt rt ndr h c)
     as parametric_morphism_nd_prod.
     intros; apply ndr_prod_respects; auto.
     Defined.
+
+Section ND_Relation_Facts.
+  Context `{ND_Relation}.
+
+  (* useful *)
+  Lemma ndr_comp_right_identity : forall h c (f:h/⋯⋯/c), ndr_eqv (f ;; nd_id c) f.
+    intros; apply (ndr_builtfrom_structural f); auto.
+    Defined.
+
+  (* useful *)
+  Lemma ndr_comp_left_identity : forall h c (f:h/⋯⋯/c), ndr_eqv (nd_id h ;; f) f.
+    intros; apply (ndr_builtfrom_structural f); auto.
+    Defined.
+
+End ND_Relation_Facts.
 
 (* a generalization of the procedure used to build (nd_id n) from nd_id0 and nd_id1 *)
 Definition nd_replicate
@@ -482,7 +608,7 @@ Definition nd_map
         with
         | nd_id0                     => let case_nd_id0     := tt in _
         | nd_id1     h               => let case_nd_id1     := tt in _
-        | nd_weak    h               => let case_nd_weak    := tt in _
+        | nd_weak1   h               => let case_nd_weak    := tt in _
         | nd_copy    h               => let case_nd_copy    := tt in _
         | nd_prod    _ _ _ _ lpf rpf => let case_nd_prod    := tt in _
         | nd_comp    _ _ _   top bot => let case_nd_comp    := tt in _
@@ -530,7 +656,7 @@ Definition nd_map'
         with
         | nd_id0                     => let case_nd_id0     := tt in _
         | nd_id1     h               => let case_nd_id1     := tt in _
-        | nd_weak    h               => let case_nd_weak    := tt in _
+        | nd_weak1   h               => let case_nd_weak    := tt in _
         | nd_copy    h               => let case_nd_copy    := tt in _
         | nd_prod    _ _ _ _ lpf rpf => let case_nd_prod    := tt in _
         | nd_comp    _ _ _   top bot => let case_nd_comp    := tt in _
@@ -633,7 +759,7 @@ Section ToLatex.
                                        rawLatexMath "% nd_id0 " +++ eolL
       | nd_id1  h'                  => rawLatexMath indent +++
                                        rawLatexMath "% nd_id1 "+++ judgments2latex h +++ eolL
-      | nd_weak h'                  => rawLatexMath indent +++
+      | nd_weak1 h'                 => rawLatexMath indent +++
                                        rawLatexMath "\inferrule*[Left=ndWeak]{" +++ toLatexMath h' +++ rawLatexMath "}{ }" +++ eolL
       | nd_copy h'                  => rawLatexMath indent +++
                                        rawLatexMath "\inferrule*[Left=ndCopy]{"+++judgments2latex h+++

@@ -20,14 +20,22 @@ Require Import NaturalIsomorphisms_ch7_5.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
+Require Import Enrichments.
 Require Import RepresentableStructure_ch7_2.
+Require Import PreMonoidalCenter.
+Require Import PreMonoidalCategories.
+Require Import BinoidalCategories.
 
 Class GeneralizedArrow (K:Enrichment) {ce}(C:MonoidalEnrichment ce) :=
-{ ga_functor_obj      : enr_v_mon K -> C
-; ga_functor          : Functor (enr_v_mon K) C ga_functor_obj
-; ga_functor_monoidal : MonoidalFunctor (enr_v_mon K) C ga_functor
+{ ga_functor_obj      : enr_v K -> ce
+; ga_functor          : Functor            (enr_v_mon K) (enr_c_pm ce) ga_functor_obj
+; ga_functor_monoidal : PreMonoidalFunctor (enr_v_mon K) (enr_c_pm ce) ga_functor
+(*
+; ga_functor          : Functor         (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor_obj
+; ga_functor_monoidal : MonoidalFunctor (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor
+*)
 }.
-Coercion ga_functor_monoidal : GeneralizedArrow >-> MonoidalFunctor.
+Coercion ga_functor_monoidal : GeneralizedArrow >-> PreMonoidalFunctor.
 
 Implicit Arguments GeneralizedArrow    [ [ce] ].
 Implicit Arguments ga_functor_obj      [ K ce C ].

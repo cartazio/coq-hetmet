@@ -136,7 +136,7 @@ Section HaskProofFlattener.
   Definition FlatteningFunctor_fmor {Γ}{Δ}{ec}
     : forall h c,
       (h~~{JudgmentsL _ _ (PCF _ Γ Δ ec)}~~>c) ->
-      ((obact ec h)~~{TypesL _ _ (SystemFCa _ Γ Δ)}~~>(obact ec c)).
+      ((obact ec h)~~{TypesL _ _ (SystemFCa Γ Δ)}~~>(obact ec c)).
 
     set (@nil (HaskTyVar Γ ★)) as lev.
 
@@ -162,7 +162,7 @@ Section HaskProofFlattener.
     (* the proof from hypothesis X of two identical conclusions X,,X (nd_copy) becomes RVar;;RJoin;;RCont *)
     eapply nd_comp; [ idtac | eapply nd_rule; eapply (org_fc _ _ (RArrange _ _ _ _ _ (RCont _))) ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
-      set (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))
+      set (snd_initial(SequentND:=@pl_snd  _ _ _ _ (SystemFCa Γ Δ))
         (mapOptionTree guestJudgmentAsGArrowType h @@@ lev)) as q.
       eapply nd_comp.
       eapply nd_prod.
@@ -184,42 +184,45 @@ Section HaskProofFlattener.
     eapply nd_comp.
       apply (nd_llecnac ;; nd_prod IHX1 IHX2).
       clear IHX1 IHX2 X1 X2.
-      apply (@nd_cut _ _ _ _ _ _ (@pl_subst _ _ _ _ (SystemFCa _ Γ Δ))).
+      (*
+      apply (@snd_cut _ _ _ _ _ _ (@pl_cnd _ _ _ _ (SystemFCa Γ Δ))).
+      *)
+      admit.
 
     (* nd_cancell becomes RVar;;RuCanL *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanL _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
     (* nd_cancelr becomes RVar;;RuCanR *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanR _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
     (* nd_llecnac becomes RVar;;RCanL *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCanL _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
     (* nd_rlecnac becomes RVar;;RCanR *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCanR _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
     (* nd_assoc becomes RVar;;RAssoc *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RAssoc _ _ _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
     (* nd_cossa becomes RVar;;RCossa *)
     eapply nd_comp;
       [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCossa _ _ _))) ].
-      apply (nd_seq_reflexive(SequentCalculus:=@pl_sc  _ _ _ _ (SystemFCa _ Γ Δ))).
+      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
       auto.
 
       destruct r as [r rp].
@@ -342,7 +345,7 @@ Section HaskProofFlattener.
 
       Defined.
 
-  Instance FlatteningFunctor {Γ}{Δ}{ec} : Functor (JudgmentsL _ _ (PCF _ Γ Δ ec)) (TypesL _ _ (SystemFCa _ Γ Δ)) (obact ec) :=
+  Instance FlatteningFunctor {Γ}{Δ}{ec} : Functor (JudgmentsL _ _ (PCF _ Γ Δ ec)) (TypesL _ _ (SystemFCa Γ Δ)) (obact ec) :=
     { fmor := FlatteningFunctor_fmor }.
     admit.
     admit.

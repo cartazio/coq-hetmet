@@ -577,7 +577,7 @@ Section HaskProofToStrong.
     refine (fresh_lemma _ ξ vars _ tx x H >>>= (fun pf => _)).
     apply FreshMon.
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ x ((⟨vnew, tx  ⟩) :: nil)) as ξ' in *.
+    set (update_ξ ξ x (((vnew, tx  )) :: nil)) as ξ' in *.
     refine (X_ ξ' (vars,,[vnew]) _ >>>= _).
     apply FreshMon.
     simpl.
@@ -642,7 +642,7 @@ Section HaskProofToStrong.
     refine (fresh_lemma _ ξ vars1 _ σ₂ p H1 >>>= (fun pf => _)).
     apply FreshMon.
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ p ((⟨vnew, σ₂  ⟩) :: nil)) as ξ' in *.
+    set (update_ξ ξ p (((vnew, σ₂ )) :: nil)) as ξ' in *.
     inversion X_.
     apply ileaf in X.
     apply ileaf in X0.

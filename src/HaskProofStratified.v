@@ -198,8 +198,6 @@ Section HaskProofStratified.
       admit.
       admit.
       admit.
-      admit.
-      admit.
       Defined.
 
   (*
@@ -347,30 +345,9 @@ Section HaskProofStratified.
       admit.
       admit.
       admit.
-      admit.
-      admit.
       Defined.
 
   Hint Constructors Rule_Flat.
-
-  Instance PCF_sequents Γ Δ lev : @SequentCalculus _ (PCFRule Γ Δ lev) _ pcfjudg.
-    apply Build_SequentCalculus.
-    intros.
-    induction a.
-    destruct a; simpl.
-    apply nd_rule.
-      exists (RVar _ _ _ _).
-      apply PCF_RVar.
-    apply nd_rule.
-      exists (RVoid _ _ ).
-      apply PCF_RVoid.
-    eapply nd_comp.
-      eapply nd_comp; [ apply nd_llecnac | idtac ].
-      apply (nd_prod IHa1 IHa2).
-      apply nd_rule.
-        exists (RJoin _ _ _ _ _ _). 
-        apply PCF_RJoin.
-        Defined.
 
   Definition PCF_Arrange {Γ}{Δ}{lev} : forall x y z, Arrange x y -> ND (PCFRule Γ Δ lev) [pcfjudg x z] [pcfjudg y z].
     admit.
@@ -407,16 +384,30 @@ Section HaskProofStratified.
     admit.
     Defined.
 
-  Instance PCF_cutrule Γ Δ lev : CutRule (PCF_sequents Γ Δ lev) :=
-    { nd_cut := PCF_cut Γ Δ lev }.
-    admit.
-    admit.
-    admit.
-    Defined.
+  Instance PCF_sequents Γ Δ lev : @SequentND _ (PCFRule Γ Δ lev) _ pcfjudg :=
+    { snd_cut := PCF_cut Γ Δ lev }.
+    apply Build_SequentND.
+    intros.
+    induction a.
+    destruct a; simpl.
+    apply nd_rule.
+      exists (RVar _ _ _ _).
+      apply PCF_RVar.
+    apply nd_rule.
+      exists (RVoid _ _ ).
+      apply PCF_RVoid.
+    eapply nd_comp.
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply (nd_prod IHa1 IHa2).
+      apply nd_rule.
+        exists (RJoin _ _ _ _ _ _). 
+        apply PCF_RJoin.
+      admit.
+        Defined.
 
   Definition PCF_left Γ Δ lev a b c : ND (PCFRule Γ Δ lev) [pcfjudg b c] [pcfjudg (a,,b) (a,,c)].
     eapply nd_comp; [ apply nd_llecnac | eapply nd_comp; [ idtac | idtac ] ].
-    eapply nd_prod; [ apply nd_seq_reflexive | apply nd_id ].
+    eapply nd_prod; [ apply snd_initial | apply nd_id ].
     apply nd_rule.
     set (@PCF_RJoin Γ Δ lev a b a c) as q'.
     refine (existT _ _ _).
@@ -425,29 +416,38 @@ Section HaskProofStratified.
 
   Definition PCF_right Γ Δ lev a b c : ND (PCFRule Γ Δ lev) [pcfjudg b c] [pcfjudg (b,,a) (c,,a)].
     eapply nd_comp; [ apply nd_rlecnac | eapply nd_comp; [ idtac | idtac ] ].
-    eapply nd_prod; [ apply nd_id | apply nd_seq_reflexive ].
+    eapply nd_prod; [ apply nd_id | apply snd_initial ].
     apply nd_rule.
     set (@PCF_RJoin Γ Δ lev b a c a) as q'.
     refine (existT _ _ _).
     apply q'.
     Defined.
 
-  Instance PCF_sequent_join Γ Δ lev : @SequentExpansion _ _ _ _ _ (PCF_sequents Γ Δ lev) (PCF_cutrule Γ Δ lev) :=
-  { se_expand_left  := PCF_left  Γ Δ lev
-  ; se_expand_right := PCF_right Γ Δ lev }.
+  Instance PCF_sequent_join Γ Δ lev : @ContextND _ (PCFRule Γ Δ lev) _ pcfjudg _ :=
+  { cnd_expand_left  := fun a b c => PCF_left  Γ Δ lev c a b
+  ; cnd_expand_right := fun a b c => PCF_right Γ Δ lev c a b }.
+    admit.
+    admit.
     admit.
     admit.
     admit.
     admit.
     Defined.
 
+  Instance OrgPCF_SequentND_Relation Γ Δ lev : SequentND_Relation (PCF_sequent_join Γ Δ lev) OrgND.
+    admit.
+    Defined.
+
+  Instance OrgPCF_ContextND_Relation Γ Δ lev : ContextND_Relation (PCF_sequent_join Γ Δ lev).
+    admit.
+    Defined.
+
   (* 5.1.3 *)
   Instance PCF Γ Δ lev : @ProgrammingLanguage _ _ pcfjudg (PCFRule Γ Δ lev) :=
-  { pl_eqv                := OrgPCF Γ Δ lev
-  ; pl_sc                 := PCF_sequents Γ Δ lev
-  ; pl_subst              := PCF_cutrule Γ Δ lev
-  ; pl_sequent_join       := PCF_sequent_join Γ Δ lev
+  { pl_eqv                := OrgPCF_ContextND_Relation Γ Δ lev
+  ; pl_snd                := PCF_sequents Γ Δ lev
   }.
+  (*
     apply Build_TreeStructuralRules; intros; unfold eqv; unfold hom; simpl.
 
     apply nd_rule. unfold PCFRule. simpl.
@@ -474,26 +474,7 @@ Section HaskProofStratified.
       exists (RArrange _ _ _ _ _ (RuCanR _)).
       apply (PCF_RArrange lev _ (a,,[]) _).
       Defined.
-
-  Instance SystemFCa_sequents Γ Δ : @SequentCalculus _ OrgR _ (mkJudg Γ Δ).
-    apply Build_SequentCalculus.
-    intros.
-    induction a.
-    destruct a; simpl.
-    apply nd_rule.
-      destruct l.
-      apply org_fc with (r:=RVar _ _ _ _).
-      auto.
-    apply nd_rule.
-      apply org_fc with (r:=RVoid _ _ ).
-      auto.
-    eapply nd_comp.
-      eapply nd_comp; [ apply nd_llecnac | idtac ].
-      apply (nd_prod IHa1 IHa2).
-      apply nd_rule.
-        apply org_fc with (r:=RJoin _ _ _ _ _ _). 
-        auto.
-        Defined.
+*)
 
   Definition SystemFCa_cut Γ Δ : forall a b c, ND OrgR ([ Γ > Δ > a |- b ],,[ Γ > Δ > b |- c ]) [ Γ > Δ > a |- c ].
     intros.
@@ -524,16 +505,31 @@ Section HaskProofStratified.
     apply (Prelude_error "systemfc rule invoked with [a|=[b,,c]] [[b,,c]|=z]").
     Defined.
 
-  Instance SystemFCa_cutrule Γ Δ : CutRule (SystemFCa_sequents Γ Δ) :=
-    { nd_cut := SystemFCa_cut Γ Δ }.
-    admit.
-    admit.
-    admit.
-    Defined.
+  Instance SystemFCa_sequents Γ Δ : @SequentND _ OrgR _ (mkJudg Γ Δ) :=
+  { snd_cut := SystemFCa_cut Γ Δ }.
+    apply Build_SequentND.
+    intros.
+    induction a.
+    destruct a; simpl.
+    apply nd_rule.
+      destruct l.
+      apply org_fc with (r:=RVar _ _ _ _).
+      auto.
+    apply nd_rule.
+      apply org_fc with (r:=RVoid _ _ ).
+      auto.
+    eapply nd_comp.
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply (nd_prod IHa1 IHa2).
+      apply nd_rule.
+        apply org_fc with (r:=RJoin _ _ _ _ _ _). 
+        auto.
+      admit.
+        Defined.
 
   Definition SystemFCa_left Γ Δ a b c : ND OrgR [Γ > Δ > b |- c] [Γ > Δ > (a,,b) |- (a,,c)].
     eapply nd_comp; [ apply nd_llecnac | eapply nd_comp; [ idtac | idtac ] ].
-    eapply nd_prod; [ apply nd_seq_reflexive | apply nd_id ].
+    eapply nd_prod; [ apply snd_initial | apply nd_id ].
     apply nd_rule.
     apply org_fc with (r:=RJoin Γ Δ a b a c).
     auto.
@@ -541,12 +537,13 @@ Section HaskProofStratified.
 
   Definition SystemFCa_right Γ Δ a b c : ND OrgR [Γ > Δ > b |- c] [Γ > Δ > (b,,a) |- (c,,a)].
     eapply nd_comp; [ apply nd_rlecnac | eapply nd_comp; [ idtac | idtac ] ].
-    eapply nd_prod; [ apply nd_id | apply nd_seq_reflexive ].
+    eapply nd_prod; [ apply nd_id | apply snd_initial ].
     apply nd_rule.
     apply org_fc with (r:=RJoin Γ Δ b a c a).
     auto.
     Defined.
 
+(*
   Instance SystemFCa_sequent_join Γ Δ : @SequentExpansion _ _ _ _ _ (SystemFCa_sequents Γ Δ) (SystemFCa_cutrule Γ Δ) :=
   { se_expand_left  := SystemFCa_left  Γ Δ 
   ; se_expand_right := SystemFCa_right Γ Δ }.
@@ -555,11 +552,12 @@ Section HaskProofStratified.
     admit.
     admit.
     Defined.
-
+*)
   (* 5.1.2 *)
-  Instance SystemFCa Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) OrgR :=
+  Instance SystemFCa Γ Δ : @ProgrammingLanguage _ _ (mkJudg Γ Δ) OrgR.
+(*
   { pl_eqv                := OrgNDR
-  ; pl_sc                 := SystemFCa_sequents     Γ Δ
+  ; pl_sn                 := SystemFCa_sequents     Γ Δ
   ; pl_subst              := SystemFCa_cutrule      Γ Δ
   ; pl_sequent_join       := SystemFCa_sequent_join Γ Δ
   }.
@@ -570,6 +568,8 @@ Section HaskProofStratified.
     apply nd_rule. apply (org_fc _ _ (RArrange _ _ _ _ _ (RCanR  a    ))). apply Flat_RArrange.
     apply nd_rule. apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanL a    ))). apply Flat_RArrange.
     apply nd_rule. apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanR a    ))). apply Flat_RArrange.
+*)
+admit.
     Defined.
 
 End HaskProofStratified.

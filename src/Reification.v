@@ -33,13 +33,13 @@ Structure Reification (K:Enrichment) (C:Enrichment) (CI:C) :=
 ; reification_rstar_obj : enr_v K -> enr_v C
 ; reification_r         : forall k:K, Functor K C (reification_r_obj k)
 ; reification_rstar_f   :             Functor (enr_v K) (enr_v C) reification_rstar_obj
-; reification_rstar     :             MonoidalFunctor (enr_v_mon K) (enr_v_mon C) reification_rstar_f
-; reification_commutes : ∀ k, reification_r k >>>> HomFunctor C CI <~~~> HomFunctor K k >>>> reification_rstar_f
+; reification_rstar     :             PreMonoidalFunctor (enr_v_mon K) (enr_v_mon C) reification_rstar_f
+; reification_commutes  : ∀ k, reification_r k >>>> HomFunctor C CI <~~~> HomFunctor K k >>>> reification_rstar_f
 }.
 Transparent HomFunctor.
 Transparent functor_comp.
 
-Coercion reification_rstar : Reification >-> MonoidalFunctor.
+Coercion reification_rstar : Reification >-> PreMonoidalFunctor.
 Implicit Arguments Reification                [ ].
 Implicit Arguments reification_r_obj          [ K C CI ].
 Implicit Arguments reification_r              [ K C CI ].
