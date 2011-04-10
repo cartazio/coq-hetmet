@@ -97,6 +97,7 @@ Definition compose_reifications (s0 s1 s2:SMMEs) :
   apply (ni_respects2 (a >>>> a') (b >>>> b') x).
   apply ni_inv.
   apply comm1.
+  apply (reification_host_lang_pure _ _ _ X0).
   Defined.
 
 Definition reificationOrIdentityComp

@@ -33,12 +33,8 @@ Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
 Require Import HaskProofToStrong.
 
-Require Import ProgrammingLanguage.
-
 Require Import HaskProofFlattener.
 Require Import HaskProofStratified.
-
-Require Import ReificationsIsomorphicToGeneralizedArrows.
 
 Open Scope string_scope.
 Extraction Language Haskell.

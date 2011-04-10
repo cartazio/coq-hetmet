@@ -18,6 +18,9 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
+Require Import BinoidalCategories.
+Require Import PreMonoidalCategories.
+Require Import PreMonoidalCenter.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
@@ -41,35 +44,28 @@ Section ArrowInLanguage.
   Context `(Host:ProgrammingLanguage).
 
   (* ... for which Types(L) is cartesian: *)
-  Context {MF}(center_of_TypesL:MonoidalCat (TypesL _ _ Host) (fun x => (fst_obj _ _ x),,(snd_obj _ _ x)) MF []).
+  Context (center_of_TypesL:MonoidalCat (TypesL_PreMonoidal Host)).
 
-  (* along with a monoidal subcategory of Z(Types(L)) *)
-  Context (VK:MonoidalSubCat center_of_TypesL).
+  (* along with a full subcategory of Z(Types(L)) *)
+  Context {P}(VK:FullSubcategory (Center (TypesL_PreMonoidal Host)) P).
+
+  Context (Pobj_unit   : P []).
+  Context (Pobj_closed : forall a b, P a → P b → P (bin_obj(BinoidalCat:=Center_is_PreMonoidal (TypesL_PreMonoidal Host)) a b)).
+  Definition VKM :=
+    PreMonoidalFullSubcategory_PreMonoidal (Center_is_PreMonoidal (TypesL_PreMonoidal Host)) VK Pobj_unit Pobj_closed.
 
   (* a premonoidal category enriched in aforementioned full subcategory *)
-  Context (Kehom:center_of_TypesL -> center_of_TypesL -> @ob _ _ VK).
+  Context (Kehom:(Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host)) -> @ob _ _ VK).
+  Context (KE   :@ECategory (@ob _ _ VK) (@hom _ _ VK) VK _ VKM (pmon_I VKM) VKM (Center (TypesL_PreMonoidal Host)) Kehom).
+  Context {kbo  :(Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host))}.
+  Context (kbc  :@BinoidalCat (Center (TypesL_PreMonoidal Host)) _ (Underlying KE) kbo).
 
-  Context (KE:@ECategory (@ob _ _ VK) (@hom _ _ VK) VK _ VK
-               (mon_i (full_subcat_is_monoidal VK)) (full_subcat_is_monoidal VK) center_of_TypesL Kehom).
-
-  Context {kbo:center_of_TypesL -> center_of_TypesL -> center_of_TypesL}.
-
-  Context (kbc:@BinoidalCat center_of_TypesL _ (Underlying KE) kbo).
-
-  Check (@PreMonoidalCat)
   Definition one' := @one _ _ _ (car_terminal(CartesianCat:=CC))
-  Context (K:@PreMonoidalCat _ _ KE kbo kbc ).
-  Context (CC:CartesianCat center_of_TypesL).
-
-  (*
-  Definition K_enrichment : Enrichment.
-    refine {| enr_c := KE |}.
-    Defined.
-  Context (K_surjective:SurjectiveEnrichment K_enrichment).
-    *)
+  Context (K :@PreMonoidalCat _ _ KE kbo kbc ).
+  Context (CC:CartesianCat (Center (TypesL_PreMonoidal Host))).
 
   Definition ArrowInProgrammingLanguage :=
-    @FreydCategory _ _ _ _ _ _ center_of_TypesL _ _ _ _ K.
+    @FreydCategory _ _ _ _ _ _ (Center (TypesL_PreMonoidal Host)) _ _ _ _ K.
 
   Definition ArrowsAreGeneralizedArrows (arrow:ArrowInProgrammingLanguage) : GeneralizedArrow K_enrichment Host.
     refine {| ga_functor_monoidal := inclusion_functor_monoidal VK |}.

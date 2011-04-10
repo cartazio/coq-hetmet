@@ -265,12 +265,229 @@ Section GArrowFromReification.
        (garrow_functor >>>> bin_second(BinoidalCat:=enr_c_bin C) (R' a))
     <~~~>  (bin_second(BinoidalCat:=enr_v_pmon K) a >>>> garrow_functor) :=
     { ni_iso := fun a => iso_id _ }.
-    admit.
+    intros.
+      etransitivity.  apply iso_id_lemma1.  symmetry.
+      etransitivity.  apply iso_id_lemma2.  symmetry.
+
+    Opaque Underlying.
+    unfold garrow_functor.
+      unfold functor_comp at 1.
+      unfold functor_comp at 1.
+      Opaque functor_comp. simpl. Transparent functor_comp.
+
+    symmetry.
+      eapply transitivity.
+      apply (functor_comp_assoc (RestrictToImage reification) (R' >>>> step2_functor) (ebc_second (R' a)) f).
+      unfold functor_comp at 1.
+      unfold functor_comp at 1.
+      Opaque functor_comp. simpl. Transparent functor_comp.
+
+    symmetry.
+      eapply transitivity.
+      set (ni_commutes (mf_second(PreMonoidalFunctor:=reification_rstar reification) a) f) as qq.
+      unfold functor_comp in qq.
+      simpl in qq.
+      apply iso_shift_right' in qq.
+      apply (fmor_respects(R' >>>> step2_functor) _ _ qq).
+
+    apply (me_faithful(MonicEnrichment:=CMon)).
+      symmetry.
+      unfold fmor at 1.
+      eapply transitivity.
+      set (ni_commutes (mf_second(PreMonoidalFunctor:=CM) (R' a))) as zz.
+      unfold functor_comp in zz; unfold functor_fobj in zz; simpl in zz.
+      set (zz _ _ ((R' >>>> step2_functor) \ (reification \ f))) as zz'.
+      apply iso_shift_right' in zz'.
+      apply zz'.
+
+    unfold functor_comp; simpl.
+
+    symmetry.
+      eapply transitivity.
+      set full_roundtrip as full_roundtrip'.
+      unfold fmor in full_roundtrip'.
+      simpl in full_roundtrip'.
+      apply full_roundtrip'.
+
+    set (@iso_shift_right') as q. simpl in q. apply q. clear q.
+
+    set (@iso_shift_left) as q.   simpl in q. apply q. clear q.
+
+    symmetry.
+      eapply transitivity.
+      set full_roundtrip as full_roundtrip'.
+      unfold fmor in full_roundtrip'.
+      simpl in full_roundtrip'.
+      apply (fun a' b' f z => fmor_respects (bin_second(BinoidalCat:=enr_v_bin C) z) _ _ (full_roundtrip' a' b' f)).
+      symmetry.
+
+    intros.
+      unfold bin_obj.
+      unfold senr_v_bobj.
+
+    setoid_rewrite <- associativity.
+      setoid_rewrite <- associativity.
+      setoid_rewrite <- associativity.
+      setoid_rewrite <- associativity.
+      simpl.
+      setoid_rewrite <- associativity.
+      etransitivity.
+      eapply transitivity.
+        apply associativity.
+        eapply transitivity; [ idtac | apply right_identity ].
+        apply comp_respects; [ reflexivity | idtac ].
+        etransitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        apply (mf_consistent(PreMonoidalFunctor:=CM)).
+        apply iso_comp1.
+
+    eapply transitivity.
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply transitivity.
+        eapply symmetry.
+        eapply associativity.
+      eapply transitivity; [ idtac | apply left_identity ].
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply transitivity.
+        eapply comp_respects; [ idtac | reflexivity ].
+        eapply symmetry.
+        apply (mf_consistent(PreMonoidalFunctor:=CM)).
+        apply iso_comp1.
+
+    eapply symmetry.
+      eapply transitivity.
+      setoid_rewrite <- fmor_preserves_comp.
+      setoid_rewrite <- fmor_preserves_comp.
+      eapply reflexivity.
+      eapply symmetry.
+
+    apply comp_respects; try reflexivity.
+
+    eapply transitivity.
+      apply associativity.
+      eapply transitivity.
+      apply associativity.
+      eapply transitivity.
+      apply associativity.
+      eapply transitivity.
+      apply associativity.
+      apply comp_respects; try reflexivity.
+
+    eapply transitivity.
+      eapply comp_respects; [ reflexivity | idtac ].
+      eapply transitivity.
+      eapply comp_respects; [ idtac | reflexivity ].
+      apply mf_consistent.
+      eapply transitivity.
+      eapply comp_respects; [ reflexivity | idtac ].
+        apply associativity.
+      apply iso_comp1_right.
+
+    eapply transitivity.
+      eapply comp_respects; [ reflexivity | idtac ].
+      eapply transitivity.
+        apply associativity.
+      eapply comp_respects; [ reflexivity | idtac ].
+      eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+      eapply transitivity; [ idtac | apply left_identity ].
+      eapply comp_respects; [ idtac | reflexivity ].
+      eapply transitivity.
+        eapply comp_respects; [ idtac | reflexivity ].
+        eapply symmetry.
+        eapply (mf_consistent(PreMonoidalFunctor:=reification)).
+      apply iso_comp1.
+
+    eapply transitivity.
+      eapply comp_respects; [ reflexivity | idtac ].
+      eapply symmetry.
+      apply (centralmor_first(CentralMorphism:=commutative_central(CommutativeCat:=enr_v_mon C) _)).
+      eapply transitivity; [ idtac | apply right_identity ].
+
+    eapply transitivity.
+      eapply symmetry.
+      apply associativity.
+    eapply transitivity.
+      eapply comp_respects; [ idtac | reflexivity ].
+      unfold functor_fobj.
+      apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) (reification_rstar_obj reification A))).
+
+    apply symmetry.
+      eapply transitivity.
+      apply right_identity.
+      apply symmetry.
+      eapply transitivity; [ idtac | apply left_identity ].
+      apply comp_respects; [ idtac | reflexivity ].
+
+    eapply transitivity.
+      Focus 2.
+      eapply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) (reification_rstar_obj reification A))).
+      idtac.
+      apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) (reification_rstar_obj reification A))).
+      apply iso_comp2.
     Defined.
 
 Implicit Arguments mf_first [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0] [C2] [bin_obj'0] [bc0] [I2] [PM2] [fobj] [F]].
 Implicit Arguments mf_second [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0] [C2] [bin_obj'0] [bc0] [I2] [PM2] [fobj] [F]].
 Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0] [C2] [bin_obj'0] [bc0] [I2] [PM2] [fobj] [F]].
+
+  Lemma assoc_coherent (a b c : enr_v K) :
+   (#((pmon_assoc(PreMonoidalCat:=enr_c_pm C)
+     (garrow_functor a) (garrow_functor c)) (garrow_fobj b)) >>> garrow_functor a ⋊ #((garrow_first c) b)) >>>
+   #((garrow_second a) (b ⊗ c)) ~~
+   (#((garrow_second a) b) ⋉ garrow_functor c >>>
+     #((garrow_first c) (a ⊗ b))) >>> garrow_functor \ #((pmon_assoc(PreMonoidalCat:=enr_v_mon K) a c) b).
+    Opaque Underlying.
+    eapply transitivity.
+      eapply transitivity; [ idtac | apply right_identity ].
+      eapply comp_respects; [ eapply reflexivity | idtac ].
+      reflexivity.
+
+    apply symmetry.
+      eapply transitivity.
+      eapply transitivity; [ idtac | apply left_identity ].
+      eapply comp_respects; [ idtac | eapply reflexivity ].
+      eapply transitivity; [ idtac | apply right_identity ].
+      apply comp_respects.
+      simpl.
+      apply (fmor_preserves_id (ebc_first (garrow_functor c))).
+      reflexivity.
+
+    symmetry.
+      eapply transitivity.
+      eapply transitivity; [ idtac | apply right_identity ].
+      apply comp_respects. 
+      reflexivity.
+      simpl.
+      apply (fmor_preserves_id (ebc_second (garrow_functor a))).
+      symmetry.
+
+    unfold functor_fobj.
+      unfold garrow_functor.
+      unfold step2_functor.
+      Opaque R'.
+      Opaque ff_functor_section_functor.
+      unfold functor_comp.
+      simpl.
+      Transparent R'.
+      Transparent ff_functor_section_functor.
+      idtac.
+      apply (me_faithful(MonicEnrichment:=CMon)).
+      eapply transitivity; [ eapply full_roundtrip | idtac ].
+
+    unfold fmor at 1.
+      unfold R'.
+      unfold me_homfunctor.
+      set (mf_assoc(PreMonoidalFunctor:=reification) a b c) as q.
+      set (mf_assoc(PreMonoidalFunctor:=CM) (garrow_fobj a) (garrow_fobj b) (garrow_fobj c)) as q'.
+      unfold mf_F in q'.
+      unfold pmon_I in q'.
+      admit.
+      Qed.
 
   Lemma cancell_lemma `(F:PreMonoidalFunctor) b :
     iso_backward (mf_i F) ⋉ (F b) >>> #(pmon_cancell (F b)) ~~
@@ -428,7 +645,6 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
    #(pmon_cancelr(PreMonoidalCat:=enr_c_pm C) (garrow_functor b)) ~~
    (garrow_functor b ⋊ #(iso_id (enr_c_i C)) >>>
     #((garrow_second b) (enr_v_i K))) >>> garrow_functor \ #(pmon_cancelr(PreMonoidalCat:=enr_v_mon K) b).
-
     Opaque Underlying.
     Opaque fmor.
     intros; simpl.
@@ -534,21 +750,16 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
   ; mf_second     := garrow_second
   ; mf_i          := iso_id _ }.
     intros; reflexivity.
-    intros.
-      unfold garrow_functor.
-      unfold fmor.
-      Opaque fmor. simpl.
-      unfold step2_functor.
-      admit.
-      Transparent fmor.
-
+    intros; apply (reification_host_lang_pure _ _ _ reification).
     apply cancell_coherent.
     apply cancelr_coherent.
-    admit.
+    apply assoc_coherent.
     Defined.
 
   Definition garrow_from_reification : GeneralizedArrow K CM :=
-    {| ga_functor_monoidal := garrow_monoidal |}.
+    {| ga_functor_monoidal := garrow_monoidal
+     ; ga_host_lang_pure   := reification_host_lang_pure _ _ _ reification
+    |}.
 
 End GArrowFromReification.
 

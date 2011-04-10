@@ -133,6 +133,7 @@ Section HaskProofFlattener.
    * it might help to have the definition for "Inductive ND" (see
    * NaturalDeduction.v) handy as a cross-reference.
    *)
+(*
   Definition FlatteningFunctor_fmor {Γ}{Δ}{ec}
     : forall h c,
       (h~~{JudgmentsL _ _ (PCF _ Γ Δ ec)}~~>c) ->
@@ -392,6 +393,6 @@ Section HaskProofFlattener.
       *)
 
   (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
-
+*)
 End HaskProofFlattener.
 

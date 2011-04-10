@@ -29,6 +29,25 @@ Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import ProgrammingLanguage.
 
+(*
+  Structure ProgrammingLanguageSMME :=
+  { plsmme_t       : Type
+  ; plsmme_judg    : Type
+  ; plsmme_sequent : Tree ??plsmme_t -> Tree ??plsmme_t -> plsmme_judg
+  ; plsmme_rule    : Tree ??plsmme_judg -> Tree ??plsmme_judg -> Type
+  ; plsmme_pl      : @ProgrammingLanguage plsmme_t plsmme_judg plsmme_sequent plsmme_rule
+  ; plsmme_smme    : SurjectiveEnrichment (TypesEnrichedInJudgments _ _ plsmme_pl)
+  }.
+  Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
+  Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
+*)
+
+  Context
+  `(Guest        : ProgrammingLanguage)
+  `(Host         : ProgrammingLanguage)
+   (HostMonoidal : MonoidalEnrichment (TypesEnrichedInJudgments Host))
+   (HostMonic    : MonicEnrichment    (TypesEnrichedInJudgments Host)).
+
 Definition TwoLevelLanguage (Guest Host:ProgrammingLanguageSMME)
   := Reification Guest Host (me_i Host).
 

@@ -34,11 +34,11 @@ Section Programming_Language.
 
   Context {T    : Type}.               (* types of the language *)
 
-  Context (Judg : Type).
-  Context (sequent : Tree ??T -> Tree ??T -> Judg).
+  Definition PLJudg := (Tree ??T) * (Tree ??T).
+  Definition sequent := @pair (Tree ??T) (Tree ??T).
      Notation "cs |= ss" := (sequent cs ss) : pl_scope.
 
-  Context {Rule : Tree ??Judg -> Tree ??Judg -> Type}.
+  Context {Rule : Tree ??PLJudg -> Tree ??PLJudg -> Type}.
 
   Notation "H /⋯⋯/ C" := (ND Rule H C) : pl_scope.
 
@@ -47,11 +47,11 @@ Section Programming_Language.
   Open Scope pl_scope.
 
   Class ProgrammingLanguage :=
-  { pl_eqv0               :  @ND_Relation Judg Rule
-  ; pl_snd                :> @SequentND Judg Rule _ sequent
-  ; pl_cnd                :> @ContextND Judg Rule T sequent pl_snd
-  ; pl_eqv1               :> @SequentND_Relation Judg Rule _ sequent pl_snd pl_eqv0
-  ; pl_eqv                :> @ContextND_Relation Judg Rule _ sequent pl_snd pl_cnd pl_eqv0 pl_eqv1
+  { pl_eqv0               :  @ND_Relation PLJudg Rule
+  ; pl_snd                :> @SequentND PLJudg Rule _ sequent
+  ; pl_cnd                :> @ContextND PLJudg Rule T sequent pl_snd
+  ; pl_eqv1               :> @SequentND_Relation PLJudg Rule _ sequent pl_snd pl_eqv0
+  ; pl_eqv                :> @ContextND_Relation PLJudg Rule _ sequent pl_snd pl_cnd pl_eqv0 pl_eqv1
   }.
   Notation "pf1 === pf2" := (@ndr_eqv _ _ pl_eqv _ _ pf1 pf2) : temporary_scope3.
 
@@ -171,8 +171,21 @@ Section Programming_Language.
 
     Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a c b }.
-      intros; unfold eqv; simpl.
-      admit.
+(*
+      intros. unfold functor_comp. unfold fmor.
+      Opaque Types_assoc_iso.
+      simpl.
+      
+      eapply cndr_inert.
+      apply pl_eqv.
+      apply ndpc_comp; auto.
+      apply ndpc_comp; auto.
+      apply ndpc_comp; auto.
+      apply ndpc_prod; auto.
+      apply ndpc_comp; auto.
+      apply ndpc_comp; auto.
+*)
+admit.
       Defined.
 
     Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
@@ -196,7 +209,7 @@ Section Programming_Language.
       admit.
       Defined.
 
-    Instance Types_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
+    Instance TypesL_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
       { pmon_assoc    := Types_assoc
       ; pmon_cancell  := Types_cancell
       ; pmon_cancelr  := Types_cancelr
@@ -251,44 +264,19 @@ admit.
       admit.  (* cancell central *)
       Defined.
 
-    Definition TypesEnrichedInJudgments : Enrichment.
+    Definition TypesEnrichedInJudgments : SurjectiveEnrichment.
       refine
-        {| enr_v_mon := Judgments_Category_monoidal _
-         ; enr_c_pm  := Types_PreMonoidal
-         ; enr_c_bin := Types_binoidal
+        {| senr_c_pm     := TypesL_PreMonoidal
+         ; senr_v        := JudgmentsL
+         ; senr_v_bin    := Judgments_Category_binoidal _
+         ; senr_v_pmon   := Judgments_Category_premonoidal _
+         ; senr_v_mon    := Judgments_Category_monoidal _
+         ; senr_c_bin    := Types_binoidal
+         ; senr_c        := TypesL
         |}.
       Defined.
 
-    Structure HasProductTypes :=
-    {
-    }.
-
-    (*
-    Lemma CartesianEnrMonoidal (e:PreMonoidalEnrichment)
-      `(C:CartesianCat(Ob:= _)(Hom:= _)(C:=Underlying (enr_c e))) : MonoidalEnrichment e.
-      admit.
-      Defined.
-      *)
-
-    (* need to prove that if we have cartesian tuples we have cartesian contexts *)
-    (*
-    Definition LanguagesWithProductsAreSMME : HasProductTypes -> SurjectiveMonicMonoidalEnrichment TypesEnrichedInJudgments.
-      admit.
-      Defined.
-      *)
   End LanguageCategory.
 
 End Programming_Language.
-(*
-Structure ProgrammingLanguageSMME :=
-{ plsmme_t       : Type
-; plsmme_judg    : Type
-; plsmme_sequent : Tree ??plsmme_t -> Tree ??plsmme_t -> plsmme_judg
-; plsmme_rule    : Tree ??plsmme_judg -> Tree ??plsmme_judg -> Type
-; plsmme_pl      : @ProgrammingLanguage plsmme_t plsmme_judg plsmme_sequent plsmme_rule
-; plsmme_smme    : SurjectiveMonicMonoidalEnrichment (TypesEnrichedInJudgments _ _ plsmme_pl)
-}.
-Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
-Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
-*) 
 Implicit Arguments ND [ Judgment ].

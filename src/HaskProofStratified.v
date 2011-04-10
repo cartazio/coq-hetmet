@@ -441,9 +441,9 @@ Section HaskProofStratified.
   Instance OrgPCF_ContextND_Relation Γ Δ lev : ContextND_Relation (PCF_sequent_join Γ Δ lev).
     admit.
     Defined.
-
+(*
   (* 5.1.3 *)
-  Instance PCF Γ Δ lev : @ProgrammingLanguage _ _ pcfjudg (PCFRule Γ Δ lev) :=
+  Instance PCF Γ Δ lev : @ProgrammingLanguage _ pcfjudg (PCFRule Γ Δ lev) :=
   { pl_eqv                := OrgPCF_ContextND_Relation Γ Δ lev
   ; pl_snd                := PCF_sequents Γ Δ lev
   }.
@@ -571,5 +571,5 @@ Section HaskProofStratified.
 *)
 admit.
     Defined.
-
+*)
 End HaskProofStratified.

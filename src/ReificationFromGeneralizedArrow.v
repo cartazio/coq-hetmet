@@ -34,6 +34,7 @@ Definition reification_from_garrow (K:Enrichment) {ce} (C:MonoidalEnrichment ce)
    ; reification_rstar     := PreMonoidalFunctorsCompose garrow C
    |}.
    abstract (intros; set (@ni_associativity) as q; apply q).
+   intros; apply ga_host_lang_pure.
    Defined.
 
 

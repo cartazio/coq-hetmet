@@ -72,7 +72,7 @@ Section Judgments_Category.
       setoid_rewrite <- ndr_prod_preserves_comp.
       apply (ndr_builtfrom_structural (f;;g)); auto.
     Defined.
-  Instance Judgments_Category_binoidal : BinoidalCat Judgments_Category (fun x y => x,,y) :=
+  Instance Judgments_Category_binoidal : BinoidalCat Judgments_Category (@T_Branch (??Judgment)) :=
     { bin_first  := jud_first
     ; bin_second := jud_second }.
 

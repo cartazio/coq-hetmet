@@ -62,6 +62,8 @@ Definition generalizedArrowOrIdentityFunc s1 s2 (f:GeneralizedArrowOrIdentity s1
 Instance compose_generalizedArrows (s0 s1 s2:SMMEs) 
   (g01:GeneralizedArrow s0 s1)(g12:GeneralizedArrow s1 s2) : GeneralizedArrow s0 s2 :=
     { ga_functor_monoidal := g01 >>⊗>> smme_mon s1 >>⊗>> g12 }.
+  apply ga_host_lang_pure.
+  Defined.
 
 Definition generalizedArrowOrIdentityComp
   : forall s1 s2 s3, GeneralizedArrowOrIdentity s1 s2 -> GeneralizedArrowOrIdentity s2 s3 -> GeneralizedArrowOrIdentity s1 s3.

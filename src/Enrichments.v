@@ -45,21 +45,31 @@ Structure Enrichment :=
 }.
 Coercion enr_c   : Enrichment >-> ECategory.
 
+(* Coq grinds down into a performance bog when I try to use this *)
+Definition WeaklySurjectiveEnrichment (ec:Enrichment) :=
+  @treeDecomposition (enr_v ec) (option (ec*ec))
+                  (fun t => match t with
+                            | None   => enr_v_i ec
+                            | Some x => match x with pair y z => enr_c_hom ec y z end
+                            end)
+                  (enr_v_bobj ec).
+
+(* technically this ought to be a "strictly surjective enrichment" *)
 Structure SurjectiveEnrichment :=
 { senr_c_obj      :  Type
 ; senr_v_ob       := Tree ??(senr_c_obj * senr_c_obj)
 ; senr_c_hom      := fun (c1 c2:senr_c_obj) => [(c1, c2)]
-; senr_v_hom      : senr_v_ob -> senr_v_ob -> Type
-; senr_v          : Category senr_v_ob senr_v_hom
+; senr_v_hom      :  senr_v_ob -> senr_v_ob -> Type
+; senr_v          :  Category senr_v_ob senr_v_hom
 ; senr_v_i        := []
-; senr_v_bobj     := @T_Branch (option (senr_c_obj * senr_c_obj))
-; senr_v_bin      : BinoidalCat senr_v senr_v_bobj
-; senr_v_pmon     : PreMonoidalCat senr_v_bin senr_v_i
-; senr_v_mon      : MonoidalCat senr_v_pmon
-; senr_c          : ECategory senr_v_mon senr_c_obj senr_c_hom
-; senr_c_bin      : EBinoidalCat senr_c
-; senr_c_i        : senr_c
-; senr_c_pm       : PreMonoidalCat senr_c_bin senr_c_i
+; senr_v_bobj     := @T_Branch ??(senr_c_obj * senr_c_obj)
+; senr_v_bin      :  BinoidalCat senr_v senr_v_bobj
+; senr_v_pmon     :  PreMonoidalCat senr_v_bin senr_v_i
+; senr_v_mon      :  MonoidalCat senr_v_pmon
+; senr_c          :  ECategory senr_v_mon senr_c_obj senr_c_hom
+; senr_c_bin      :  EBinoidalCat senr_c
+; senr_c_i        :  senr_c
+; senr_c_pm       :  PreMonoidalCat senr_c_bin senr_c_i
 }.
 
 Definition SurjectiveEnrichmentToEnrichment (se:SurjectiveEnrichment) : Enrichment.
@@ -82,38 +92,19 @@ refine
 Defined.
 Coercion SurjectiveEnrichmentToEnrichment : SurjectiveEnrichment >-> Enrichment.
 
-(*
-Definition MonoidalEnrichment (e:Enrichment) :=
-  PreMonoidalFunctor
-    (enr_c_center_mon e)
-    (enr_v_pmon e)
-    (RestrictDomain (HomFunctor e (pmon_I (enr_c_pm e))) (Center (enr_c_pm e))).
-*)
 Definition MonoidalEnrichment (e:Enrichment) :=
   PreMonoidalFunctor
     (enr_c_pm e)
     (enr_v_pmon e)
     (HomFunctor e (pmon_I (enr_c_pm e))).
 
-
-(* an enrichment for which every object of the enriching category is the tensor of finitely many hom-objects *)
-(*
-Definition SurjectiveEnrichment (ec:Enrichment) :=
-  @treeDecomposition (enr_v ec) (option (ec*ec))
-                  (fun t => match t with
-                            | None   => enr_v_i ec
-                            | Some x => match x with pair y z => enr_c_hom ec y z end
-                            end)
-                  (enr_v_bobj ec).
-*)
-
 Class MonicEnrichment {e:Enrichment} :=
 { me_enr          := e
 ; me_homfunctor   := HomFunctor e (enr_c_i e)
-(*; me_homfunctor_c := RestrictDomain me_homfunctor (enr_c_center e)*)
 ; me_full         :  FullFunctor         me_homfunctor
 ; me_faithful     :  FaithfulFunctor     me_homfunctor
 ; me_conservative :  ConservativeFunctor me_homfunctor
+(*; me_homfunctor_c := RestrictDomain me_homfunctor (enr_c_center e)*)
 }.
 Implicit Arguments MonicEnrichment [ ].
 Coercion me_enr : MonicEnrichment >-> Enrichment.
@@ -122,7 +113,6 @@ Transparent HomFunctor.
 (* like SurjectiveMonicMonoidalEnrichment, but the Enrichment is a field, not a parameter *)
 Structure SMME :=
 { smme_e   : SurjectiveEnrichment
-(*; smme_see : SurjectiveEnrichment smme_e*)
 ; smme_mon : MonoidalEnrichment smme_e
 ; smme_mee : MonicEnrichment smme_e
 }.

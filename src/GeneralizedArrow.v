@@ -30,6 +30,12 @@ Class GeneralizedArrow (K:Enrichment) {ce}(C:MonoidalEnrichment ce) :=
 { ga_functor_obj      : enr_v K -> ce
 ; ga_functor          : Functor            (enr_v_mon K) (enr_c_pm ce) ga_functor_obj
 ; ga_functor_monoidal : PreMonoidalFunctor (enr_v_mon K) (enr_c_pm ce) ga_functor
+
+(* We require that the host language (but NOT the guest language) be pure, i.e. all morphisms central, to simplify
+ * things.  If this doesn't suit you, just consider the "host language" here to be the pure sublanguage of the
+ * host language, and toss on the inclusion functor to the full language *)
+; ga_host_lang_pure   : CommutativeCat (enr_c_pm ce)
+
 (*
 ; ga_functor          : Functor         (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor_obj
 ; ga_functor_monoidal : MonoidalFunctor (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor

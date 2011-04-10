@@ -27,22 +27,21 @@ Require Import FunctorCategories_ch7_7.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
-Require Import FreydCategories.
-
+Require Import Enrichments.
 Require Import Reification.
 Require Import GeneralizedArrow.
-Require Import GeneralizedArrowFromReification.
 Require Import ProgrammingLanguage.
-
-Require Import ReificationsAndGeneralizedArrows.
-Require Import ReificationFromGeneralizedArrow.
 
 Section ProgrammingLanguageGeneralizedArrow.
 
-  Context (Guest:ProgrammingLanguageSMME) (Host :ProgrammingLanguageSMME).
+  Context
+  `(Guest        : ProgrammingLanguage)
+  `(Host         : ProgrammingLanguage)
+   (HostMonoidal : MonoidalEnrichment (TypesEnrichedInJudgments Host))
+   (HostMonic    : MonicEnrichment    (TypesEnrichedInJudgments Host)).
 
   Definition GeneralizedArrowInLanguage 
-    := GeneralizedArrow Guest Host.
+    := GeneralizedArrow (TypesEnrichedInJudgments Guest) HostMonoidal.
 
 End ProgrammingLanguageGeneralizedArrow.
 

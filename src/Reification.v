@@ -35,6 +35,11 @@ Structure Reification (K:Enrichment) (C:Enrichment) (CI:C) :=
 ; reification_rstar_f   :             Functor (enr_v K) (enr_v C) reification_rstar_obj
 ; reification_rstar     :             PreMonoidalFunctor (enr_v_mon K) (enr_v_mon C) reification_rstar_f
 ; reification_commutes  : ∀ k, reification_r k >>>> HomFunctor C CI <~~~> HomFunctor K k >>>> reification_rstar_f
+
+(* We require that the host language (but NOT the guest language) be pure, i.e. all morphisms central, to simplify
+ * things.  If this doesn't suit you, just consider the "host language" here to be the pure sublanguage of the
+ * host language, and toss on the inclusion functor to the full language *)
+; reification_host_lang_pure   : CommutativeCat (enr_c_pm C)
 }.
 Transparent HomFunctor.
 Transparent functor_comp.
