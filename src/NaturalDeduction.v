@@ -479,6 +479,25 @@ Section Natural_Deduction.
     ; cndr_sndr  := sndr
     }.
 
+    (* a proof is Analytic if it does not use cut *)
+    (*
+    Definition Analytic_Rule : NDPredicate :=
+      fun h c f => forall c, not (snd_cut _ _ c = f).
+    Definition AnalyticND := NDPredicateClosure Analytic_Rule.
+
+    (* a proof system has cut elimination if, for every proof, there is an analytic proof with the same conclusion *)
+    Class CutElimination :=
+    { ce_eliminate : forall h c, h/⋯⋯/c -> h/⋯⋯/c
+    ; ce_analytic  : forall h c f, AnalyticND (ce_eliminate h c f)
+    }.
+
+    (* cut elimination is strong if the analytic proof is furthermore equivalent to the original proof *)
+    Class StrongCutElimination :=
+    { sce_ce       <: CutElimination
+    ; ce_strong     : forall h c f, f === ce_eliminate h c f
+    }.
+    *)
+
   End ContextND.
 
   Close Scope nd_scope.
