@@ -265,6 +265,7 @@ Section GArrowFromReification.
        (garrow_functor >>>> bin_second(BinoidalCat:=enr_c_bin C) (R' a))
     <~~~>  (bin_second(BinoidalCat:=enr_v_pmon K) a >>>> garrow_functor) :=
     { ni_iso := fun a => iso_id _ }.
+
     intros.
       etransitivity.  apply iso_id_lemma1.  symmetry.
       etransitivity.  apply iso_id_lemma2.  symmetry.
@@ -435,6 +436,97 @@ Implicit Arguments mf_first [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [H
 Implicit Arguments mf_second [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0] [C2] [bin_obj'0] [bc0] [I2] [PM2] [fobj] [F]].
 Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0] [C2] [bin_obj'0] [bc0] [I2] [PM2] [fobj] [F]].
 
+  Lemma assoc_lemma1 : forall a b c,
+       iso_backward ((mf_first reification c) (a ⊗ b)) >>>
+       iso_backward ((mf_second reification a) b) ⋉ reification c >>>
+      #(pmon_assoc(PreMonoidalCat:=enr_v_mon C) (reification a) (reification c) (reification_rstar_obj reification b)) >>>
+      reification a ⋊ #((mf_first reification c) b) >>>
+      #((mf_second reification a) (b ⊗ c)) ~~
+      reification \ #((pmon_assoc(PreMonoidalCat:=enr_v_mon K) a c) b).
+
+    intros.
+      eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply associativity.
+        apply symmetry.
+        set (@iso_shift_right') as q.
+        simpl in q.
+        apply q.
+        clear q.
+        
+      eapply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        set (mf_assoc(PreMonoidalFunctor:=reification)) as q.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply q.
+
+      eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; try reflexivity.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        eapply transitivity; [ idtac | apply left_identity ].
+        apply comp_respects; try reflexivity.
+      
+      eapply transitivity.
+        apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+      eapply transitivity; [ idtac |
+        apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) _)) ].
+      apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) _)).
+      apply iso_comp2.
+      Qed.
+
+  Lemma assoc_lemma2 : forall a b c,
+       iso_backward ((mf_first CM (garrow_fobj c)) _) >>>
+       (bin_first(BinoidalCat:=enr_v_bin C) _ \ iso_backward ((mf_second CM (garrow_fobj a)) (garrow_fobj b))) >>> 
+       (#((pmon_assoc(PreMonoidalCat:=enr_v_mon C) _ _) _) >>>
+        (bin_second(BinoidalCat:=enr_v_bin C) _ \ 
+         #((mf_first CM (garrow_fobj c)) (garrow_fobj b)))) >>>
+       #((mf_second CM (garrow_fobj a)) _) ~~
+       HomFunctor C _ \ #((pmon_assoc(PreMonoidalCat:=enr_c_pm C) (garrow_fobj a) (garrow_fobj c)) (garrow_fobj b)).
+    intros.
+      eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply associativity.
+        set (@iso_shift_right') as q.
+        apply symmetry.
+        simpl in q.
+        apply q.
+        clear q.
+        
+      eapply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        set (mf_assoc(PreMonoidalFunctor:=CM)) as q.
+        apply q.
+
+      eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; try reflexivity.
+        eapply transitivity.
+          eapply symmetry.
+          apply associativity.
+        eapply transitivity; [ idtac | apply left_identity ].
+        apply comp_respects; try reflexivity.
+
+      eapply transitivity.
+        apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+      eapply transitivity; [ idtac |
+        apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) _)) ].
+      apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) _)).
+      apply iso_comp2.
+      Qed.
+
   Lemma assoc_coherent (a b c : enr_v K) :
    (#((pmon_assoc(PreMonoidalCat:=enr_c_pm C)
      (garrow_functor a) (garrow_functor c)) (garrow_fobj b)) >>> garrow_functor a ⋊ #((garrow_first c) b)) >>>
@@ -482,11 +574,322 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
     unfold fmor at 1.
       unfold R'.
       unfold me_homfunctor.
-      set (mf_assoc(PreMonoidalFunctor:=reification) a b c) as q.
-      set (mf_assoc(PreMonoidalFunctor:=CM) (garrow_fobj a) (garrow_fobj b) (garrow_fobj c)) as q'.
-      unfold mf_F in q'.
-      unfold pmon_I in q'.
-      admit.
+      eapply transitivity.
+        eapply comp_respects; [ idtac | apply reflexivity ].
+        eapply comp_respects; [ apply reflexivity | idtac ].
+        eapply symmetry.
+        apply assoc_lemma1.
+
+      apply symmetry.
+        eapply transitivity.
+        eapply symmetry.
+        apply assoc_lemma2.
+
+      simpl.
+        eapply transitivity.
+        eapply comp_respects; [ apply reflexivity | idtac ].
+        eapply symmetry.
+        eapply (mf_consistent(PreMonoidalFunctor:=CM)).
+        apply symmetry.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; [ idtac | apply reflexivity ].
+
+      eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply associativity.
+        symmetry.
+        eapply transitivity.
+        apply associativity.
+        apply comp_respects; [ reflexivity | idtac ].
+
+      apply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply symmetry.
+        apply (mf_consistent(PreMonoidalFunctor:=reification)).
+        apply comp_respects; [ reflexivity | idtac ].
+        apply iso_comp1.
+        apply right_identity.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply associativity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply symmetry.
+        eapply (centralmor_first(CentralMorphism:=commutative_central(CommutativeCat:=enr_v_mon C) _)).        
+        eapply transitivity.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+          eapply symmetry.
+          apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_mon C) _)).
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply symmetry.
+          apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_mon C) _)).
+        apply comp_respects; [ reflexivity | idtac ].
+          apply associativity.
+        eapply transitivity.
+          eapply symmetry.
+          apply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        eapply transitivity.
+        apply associativity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        apply associativity.
+        eapply transitivity; [ idtac | apply right_identity ].
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_mon C) _)).
+        eapply transitivity; [ idtac |
+        apply (fmor_preserves_id (bin_second(BinoidalCat:=enr_v_mon C) _)) ].
+        apply (fmor_respects (bin_second(BinoidalCat:=enr_v_mon C) _)).
+        apply iso_comp1.
+        apply reflexivity.
+
+      eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        eapply symmetry.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+
+      apply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply associativity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        apply associativity.
+        apply iso_comp1_right.
+
+      eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        apply associativity.
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        eapply symmetry.
+        apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply symmetry.
+        apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+        eapply symmetry.
+        apply associativity.
+        eapply symmetry.
+        apply associativity.
+        apply reflexivity.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+          apply associativity.
+        eapply transitivity; [ idtac | apply right_identity ].
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+        eapply transitivity; [ idtac | apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_mon C) _)) ].
+        apply (fmor_respects (bin_first(BinoidalCat:=enr_v_mon C) _)).
+        eapply transitivity.
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply mf_consistent.
+          apply iso_comp1.
+
+      eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        eapply symmetry.
+        apply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply symmetry.
+        eapply (centralmor_first(CentralMorphism:=commutative_central(CommutativeCat:=enr_v_mon C) _)).
+        eapply transitivity.
+        apply associativity.
+        eapply transitivity.
+        apply associativity.
+        set (fun a b => isos_forward_equal_then_backward_equal _ _ (mf_consistent(PreMonoidalFunctor:=CM) a b)) as q.
+        apply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ idtac | reflexivity ].
+        set (q (garrow_fobj b) (garrow_fobj a)) as q'.
+        simpl in q'.
+        set (fun qq => fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) qq) _ _ q') as q''.
+        eapply symmetry.
+        apply q''.
+        apply comp_respects; [ reflexivity | idtac ].
+
+      apply symmetry.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        apply comp_respects; [ reflexivity | idtac ].
+        apply comp_respects; [ idtac | reflexivity ].
+        set (ni_commutes (pmon_assoc_rr(PreMonoidalCat:=enr_v_mon C) (reification b) (reification c))
+                          #(homset_tensor_iso a)) as xx.
+        unfold functor_comp in xx.
+        simpl in xx.
+        set (pmon_coherent_r(PreMonoidalCat:=enr_v_mon C) (reification a) (reification b) (reification c)) as yy.
+          set (isos_forward_equal_then_backward_equal _ _ yy) as yy'.
+          eapply transitivity.
+          apply comp_respects; [ idtac | reflexivity ].
+          apply symmetry in yy'.
+          eapply transitivity; [ idtac | apply yy' ].
+          eapply symmetry.
+          apply iso_inv_inv.
+        clear yy' yy.
+          apply iso_shift_right' in xx.
+          apply symmetry in xx.
+          idtac.
+          assert (#((pmon_assoc_rr(PreMonoidalCat:=enr_v_mon C) (reification b) (reification c)) (reification a)) ⁻¹ >>>
+       #(homset_tensor_iso a) ⋉ (reification b ⊗ reification c)
+         ~~
+       (#(homset_tensor_iso a) ⋉ reification b) ⋉ reification c >>>
+       #((pmon_assoc_rr(PreMonoidalCat:=enr_v_mon C) (reification b) (reification c)) _)⁻¹).
+          apply iso_shift_left.
+          eapply transitivity.
+          apply associativity.
+          apply xx.
+          apply H.
+          clear q.
+        eapply transitivity.
+          apply comp_respects; [ reflexivity | idtac ].
+          eapply transitivity.
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply symmetry.
+          apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_mon C) _)).
+          eapply transitivity.
+          apply associativity.
+          apply comp_respects; [ reflexivity | idtac ].
+          eapply transitivity.
+          eapply symmetry.
+          apply associativity.
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply transitivity.
+          eapply symmetry.
+          apply associativity.
+          eapply transitivity; [ idtac | apply left_identity ].
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply transitivity.
+            apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+          eapply transitivity; [ idtac |
+            apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) _)) ].
+          apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) _)).
+          eapply transitivity.
+            apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+          eapply transitivity; [ idtac |
+            apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) _)) ].
+          apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) _)).
+          apply iso_comp2.
+          
+      set (fun a' => ni_commutes (pmon_assoc(PreMonoidalCat:=enr_v_mon C) a' (reification c))
+        (iso_backward (homset_tensor_iso b))) as xx.
+        unfold fmor in xx; unfold functor_comp in xx; simpl in xx.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+        eapply symmetry.
+        eapply associativity.
+        apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+          eapply isos_forward_equal_then_backward_equal.
+          apply (pmon_coherent_r(PreMonoidalCat:=enr_v_mon C)).
+          apply iso_inv_inv.
+          eapply symmetry.
+          eapply xx.
+          clear xx.
+        eapply transitivity.
+          apply comp_respects; [ reflexivity | idtac ].
+          eapply transitivity.
+          eapply associativity.
+          apply comp_respects; [ reflexivity | idtac ].
+          eapply transitivity.
+          apply comp_respects; [ reflexivity | idtac ].
+          eapply symmetry.
+          apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_bin C) _)).
+          eapply transitivity.
+          eapply symmetry.
+          eapply associativity.
+          eapply transitivity; [ idtac | apply left_identity ].
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply transitivity.
+            apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_bin C) _)).
+            eapply transitivity; [ idtac |
+            apply (fmor_preserves_id (bin_second(BinoidalCat:=enr_v_bin C) _)) ].
+            apply fmor_respects.
+          eapply transitivity.
+            apply (fmor_preserves_comp (bin_first(BinoidalCat:=enr_v_bin C) _)).
+            eapply transitivity; [ idtac |
+            apply (fmor_preserves_id (bin_first(BinoidalCat:=enr_v_bin C) _)) ].
+            apply (fmor_respects (bin_first(BinoidalCat:=enr_v_bin C) _)).
+          apply iso_comp2.
+        
+      set (fun a b => ni_commutes (pmon_assoc_ll(PreMonoidalCat:=enr_v_mon C) a b)) as xx.
+        unfold functor_comp in xx.
+        simpl in xx.
+        eapply transitivity.
+        apply comp_respects; [ reflexivity | idtac ].
+        eapply transitivity.
+          apply comp_respects; [ idtac | reflexivity ].
+          eapply symmetry.
+          apply (pmon_coherent_l(PreMonoidalCat:=enr_v_mon C)).
+          apply xx.
+        eapply transitivity.
+          eapply symmetry.
+          apply associativity.
+        apply symmetry.
+          eapply transitivity.
+          eapply symmetry.
+          apply (pmon_coherent_l(PreMonoidalCat:=enr_v_mon C)).
+        apply symmetry.
+        eapply transitivity; [ idtac | apply left_identity ].
+          apply comp_respects; [ idtac | reflexivity ].
+        eapply transitivity.
+          apply (fmor_preserves_comp (bin_second(BinoidalCat:=enr_v_bin C) _)).
+          eapply transitivity; [ idtac |
+          apply (fmor_preserves_id (bin_second(BinoidalCat:=enr_v_bin C) _)) ].
+          apply fmor_respects.
+          apply iso_comp2.
       Qed.
 
   Lemma cancell_lemma `(F:PreMonoidalFunctor) b :
