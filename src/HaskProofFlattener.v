@@ -116,13 +116,12 @@ Section HaskProofFlattener.
     admit.
     Defined.
 
-  Definition guestJudgmentAsGArrowType {Γ}{Δ}{ec}(lt:PCFJudg Γ Δ ec) : HaskType Γ ★ :=
+  Definition guestJudgmentAsGArrowType {Γ}{Δ}(lt:PCFJudg Γ Δ) : HaskType Γ ★ :=
     match lt with
-      pcfjudg x y =>
-      (mkGA (tensorizeType x) (tensorizeType y)) 
+      (x,y) => (mkGA (tensorizeType x) (tensorizeType y)) 
     end.
 
-  Definition obact {Γ}{Δ} ec (X:Tree ??(PCFJudg Γ Δ ec)) : Tree ??(LeveledHaskType Γ ★) :=
+  Definition obact {Γ}{Δ} (X:Tree ??(PCFJudg Γ Δ)) : Tree ??(LeveledHaskType Γ ★) :=
     mapOptionTree guestJudgmentAsGArrowType X @@@ nil.
 
   Hint Constructors Rule_Flat.
@@ -133,11 +132,11 @@ Section HaskProofFlattener.
    * it might help to have the definition for "Inductive ND" (see
    * NaturalDeduction.v) handy as a cross-reference.
    *)
-(*
+  Hint Constructors Rule_Flat.
   Definition FlatteningFunctor_fmor {Γ}{Δ}{ec}
     : forall h c,
-      (h~~{JudgmentsL _ _ (PCF _ Γ Δ ec)}~~>c) ->
-      ((obact ec h)~~{TypesL _ _ (SystemFCa Γ Δ)}~~>(obact ec c)).
+      (h~~{JudgmentsL (PCF Γ Δ ec)}~~>c) ->
+      ((obact(Δ:=ec) h)~~{TypesL (SystemFCa Γ Δ)}~~>(obact(Δ:=ec) c)).
 
     set (@nil (HaskTyVar Γ ★)) as lev.
 
@@ -146,40 +145,49 @@ Section HaskProofFlattener.
     induction X; simpl.
 
     (* the proof from no hypotheses of no conclusions (nd_id0) becomes RVoid *)
-    apply nd_rule; apply (org_fc _ _ (RVoid _ _ )). auto.
+    apply nd_rule; apply (org_fc _ _ [] [(_,_)] (RVoid _ _)). apply Flat_RVoid.
 
     (* the proof from hypothesis X of conclusion X (nd_id1) becomes RVar *)
-    apply nd_rule; apply (org_fc _ _ (RVar _ _ _ _)). auto.
+    apply nd_rule; apply (org_fc _ _ [] [(_,_)] (RVar _ _ _ _)). apply Flat_RVar.
 
     (* the proof from hypothesis X of no conclusions (nd_weak) becomes RWeak;;RVoid *)
     eapply nd_comp;
       [ idtac
       | eapply nd_rule
-      ; eapply (org_fc  _ _ (RArrange _ _ _ _ _ (RWeak _)))
+      ; eapply (org_fc  _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RWeak _)))
       ; auto ].
       eapply nd_rule.
-      eapply (org_fc _ _ (RVoid _ _)); auto.
-    
+      eapply (org_fc _ _ [] [(_,_)] (RVoid _ _)); auto. apply Flat_RVoid.
+      apply Flat_RArrange.
+
     (* the proof from hypothesis X of two identical conclusions X,,X (nd_copy) becomes RVar;;RJoin;;RCont *)
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply (org_fc _ _ (RArrange _ _ _ _ _ (RCont _))) ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RCont _))) ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
-      set (snd_initial(SequentND:=@pl_snd  _ _ _ _ (SystemFCa Γ Δ))
-        (mapOptionTree guestJudgmentAsGArrowType h @@@ lev)) as q.
+      set (snd_initial(SequentND:=pl_snd(ProgrammingLanguage:=SystemFCa Γ Δ))
+        (mapOptionTree (guestJudgmentAsGArrowType(Δ:=ec)) h @@@ lev)) as q.
       eapply nd_comp.
       eapply nd_prod.
       apply q.
       apply q.
       apply nd_rule. 
-      eapply (org_fc _ _ (RJoin _ _ _ _ _ _ )).
-      auto.
-      auto.
+      eapply (org_fc _ _ ([(_,_)],,[(_,_)]) [(_,_)] (RJoin _ _ _ _ _ _ )).
+      destruct h; simpl.
+      destruct o.
+      simpl.
+      apply Flat_RJoin.
+      apply Flat_RJoin.
+      apply Flat_RJoin.
+      apply Flat_RArrange.
 
     (* nd_prod becomes nd_llecnac;;nd_prod;;RJoin *)
     eapply nd_comp.
       apply (nd_llecnac ;; nd_prod IHX1 IHX2).
       apply nd_rule.
-      eapply (org_fc _ _ (RJoin _ _ _ _ _ _ )).
-      auto.
+      eapply (org_fc _ _ ([(_,_)],,[(_,_)]) [(_,_)] (RJoin _ _ _ _ _ _ )).
+      apply (Flat_RJoin Γ Δ (mapOptionTree guestJudgmentAsGArrowType h1 @@@ nil)
+       (mapOptionTree guestJudgmentAsGArrowType h2 @@@ nil)
+       (mapOptionTree guestJudgmentAsGArrowType c1 @@@ nil)
+       (mapOptionTree guestJudgmentAsGArrowType c2 @@@ nil)).
 
     (* nd_comp becomes pl_subst (aka nd_cut) *)
     eapply nd_comp.
@@ -192,39 +200,39 @@ Section HaskProofFlattener.
 
     (* nd_cancell becomes RVar;;RuCanL *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanL _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RuCanL _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
     (* nd_cancelr becomes RVar;;RuCanR *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RuCanR _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RuCanR _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
     (* nd_llecnac becomes RVar;;RCanL *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCanL _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RCanL _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
     (* nd_rlecnac becomes RVar;;RCanR *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCanR _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RCanR _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
     (* nd_assoc becomes RVar;;RAssoc *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RAssoc _ _ _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RAssoc _ _ _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
     (* nd_cossa becomes RVar;;RCossa *)
     eapply nd_comp;
-      [ idtac | eapply nd_rule; apply (org_fc _ _ (RArrange _ _ _ _ _ (RCossa _ _ _))) ].
-      apply (snd_initial(SequentND:=@pl_cnd  _ _ _ _ (SystemFCa Γ Δ))).
-      auto.
+      [ idtac | eapply nd_rule; apply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RCossa _ _ _))) ].
+      apply (snd_initial(SequentND:=pl_cnd(ProgrammingLanguage:=(SystemFCa Γ Δ)))).
+      apply Flat_RArrange.
 
       destruct r as [r rp].
       refine (match rp as R in @Rule_PCF _ _ _ H C _ with
@@ -316,9 +324,11 @@ Section HaskProofFlattener.
       destruct case_RNote.
         eapply nd_comp.
         eapply nd_rule.
-        eapply (org_fc _ _ (RVar _ _ _ _)) . auto.
+        eapply (org_fc _ _ [] [(_,_)] (RVar _ _ _ _)) . auto.
+        apply Flat_RVar.
         apply nd_rule.
-        apply (org_fc _ _ (RNote _ _ _ _ _ n)). auto.
+        apply (org_fc _ _ [(_,_)] [(_,_)] (RNote _ _ _ _ _ n)). auto.
+        apply Flat_RNote.
         
       destruct case_RVar.
         (* ga_id *)
@@ -346,23 +356,23 @@ Section HaskProofFlattener.
 
       Defined.
 
-  Instance FlatteningFunctor {Γ}{Δ}{ec} : Functor (JudgmentsL _ _ (PCF _ Γ Δ ec)) (TypesL _ _ (SystemFCa Γ Δ)) (obact ec) :=
+  Instance FlatteningFunctor {Γ}{Δ}{ec} : Functor (JudgmentsL (PCF Γ Δ ec)) (TypesL (SystemFCa Γ Δ)) (obact) :=
     { fmor := FlatteningFunctor_fmor }.
     admit.
     admit.
     admit.
     Defined.
-(*
-    Definition ReificationFunctor Γ Δ : Functor (JudgmentsL _ _ (PCF n Γ Δ)) SystemFCa' (mapOptionTree brakifyJudg).
-      refine {| fmor := ReificationFunctor_fmor Γ Δ |}; unfold hom; unfold ob; simpl ; intros.
-      unfold ReificationFunctor_fmor; simpl.
-      admit.
-      unfold ReificationFunctor_fmor; simpl.
-      admit.
-      unfold ReificationFunctor_fmor; simpl.
-      admit.
-      Defined.
 
+  (*
+  Definition ReificationFunctor Γ Δ : Functor (JudgmentsL _ _ (PCF n Γ Δ)) SystemFCa' (mapOptionTree brakifyJudg).
+    refine {| fmor := ReificationFunctor_fmor Γ Δ |}; unfold hom; unfold ob; simpl ; intros.
+    unfold ReificationFunctor_fmor; simpl.
+    admit.
+    unfold ReificationFunctor_fmor; simpl.
+    admit.
+    unfold ReificationFunctor_fmor; simpl.
+    admit.
+    Defined.
 
   Definition PCF_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
     refine {| plsmme_pl := PCF n Γ Δ |}.
@@ -383,7 +393,7 @@ Section HaskProofFlattener.
     admit.
     (*  ... and the retraction exists *)
     Defined.
-*)
+  *)
   (* Any particular proof in HaskProof is only finitely large, so it uses only finitely many levels of nesting, so
    * it falls within (SystemFCa n) for some n.  This function calculates that "n" and performs the translation *)
   (*
@@ -391,8 +401,7 @@ Section HaskProofFlattener.
     forall h c (pf:ND Rule h c),
       { n:nat & h ~~{JudgmentsL (SystemFCa_SMME n)}~~> c }.
       *)
-
   (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
-*)
+
 End HaskProofFlattener.
 

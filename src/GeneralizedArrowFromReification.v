@@ -916,7 +916,7 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
     apply (fmor_respects (-⋉ F b)).
     apply iso_comp2.
     Qed.
-*)
+
   Lemma cancell_coherent (b:enr_v K) :
    #(pmon_cancell(PreMonoidalCat:=enr_c_pm C) (garrow_functor b)) ~~
    (#(iso_id (enr_c_i C)) ⋉ garrow_functor b >>>
@@ -1162,7 +1162,7 @@ Implicit Arguments mf_i [[Ob] [Hom] [C1] [bin_obj'] [bc] [I1] [PM1] [Ob0] [Hom0]
     apply assoc_coherent.
     Defined.
 
-  Definition garrow_from_reification : GeneralizedArrow K CM :=
+  Definition garrow_from_reification : GeneralizedArrow K C :=
     {| ga_functor_monoidal := garrow_monoidal
      ; ga_host_lang_pure   := reification_host_lang_pure _ _ _ reification
     |}.

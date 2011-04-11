@@ -71,9 +71,8 @@ Section ReificationsEquivalentToGeneralizedArrows.
     Qed.
 
   Lemma roundtrip_garrow_to_garrow
-    `(K:SurjectiveEnrichment) `(C:MonicEnrichment ce) (CM:MonoidalEnrichment ce) (garrow : GeneralizedArrow K CM)
+    `(K:SurjectiveEnrichment) `(C:MonicEnrichment ce) (CM:MonoidalEnrichment ce) (garrow : GeneralizedArrow K ce)
     : garrow ≃ garrow_from_reification K C CM (reification_from_garrow K CM garrow).
-
     apply if_inv.
     eapply if_comp.
     eapply if_inv.

@@ -15,6 +15,8 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
+Require Import BinoidalCategories.
+Require Import PreMonoidalCategories.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
@@ -25,51 +27,66 @@ Require Import Reification.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import GeneralizedArrow.
-Require Import GeneralizedArrowFromReification.
 Require Import ProgrammingLanguage.
 Require Import ProgrammingLanguageReification.
+Require Import SectionRetract_ch2_4.
+Require Import GeneralizedArrowFromReification.
+Require Import Enrichments.
 Require Import ReificationsAndGeneralizedArrows.
 
 Section Flattening.
 
-  Context (Guest:ProgrammingLanguageSMME) (Host :ProgrammingLanguageSMME).
+  Context `(Guest:ProgrammingLanguage) `(Host :ProgrammingLanguage).
   Context (GuestHost:TwoLevelLanguage Guest Host).
 
-  Definition FlatObject (x:TypesL _ _ Host) :=
+  Definition FlatObject (x:TypesL Host) :=
     forall y1 y2, not ((reification_r_obj GuestHost y1 y2)=x).
 
-  Definition FlatSubCategory := FullSubcategory (TypesL _ _ Host) FlatObject.
+  Instance FlatSubCategory : FullSubcategory (TypesL Host) FlatObject.
 
-    Context  (F:Retraction (TypesL _ _ Host) FlatSubCategory).
+    Context  (F:RetractionOfCategories (TypesL Host) (FullSubCategoriesAreCategories FlatSubCategory)).
 
-    Definition FlatteningOfReification :=
-      garrow_from_reification Guest Host GuestHost >>>> F.
+    Definition FlatteningOfReification HostMonic HostMonoidal :=
+      (ga_functor
+        (@garrow_from_reification
+          (TypesEnrichedInJudgments Guest)
+          (TypesEnrichedInJudgments Host)
+          HostMonic HostMonoidal GuestHost))
+        >>>> F.
 
-(*
-    Lemma FlatteningIsNotDestructive : 
-      FlatteningOfReification >>>> retraction_retraction F >>>> HomFunctor _ (me_i Host) ≃ GuestHost.
+    Lemma FlatteningIsNotDestructive HostMonic HostMonoidal : 
+      FlatteningOfReification HostMonic HostMonoidal >>>> retraction_retraction F >>>> HomFunctor _ []
+      ≃ (reification_rstar GuestHost).
       apply if_inv.
-      set (@roundtrip_reification_to_reification _ Guest _ _ Host GuestHost) as q.
-      unfold mf_f in *; simpl in *.
-      apply (if_comp q).
+      set (@roundtrip_reification_to_reification (TypesEnrichedInJudgments Guest) (TypesEnrichedInJudgments Host)
+        HostMonic HostMonoidal GuestHost) as q.
+      unfold mf_F in *; simpl in *.
+      eapply if_comp.
+      apply q.
       clear q.
-      unfold me_mf; simpl.
-      unfold mf_f; simpl.
-      refine (if_respects _ (if_id _)).
+      unfold mf_F; simpl.
+      unfold pmon_I.
+      apply (if_respects
+        (garrow_functor (TypesEnrichedInJudgments Guest) HostMonic HostMonoidal GuestHost)
+        (FlatteningOfReification HostMonic HostMonoidal >>>> retraction_retraction F)
+        (HomFunctor (TypesL Host) [])
+        (HomFunctor (TypesL Host) [])); [ idtac | apply (if_id _) ].
       unfold FlatteningOfReification.
-      unfold mf_f; simpl.
-      eapply if_comp.
-      Focus 2.
-      eapply if_inv.
-      apply (if_associativity (garrow_functor Guest Host GuestHost) F (retraction_retraction F)).
-      eapply if_comp.
-      eapply if_inv.
-      apply if_right_identity.
-      refine (if_respects (if_id _) _).
+      unfold mf_F; simpl.
       apply if_inv.
+      eapply if_comp.
+      apply (if_associativity (garrow_functor (TypesEnrichedInJudgments Guest) HostMonic HostMonoidal GuestHost) F
+               (retraction_retraction F)).
+      eapply if_comp; [ idtac | apply if_right_identity ].
+      apply (if_respects
+        (garrow_functor (TypesEnrichedInJudgments Guest) HostMonic HostMonoidal GuestHost)
+        (garrow_functor (TypesEnrichedInJudgments Guest) HostMonic HostMonoidal GuestHost)
+        (F >>>> retraction_retraction F)
+        (functor_id _)).
+      apply (if_id _).
       apply retraction_composes.
       Qed.
-*)
+
 End Flattening.
 
 

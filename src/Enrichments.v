@@ -37,7 +37,8 @@ Structure Enrichment :=
 ; enr_c_obj        :  Type
 ; enr_c_hom        :  enr_c_obj -> enr_c_obj -> enr_v
 ; enr_c            :  ECategory enr_v_mon enr_c_obj enr_c_hom
-; enr_c_bin        :  EBinoidalCat enr_c
+; enr_c_bobj       :  enr_c_obj -> enr_c_obj -> enr_c_obj
+; enr_c_bin        :  EBinoidalCat enr_c enr_c_bobj
 ; enr_c_i          :  enr_c
 ; enr_c_pm         :  PreMonoidalCat enr_c_bin enr_c_i
 ; enr_c_center     := Center enr_c_bin
@@ -67,7 +68,8 @@ Structure SurjectiveEnrichment :=
 ; senr_v_pmon     :  PreMonoidalCat senr_v_bin senr_v_i
 ; senr_v_mon      :  MonoidalCat senr_v_pmon
 ; senr_c          :  ECategory senr_v_mon senr_c_obj senr_c_hom
-; senr_c_bin      :  EBinoidalCat senr_c
+; senr_c_bobj     :  senr_c_obj -> senr_c_obj -> senr_c_obj
+; senr_c_bin      :  EBinoidalCat senr_c senr_c_bobj
 ; senr_c_i        :  senr_c
 ; senr_c_pm       :  PreMonoidalCat senr_c_bin senr_c_i
 }.

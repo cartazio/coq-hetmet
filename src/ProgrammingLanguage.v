@@ -116,7 +116,7 @@ Section Programming_Language.
       simpl; eapply cndr_inert. apply pl_eqv. auto. auto.
       Defined.
 
-    Definition Types_binoidal : EBinoidalCat TypesL.
+    Definition Types_binoidal : EBinoidalCat TypesL (@T_Branch _).
       refine
         {| ebc_first  := Types_first
          ; ebc_second := Types_second
@@ -171,28 +171,28 @@ Section Programming_Language.
 
     Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a c b }.
-      admit.
+      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
       { ni_iso := Types_cancelr_iso }.
       intros; simpl.
-      admit.
+      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Instance Types_cancell   : Types_second [] <~~~> functor_id _ :=
       { ni_iso := Types_cancell_iso }.
-      admit.
+      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Instance Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a b c }.
-      admit.
+      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Instance Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b :=
       { ni_iso := fun c => iso_inv _ _ (Types_assoc_iso c a b) }.
-      admit.
+      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Instance TypesL_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
@@ -241,9 +241,9 @@ Section Programming_Language.
           auto.
       intros; simpl; reflexivity.
       intros; simpl; reflexivity.
-      admit.  (* assoc   central *)
-      admit.  (* cancelr central *)
-      admit.  (* cancell central *)
+      admit.  (* assoc   is central: need to add this as an obligation in ProgrammingLanguage class *)
+      admit.  (* cancelr is central: need to add this as an obligation in ProgrammingLanguage class *)
+      admit.  (* cancell is central: need to add this as an obligation in ProgrammingLanguage class *)
       Defined.
 
     Definition TypesEnrichedInJudgments : SurjectiveEnrichment.

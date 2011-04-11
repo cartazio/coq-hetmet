@@ -31,9 +31,8 @@ Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
 Require Import ProgrammingLanguage.
-Require Import ProgrammingLanguageGeneralizedArrow.
 Require Import FreydCategories.
-
+Require Import Enrichments.
 Require Import GeneralizedArrow.
 
 Section ArrowInLanguage.
@@ -41,34 +40,36 @@ Section ArrowInLanguage.
   (* an Arrow In A Programming Language consists of... *)
 
   (* a host language: *)
-  Context `(Host:ProgrammingLanguage).
+  Context `(Host         : ProgrammingLanguage).
 
-  (* ... for which Types(L) is cartesian: *)
-  Context (center_of_TypesL:MonoidalCat (TypesL_PreMonoidal Host)).
+  Context  (Host_Monoidal  : MonoidalCat  (TypesL_PreMonoidal Host)).
+  Context  (Host_Cartesian : CartesianCat Host_Monoidal).
 
-  (* along with a full subcategory of Z(Types(L)) *)
-  Context {P}(VK:FullSubcategory (Center (TypesL_PreMonoidal Host)) P).
+  Context
+    {P}
+    (Pobj_unit   : P [])
+    (Pobj_closed : forall a b, P a → P b → P (bin_obj(BinoidalCat:=Center_is_PreMonoidal (TypesL_PreMonoidal Host)) a b)).
 
-  Context (Pobj_unit   : P []).
-  Context (Pobj_closed : forall a b, P a → P b → P (bin_obj(BinoidalCat:=Center_is_PreMonoidal (TypesL_PreMonoidal Host)) a b)).
-  Definition VKM :=
-    PreMonoidalFullSubcategory_PreMonoidal (Center_is_PreMonoidal (TypesL_PreMonoidal Host)) VK Pobj_unit Pobj_closed.
+  Context (VK : FullSubcategory Host_Cartesian P).
 
-  (* a premonoidal category enriched in aforementioned full subcategory *)
-  Context (Kehom:(Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host)) -> @ob _ _ VK).
-  Context (KE   :@ECategory (@ob _ _ VK) (@hom _ _ VK) VK _ VKM (pmon_I VKM) VKM (Center (TypesL_PreMonoidal Host)) Kehom).
-  Context {kbo  :(Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host)) -> (Center (TypesL_PreMonoidal Host))}.
-  Context (kbc  :@BinoidalCat (Center (TypesL_PreMonoidal Host)) _ (Underlying KE) kbo).
+  Context  ehom KE (K_bin:@EBinoidalCat _ _ VK _ _ _
+          (PreMonoidalFullSubcategory_PreMonoidal Host_Cartesian VK Pobj_unit Pobj_closed)
+          (TypesL Host) ehom KE (bin_obj(BinoidalCat:=Host_Monoidal))).
 
-  Definition one' := @one _ _ _ (car_terminal(CartesianCat:=CC))
-  Context (K :@PreMonoidalCat _ _ KE kbo kbc ).
-  Context (CC:CartesianCat (Center (TypesL_PreMonoidal Host))).
+  Context (K_premonoidal:PreMonoidalCat K_bin (one(TerminalObject:=Host_Cartesian))).
 
   Definition ArrowInProgrammingLanguage :=
-    @FreydCategory _ _ _ _ _ _ (Center (TypesL_PreMonoidal Host)) _ _ _ _ K.
+    @FreydCategory _ _ _ _ _ _ _ _ Host_Cartesian _ _ K_bin K_premonoidal.
 
-  Definition ArrowsAreGeneralizedArrows (arrow:ArrowInProgrammingLanguage) : GeneralizedArrow K_enrichment Host.
-    refine {| ga_functor_monoidal := inclusion_functor_monoidal VK |}.
-    Defined.
+  Definition K_enrichment : Enrichment.
+    refine
+      {| enr_c_pm  := K_premonoidal
+       ; enr_v_mon := MonoidalFullSubcategory_Monoidal Host_Cartesian _ _ VK
+      |}.
+      Defined.
 
-End GArrowInLanguage.
+  Instance ArrowsAreGeneralizedArrows : GeneralizedArrow K_enrichment (TypesEnrichedInJudgments Host) :=
+    { ga_functor_monoidal :=
+        PreMonoidalFullSubcategoryInclusionFunctor_PreMonoidal Host_Cartesian VK Pobj_unit Pobj_closed Host_Cartesian }.
+
+End ArrowInLanguage.

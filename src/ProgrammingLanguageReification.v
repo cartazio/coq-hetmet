@@ -28,9 +28,29 @@ Require Import Reification.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import ProgrammingLanguage.
+Require Import Enrichments.
+
+Section ProgrammingLanguageReification.
+
+  Definition TwoLevelLanguage `(Guest:ProgrammingLanguage) `(Host:ProgrammingLanguage)
+    := Reification (TypesEnrichedInJudgments Guest) (TypesEnrichedInJudgments Host) [].
+
+  Inductive NLevelLanguage : forall (n:nat) `(PL:ProgrammingLanguage), Type :=
+  | NLevelLanguage_zero : forall `(lang:ProgrammingLanguage),  
+                            NLevelLanguage O lang
+  | NLevelLanguage_succ : forall `(L1:ProgrammingLanguage) `(L2:ProgrammingLanguage) n,
+                            TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
+
+  (*
+  Definition OmegaLevelLanguage : Type :=
+    { f : nat -> ProgrammingLanguage
+    & forall n, TwoLevelLanguage (f n) (f (S n)) }.
+    *)
+
+End ProgrammingLanguageReification.
 
 (*
-  Structure ProgrammingLanguageSMME :=
+  Structure ProgrammingLanguage :=
   { plsmme_t       : Type
   ; plsmme_judg    : Type
   ; plsmme_sequent : Tree ??plsmme_t -> Tree ??plsmme_t -> plsmme_judg
@@ -38,25 +58,6 @@ Require Import ProgrammingLanguage.
   ; plsmme_pl      : @ProgrammingLanguage plsmme_t plsmme_judg plsmme_sequent plsmme_rule
   ; plsmme_smme    : SurjectiveEnrichment (TypesEnrichedInJudgments _ _ plsmme_pl)
   }.
-  Coercion plsmme_pl   : ProgrammingLanguageSMME >-> ProgrammingLanguage.
-  Coercion plsmme_smme : ProgrammingLanguageSMME >-> SurjectiveMonicMonoidalEnrichment.
+  Coercion plsmme_pl   : ProgrammingLanguage >-> ProgrammingLanguage.
+  Coercion plsmme_smme : ProgrammingLanguage >-> SurjectiveMonicMonoidalEnrichment.
 *)
-
-  Context
-  `(Guest        : ProgrammingLanguage)
-  `(Host         : ProgrammingLanguage)
-   (HostMonoidal : MonoidalEnrichment (TypesEnrichedInJudgments Host))
-   (HostMonic    : MonicEnrichment    (TypesEnrichedInJudgments Host)).
-
-Definition TwoLevelLanguage (Guest Host:ProgrammingLanguageSMME)
-  := Reification Guest Host (me_i Host).
-
-Inductive NLevelLanguage : nat -> ProgrammingLanguageSMME -> Type :=
-| NLevelLanguage_zero : forall lang,    NLevelLanguage O lang
-| NLevelLanguage_succ : forall (L1 L2:ProgrammingLanguageSMME) n,
-                          TwoLevelLanguage L1 L2 -> NLevelLanguage n L1 -> NLevelLanguage (S n) L2.
-
-Definition OmegaLevelLanguage : Type :=
-  { f : nat -> ProgrammingLanguageSMME
-  & forall n, TwoLevelLanguage (f n) (f (S n)) }.
-

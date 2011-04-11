@@ -26,24 +26,19 @@ Require Import PreMonoidalCenter.
 Require Import PreMonoidalCategories.
 Require Import BinoidalCategories.
 
-Class GeneralizedArrow (K:Enrichment) {ce}(C:MonoidalEnrichment ce) :=
-{ ga_functor_obj      : enr_v K -> ce
-; ga_functor          : Functor            (enr_v_mon K) (enr_c_pm ce) ga_functor_obj
-; ga_functor_monoidal : PreMonoidalFunctor (enr_v_mon K) (enr_c_pm ce) ga_functor
+Class GeneralizedArrow (K:Enrichment)(C:Enrichment) :=
+{ ga_functor_obj      : enr_v K -> C
+; ga_functor          : Functor            (enr_v_mon K) (enr_c_pm C) ga_functor_obj
+; ga_functor_monoidal : PreMonoidalFunctor (enr_v_mon K) (enr_c_pm C) ga_functor
 
 (* We require that the host language (but NOT the guest language) be pure, i.e. all morphisms central, to simplify
  * things.  If this doesn't suit you, just consider the "host language" here to be the pure sublanguage of the
  * host language, and toss on the inclusion functor to the full language *)
-; ga_host_lang_pure   : CommutativeCat (enr_c_pm ce)
-
-(*
-; ga_functor          : Functor         (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor_obj
-; ga_functor_monoidal : MonoidalFunctor (enr_v_mon K) (Center_is_Monoidal (enr_c_pm ce)) ga_functor
-*)
+; ga_host_lang_pure   : CommutativeCat (enr_c_pm C)
 }.
 Coercion ga_functor_monoidal : GeneralizedArrow >-> PreMonoidalFunctor.
 
-Implicit Arguments GeneralizedArrow    [ [ce] ].
-Implicit Arguments ga_functor_obj      [ K ce C ].
-Implicit Arguments ga_functor          [ K ce C ].
-Implicit Arguments ga_functor_monoidal [ K ce C ].
+Implicit Arguments GeneralizedArrow    [ ].
+Implicit Arguments ga_functor_obj      [ K C ].
+Implicit Arguments ga_functor          [ K C ].
+Implicit Arguments ga_functor_monoidal [ K C ].
