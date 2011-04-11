@@ -171,21 +171,7 @@ Section Programming_Language.
 
     Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a c b }.
-(*
-      intros. unfold functor_comp. unfold fmor.
-      Opaque Types_assoc_iso.
-      simpl.
-      
-      eapply cndr_inert.
-      apply pl_eqv.
-      apply ndpc_comp; auto.
-      apply ndpc_comp; auto.
-      apply ndpc_comp; auto.
-      apply ndpc_prod; auto.
-      apply ndpc_comp; auto.
-      apply ndpc_comp; auto.
-*)
-admit.
+      admit.
       Defined.
 
     Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
@@ -216,7 +202,6 @@ admit.
       ; pmon_assoc_rr := Types_assoc_rr
       ; pmon_assoc_ll := Types_assoc_ll
       }.
-(*
       apply Build_Pentagon.
         intros; simpl.
         eapply cndr_inert. apply pl_eqv.
@@ -254,9 +239,6 @@ admit.
         auto.
         eapply cndr_inert. apply pl_eqv. auto.
           auto.
-*)
-admit.
-admit.
       intros; simpl; reflexivity.
       intros; simpl; reflexivity.
       admit.  (* assoc   central *)
