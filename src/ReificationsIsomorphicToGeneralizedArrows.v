@@ -306,16 +306,40 @@ Section ReificationsIsomorphicToGeneralizedArrows.
           (R' s1 s2 r)
           (ff_functor_section_functor me_homfunctor me_full me_faithful)
           (HomFunctor (senr_c s2) (senr_c_i s2))).
+        apply roundtrip_lemma.
+
         apply if_inv.
+        set (step1_niso s1 (smme_mee s2) s2 r0) as q'.
+        apply if_inv in q'.
+        eapply if_comp.
+        eapply if_comp; [ idtac | apply q' ].
+        eapply if_comp.
+        apply (if_associativity
+          (RestrictToImage r0)
+          (R' s1 s2 r0 >>>> ff_functor_section_functor me_homfunctor me_full me_faithful)
+          (HomFunctor (senr_c s2) (senr_c_i s2))).
+        apply if_inv.
+        eapply if_comp.
+        apply (if_associativity
+          (RestrictToImage r0)
+          (R' s1 s2 r0)
+          (FullImage_InclusionFunctor _)).
         apply (if_respects
-          (R' s1 s2 r)
-          (R' s1 s2 r)
-          (FullImage_InclusionFunctor _)
-          ((ff_functor_section_functor me_homfunctor me_full me_faithful >>>> HomFunctor _ _))
-        ).
+          (RestrictToImage r0)
+          (RestrictToImage r0)
+          (R' s1 s2 r0 >>>> FullImage_InclusionFunctor _)
+          (((R' s1 s2 r0 >>>> ff_functor_section_functor me_homfunctor me_full me_faithful) >>>>
+             HomFunctor (senr_c s2) (senr_c_i s2)))).
         apply (if_id _).
         apply if_inv.
-        apply (RestrictToImage_splits_niso (HomFunctor s2 (senr_c_i s2))).
+        eapply if_comp.
+        apply (if_associativity
+          (R' s1 s2 r0)
+          (ff_functor_section_functor me_homfunctor me_full me_faithful)
+          (HomFunctor (senr_c s2) (senr_c_i s2))).
+        apply roundtrip_lemma.
+        apply if_inv.
+        apply H.
         Qed.
 
     Definition M2_Functor : Functor MorphismsOfCategoryOfReifications MorphismsOfCategoryOfGeneralizedArrows (fun x => x).
