@@ -589,6 +589,44 @@ Section ND_Relation_Facts.
     intros; apply (ndr_builtfrom_structural f); auto.
     Defined.
 
+  Ltac nd_prod_preserves_comp_ltac P EQV :=
+    match goal with
+      [ |- context [ (?A ** ?B) ;; (?C ** ?D) ] ] => 
+        set (@ndr_prod_preserves_comp _ _ EQV _ _ A _ _ B _ C _ D) as P
+    end.
+
+  Lemma nd_swap A B C D (f:ND _ A B) (g:ND _ C D) :
+    (f ** nd_id C) ;; (nd_id B ** g) ===
+    (nd_id A ** g) ;; (f ** nd_id D).
+    setoid_rewrite <- ndr_prod_preserves_comp.
+    setoid_rewrite ndr_comp_left_identity.
+    setoid_rewrite ndr_comp_right_identity.
+    reflexivity.
+    Qed.
+
+  (* this tactical searches the environment; setoid_rewrite doesn't seem to be able to do that properly sometimes *)
+  Ltac nd_swap_ltac P EQV :=
+    match goal with
+      [ |- context [ (?F ** nd_id _) ;; (nd_id _ ** ?G) ] ] => 
+        set (@nd_swap _ _ EQV _ _ _ _ F G) as P
+    end.
+
+  Lemma nd_prod_split_left A B C D (f:ND _ A B) (g:ND _ B C) :
+    nd_id D ** (f ;; g) ===
+    (nd_id D ** f) ;; (nd_id D ** g).
+    setoid_rewrite <- ndr_prod_preserves_comp.
+    setoid_rewrite ndr_comp_left_identity.
+    reflexivity.
+    Qed.
+
+  Lemma nd_prod_split_right A B C D (f:ND _ A B) (g:ND _ B C) :
+    (f ;; g) ** nd_id D ===
+    (f ** nd_id D) ;; (g ** nd_id D).
+    setoid_rewrite <- ndr_prod_preserves_comp.
+    setoid_rewrite ndr_comp_left_identity.
+    reflexivity.
+    Qed.
+
 End ND_Relation_Facts.
 
 (* a generalization of the procedure used to build (nd_id n) from nd_id0 and nd_id1 *)
