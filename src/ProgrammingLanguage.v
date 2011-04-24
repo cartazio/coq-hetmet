@@ -169,31 +169,499 @@ Section Programming_Language.
         auto.
       Defined.
 
+    (* this tactical searches the environment; setoid_rewrite doesn't seem to be able to do that properly sometimes *)
+    Ltac nd_swap_ltac P EQV :=
+      match goal with
+        [ |- context [ (?F ** nd_id _) ;; (nd_id _ ** ?G) ] ] => 
+          set (@nd_swap _ _ EQV _ _ _ _ F G) as P
+      end.
+
     Instance Types_assoc a b : Types_second a >>>> Types_first b <~~~> Types_first b >>>> Types_second a :=
       { ni_iso := fun c => Types_assoc_iso a c b }.
-      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
-      Defined.
+      intros.
+      Opaque nd_id.
+      simpl.
+      Transparent nd_id.
+
+      rename A into X.
+      rename B into Y.
+      unfold ehom.
+      nd_swap_ltac p pl_eqv.
+      setoid_rewrite p.
+      clear p.
+
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+
+      repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+      set (ni_commutes' (jud_mon_cancelr pl_eqv) f) as q.
+      Opaque nd_id.
+      simpl in q.
+      setoid_rewrite <- q.
+
+      clear q.
+      set (ni_commutes' (jud_mon_cancell pl_eqv) f) as q.      
+      simpl in q.
+      set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+      set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+      simpl in qq.
+      setoid_rewrite qq in q.
+      clear q' qq.
+      setoid_rewrite <- q.
+
+      setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      apply ndr_comp_respects; try reflexivity.
+
+      Transparent nd_id.
+      apply (cndr_inert pl_cnd); auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        Defined.
+
+    Instance Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a :=
+      { ni_iso := fun c => Types_assoc_iso a b c }.
+      intros.
+      Opaque nd_id.
+      simpl.
+      Transparent nd_id.
+
+      rename A into X.
+      rename B into Y.
+      unfold ehom.
+      nd_swap_ltac p pl_eqv.
+      setoid_rewrite p.
+      clear p.
+
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+
+      repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+      set (ni_commutes' (jud_mon_cancelr pl_eqv) f) as q.
+      Opaque nd_id.
+      simpl in q.
+      setoid_rewrite <- q.
+
+      clear q.
+      set (ni_commutes' (jud_mon_cancell pl_eqv) f) as q.      
+      simpl in q.
+      set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+      set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+      simpl in qq.
+      setoid_rewrite qq in q.
+      clear q' qq.
+      setoid_rewrite <- q.
+
+      setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      apply ndr_comp_respects; try reflexivity.
+
+      Transparent nd_id.
+      apply (cndr_inert pl_cnd); auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        Defined.
+
+    Instance Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b :=
+      { ni_iso := fun c => iso_inv _ _ (Types_assoc_iso c a b) }.
+      intros.
+      Opaque nd_id.
+      simpl.
+      Transparent nd_id.
+
+      rename A into X.
+      rename B into Y.
+      unfold ehom.
+      nd_swap_ltac p pl_eqv.
+      setoid_rewrite p.
+      clear p.
+
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+
+      repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+      set (ni_commutes' (jud_mon_cancelr pl_eqv) f) as q.
+      Opaque nd_id.
+      simpl in q.
+      setoid_rewrite <- q.
+
+      clear q.
+      set (ni_commutes' (jud_mon_cancell pl_eqv) f) as q.      
+      simpl in q.
+      set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+      set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+      simpl in qq.
+      setoid_rewrite qq in q.
+      clear q' qq.
+      setoid_rewrite <- q.
+
+      setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      apply ndr_comp_respects; try reflexivity.
+
+      Transparent nd_id.
+      apply (cndr_inert pl_cnd); auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        Defined.
 
     Instance Types_cancelr   : Types_first [] <~~~> functor_id _ :=
       { ni_iso := Types_cancelr_iso }.
-      intros; simpl.
-      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
+      intros.
+      Opaque nd_id.
+      simpl.
+      unfold ehom.
+      nd_swap_ltac p pl_eqv.
+      setoid_rewrite p.
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+      repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+      set (ni_commutes' (jud_mon_cancelr pl_eqv) f) as q.
+      Opaque nd_id.
+      simpl in q.
+      setoid_rewrite <- q.
+      clear q.
+
+      set (ni_commutes' (jud_mon_cancell pl_eqv) f) as q.      
+      simpl in q.
+      set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+      set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+      simpl in qq.
+      setoid_rewrite qq in q.
+      clear q' qq.
+      setoid_rewrite <- q.
+
+      setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      apply ndr_comp_respects; try reflexivity.
+      Transparent nd_id.
+      simpl.
+      apply (cndr_inert pl_cnd); auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
       Defined.
 
     Instance Types_cancell   : Types_second [] <~~~> functor_id _ :=
       { ni_iso := Types_cancell_iso }.
-      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
+      intros.
+      Opaque nd_id.
+      simpl.
+      unfold ehom.
+      nd_swap_ltac p pl_eqv.
+      setoid_rewrite p.
+      setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+      repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+      setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+      set (ni_commutes' (jud_mon_cancelr pl_eqv) f) as q.
+      Opaque nd_id.
+      simpl in q.
+      setoid_rewrite <- q.
+      clear q.
+
+      set (ni_commutes' (jud_mon_cancell pl_eqv) f) as q.      
+      simpl in q.
+      set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+      set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+      simpl in qq.
+      setoid_rewrite qq in q.
+      clear q' qq.
+      setoid_rewrite <- q.
+      setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+
+      apply ndr_comp_respects; try reflexivity.
+      Transparent nd_id.
+      simpl.
+      apply (cndr_inert pl_cnd); auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
+        apply ndpc_comp; auto.
       Defined.
 
-    Instance Types_assoc_ll a b : Types_second (a,,b) <~~~> Types_second b >>>> Types_second a :=
-      { ni_iso := fun c => Types_assoc_iso a b c }.
-      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
-      Defined.
+      Lemma TypesL_assoc_central a b c : CentralMorphism(H:=Types_binoidal) #((Types_assoc a b) c).
+      intros.
+        apply Build_CentralMorphism.
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
 
-    Instance Types_assoc_rr a b : Types_first (a,,b) <~~~> Types_first a >>>> Types_first b :=
-      { ni_iso := fun c => iso_inv _ _ (Types_assoc_iso c a b) }.
-      admit.   (* need to add this as an obligation in ProgrammingLanguage class *)
-      Defined.
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        symmetry.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          Qed.
+
+      Lemma TypesL_cancell_central a : CentralMorphism(H:=Types_binoidal) #(Types_cancell a).
+      intros.
+        apply Build_CentralMorphism.
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        symmetry.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          Qed.
+
+      Lemma TypesL_cancelr_central a : CentralMorphism(H:=Types_binoidal) #(Types_cancelr a).
+      intros.
+        apply Build_CentralMorphism.
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+
+        Opaque nd_id.
+        intros.
+        unfold bin_obj.
+        unfold ebc_bobj.
+        simpl.
+        unfold ehom.
+        symmetry.
+        nd_swap_ltac p pl_eqv.
+        setoid_rewrite p.
+        clear p.
+        setoid_rewrite (@nd_prod_split_left  _ Rule pl_eqv _ _ _ []).
+        setoid_rewrite (@nd_prod_split_right _ Rule pl_eqv _ _ _ []).
+        repeat setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        setoid_rewrite <- (@ndr_comp_associativity _ Rule pl_eqv).
+
+        set (ni_commutes' (jud_mon_cancelr pl_eqv) g) as q.
+        Opaque nd_id.
+        simpl in q.
+        setoid_rewrite <- q.
+        clear q.
+
+        set (ni_commutes' (jud_mon_cancell pl_eqv) g) as q.      
+        simpl in q.
+        set (coincide (pmon_triangle(PreMonoidalCat:=(Judgments_Category_premonoidal pl_eqv)))) as q'.
+        set (isos_forward_equal_then_backward_equal _ _ q') as qq.
+        simpl in qq.
+        setoid_rewrite qq in q.
+        clear q' qq.
+        setoid_rewrite <- q.
+
+        setoid_rewrite (@ndr_comp_associativity _ Rule pl_eqv).
+        apply ndr_comp_respects.
+        reflexivity.
+        
+        Transparent nd_id.
+        apply (cndr_inert pl_cnd); auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          apply ndpc_comp; auto.
+          Qed.
 
     Instance TypesL_PreMonoidal : PreMonoidalCat Types_binoidal [] :=
       { pmon_assoc    := Types_assoc
@@ -227,6 +695,7 @@ Section Programming_Language.
         auto.
         auto.
         auto.
+
       apply Build_Triangle; intros; simpl.
         eapply cndr_inert. apply pl_eqv.
         auto.
@@ -241,9 +710,9 @@ Section Programming_Language.
           auto.
       intros; simpl; reflexivity.
       intros; simpl; reflexivity.
-      admit.  (* assoc   is central: need to add this as an obligation in ProgrammingLanguage class *)
-      admit.  (* cancelr is central: need to add this as an obligation in ProgrammingLanguage class *)
-      admit.  (* cancell is central: need to add this as an obligation in ProgrammingLanguage class *)
+      apply TypesL_assoc_central.
+      apply TypesL_cancelr_central.
+      apply TypesL_cancell_central.
       Defined.
 
     Definition TypesEnrichedInJudgments : SurjectiveEnrichment.
