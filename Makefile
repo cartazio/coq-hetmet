@@ -29,6 +29,18 @@ src/categories/src:
 clean:
 	rm -rf build
 
+examples/test.pdf:
+	../../../inplace/bin/ghc-stage2 GArrowTikZ.hs
+	./GArrowTikZ > test.tex
+	pdflatex test.tex
+	open test.pdf
+
+examples/doc/index.html:
+	mkdir -p examples/doc
+	haddock --html Unify.hs
+	open Unify.html
+
+
 merged:
 	mkdir -p .temp
 	cd src; for A in *.v; do cat $$A  | grep -v '^Require Import' > ../.temp/`echo $$A | sed s_\\\\.v_._`; done
