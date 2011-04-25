@@ -758,15 +758,12 @@ Section HaskProofToStrong.
       apply H2.
     Defined.
 
-  Definition closed2expr : forall c (pn:@ClosedSIND _ Rule c), ITree _ judg2exprType c.
-    refine ((
-      fix closed2expr' j (pn:@ClosedSIND _ Rule j) {struct pn} : ITree _ judg2exprType j :=
-      match pn in @ClosedSIND _ _ J return ITree _ judg2exprType J with
-      | cnd_weak             => let case_nil    := tt in INone _ _
-      | cnd_rule h c cnd' r  => let case_rule   := tt in rule2expr _ _ r (closed2expr' _ cnd')
-      | cnd_branch _ _ c1 c2 => let case_branch := tt in IBranch _ _ (closed2expr' _ c1) (closed2expr' _ c2)
-      end)); clear closed2expr'; intros; subst.
-        Defined.
+  Fixpoint closed2expr h j (pn:@SIND _ Rule h j) {struct pn} : ITree _ judg2exprType h -> ITree _ judg2exprType j :=
+    match pn in @SIND _ _ H J return ITree _ judg2exprType H -> ITree _ judg2exprType J with
+    | scnd_weak   _             => let case_nil    := tt in fun _ => INone _ _
+    | scnd_comp   x h c cnd' r  => let case_rule   := tt in fun q => rule2expr _ _ r (closed2expr _ _ cnd' q)
+    | scnd_branch _ _ _ c1 c2   => let case_branch := tt in fun q => IBranch _ _ (closed2expr _ _ c1 q) (closed2expr _ _ c2 q)
+    end.
 
   Lemma manyFresh : forall Γ Σ (ξ0:VV -> LeveledHaskType Γ ★),
     FreshM { vars : _ & { ξ : VV -> LeveledHaskType Γ ★ & Σ = mapOptionTree ξ vars } }.
@@ -804,7 +801,7 @@ Section HaskProofToStrong.
     {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [τ]] ->
     FreshM (???{ ξ : _ & Expr Γ Δ ξ τ}).
     intro pf.
-    set (closedFromSIND _ _ (mkSIND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) cnd_weak) as cnd.
+    set (mkSIND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) as cnd.
     apply closed2expr in cnd.
     apply ileaf in cnd.
     simpl in *.
@@ -819,6 +816,7 @@ Section HaskProofToStrong.
     refine (return OK _).
     exists ξ.
     apply (ileaf it).
+    apply INone.
     Defined.
 
 End HaskProofToStrong.

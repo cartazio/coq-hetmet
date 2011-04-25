@@ -231,7 +231,7 @@ Section HaskProofStratified.
       Alternating c'.
 
   Require Import Coq.Logic.Eqdep.
-
+(*
   Lemma magic a b c d ec e :
     ClosedSIND(Rule:=Rule) [a > b > c |- [d @@  (ec :: e)]] ->
     ClosedSIND(Rule:=Rule) [a > b > pcf_vars ec c @@@ (ec :: nil) |- [d @@  (ec :: nil)]].
@@ -318,7 +318,7 @@ Section HaskProofStratified.
       destruct c; try destruct o; inversion H.
       destruct j.
       Admitted.
-
+*)
   (* any proof in organized form can be "dis-organized" *)
   (*
   Definition unOrgR : forall Γ Δ h c, OrgR Γ Δ h c -> ND Rule h c.

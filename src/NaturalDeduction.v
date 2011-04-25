@@ -325,53 +325,6 @@ Section Natural_Deduction.
           inversion bogus.
           Defined.
 
-  (* a "ClosedSIND" is a proof with no open hypotheses and no multi-conclusion rules *)
-  Inductive ClosedSIND : Tree ??Judgment -> Type :=
-  | cnd_weak   : ClosedSIND []
-  | cnd_rule   : forall h c    , ClosedSIND h  -> Rule h c    -> ClosedSIND c
-  | cnd_branch : forall   c1 c2, ClosedSIND c1 -> ClosedSIND c2 -> ClosedSIND (c1,,c2)
-  .
-
-  (* we can turn an SIND without hypotheses into a ClosedSIND *)
-  Definition closedFromSIND h c (pn2:SIND h c)(cnd:ClosedSIND h) : ClosedSIND c.
-  refine ((fix closedFromPnodes h c (pn2:SIND h c)(cnd:ClosedSIND h) {struct pn2} := 
-    (match pn2 in SIND H C return H=h -> C=c -> _  with
-      | scnd_weak   c                 => let case_weak := tt in _
-      | scnd_comp  ht ct c pn' rule   => let case_comp := tt in let qq := closedFromPnodes _ _ pn' in _
-      | scnd_branch ht c1 c2 pn' pn'' => let case_branch := tt in
-                                         let q1 := closedFromPnodes _ _ pn' in 
-                                         let q2 := closedFromPnodes _ _ pn'' in _
-
-    end (refl_equal _) (refl_equal _))) h c pn2 cnd).
-
-  destruct case_weak.
-    intros; subst.
-    apply cnd_weak.
-
-  destruct case_comp.
-    intros.
-    clear pn2.
-    apply (cnd_rule ct).
-    apply qq.
-    subst.
-    apply cnd0.
-    apply rule.
-
-  destruct case_branch.
-    intros.
-    apply cnd_branch.
-    apply q1. subst. apply cnd0.
-    apply q2. subst. apply cnd0.
-    Defined.
-
-  (* undo the above *)
-  Fixpoint closedNDtoNormalND {c}(cnd:ClosedSIND c) : ND [] c :=
-  match cnd in ClosedSIND C return ND [] C with
-  | cnd_weak                   => nd_id0
-  | cnd_rule   h c cndh rhc    => closedNDtoNormalND cndh ;; nd_rule rhc
-  | cnd_branch c1 c2 cnd1 cnd2 => nd_llecnac ;; nd_prod (closedNDtoNormalND cnd1) (closedNDtoNormalND cnd2)
-  end.
-
   (* Natural Deduction systems whose judgments happen to be pairs of the same type *)
   Section SequentND.
     Context {S:Type}.                   (* type of sequent components *)
@@ -750,19 +703,6 @@ Inductive nd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall
     @nd_property _ _ P h0 c0 pf0 -> @nd_property _ _ P c0 c1 pf1 -> @nd_property _ _ P _ _ (nd_comp pf0 pf1)
   | nd_property_rule            : forall h c r, P h c r -> @nd_property _ _ P h c (nd_rule r).
   Hint Constructors nd_property.
-
-(* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for ClosedSIND) *)
-Inductive cnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {c}, @ClosedSIND Judgment Rule c -> Prop :=
-| cnd_property_weak            : @cnd_property _ _ P _ cnd_weak
-| cnd_property_rule            : forall h c r cnd',
-  P h c r ->
-  @cnd_property _ _ P h cnd' ->
-  @cnd_property _ _ P c (cnd_rule _ _ cnd' r)
-| cnd_property_branch          :
-  forall c1 c2 cnd1 cnd2,
-  @cnd_property _ _ P c1 cnd1 ->
-  @cnd_property _ _ P c2 cnd2 ->
-  @cnd_property _ _ P _  (cnd_branch _ _ cnd1 cnd2).
 
 (* witnesses the fact that every Rule in a particular proof satisfies the given predicate (for SIND) *)
 Inductive scnd_property {Judgment}{Rule}(P:forall h c, @Rule h c -> Prop) : forall {h c}, @SIND Judgment Rule h c -> Prop :=
