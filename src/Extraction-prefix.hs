@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-unused-matches -fno-warn-unused-binds #-}
 module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
 import qualified Unique
