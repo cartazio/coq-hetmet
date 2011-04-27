@@ -181,7 +181,7 @@ Section HaskStrongToWeak.
                                   (fun _ => UniqM WeakType) _ (fun _ t => typeToWeakType t ite) atypes))
                   ; return WECase vscrut' escrut' tbranches' tc tys branches'
 
-    | ELetRec _ _ _ _ _ vars elrb e => fun ite => bind vars' = seqM (map (fun vt:VV * HaskType _ ★
+    | ELetRec _ _ _ _ _ vars disti elrb e => fun ite => bind vars' = seqM (map (fun vt:VV * HaskType _ ★
                                                                         => bind tleaf = typeToWeakType (snd vt) ite
                                                                          ; bind v' = mkWeakExprVar tleaf
                                                                          ; return ((fst vt),v'))

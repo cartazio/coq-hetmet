@@ -715,6 +715,7 @@ Section HaskProofToStrong.
     inversion X; subst; clear X.
 
     apply (@ELetRec _ _ _ _ _ _ _ varstypes).
+    auto.
     apply (@letrec_helper Γ Δ t varstypes).
     rewrite <- pf2 in X1.
     rewrite mapOptionTree_compose.

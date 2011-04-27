@@ -61,6 +61,7 @@ Section HaskStrong.
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars,
+    distinct (leaves (mapOptionTree (@fst _ _) vars)) ->
     let ξ' := update_ξ ξ l (leaves vars) in
     ELetRecBindings Γ Δ ξ'     l vars ->
     Expr            Γ Δ ξ' (τ@@l) ->
@@ -91,8 +92,8 @@ Section HaskStrong.
     | ECast Γ Δ ξ t1 t2 γ l e       => "cast ("+++exprToString e+++"):t2"
     | ETyLam _ _ _ k _ _ e          => "\@_ ->"+++ exprToString e
     | ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e    => "\~_ ->"+++ exprToString e
-    | ECase Γ Δ ξ l tc tbranches atypes escrut alts => "case " +++ exprToString escrut +++ " of FIXME"
-    | ELetRec _ _ _ _ _ vars elrb e => "letrec FIXME in " +++ exprToString e
+    | ECase Γ Δ ξ l tc branches atypes escrut alts => "case " +++ exprToString escrut +++ " of FIXME"
+    | ELetRec _ _ _ _ _ vars vu elrb e => "letrec FIXME in " +++ exprToString e
     end.
   Instance ExprToString Γ Δ ξ τ : ToString (Expr Γ Δ ξ τ) := { toString := exprToString }.
 

@@ -510,7 +510,14 @@ Fixpoint doesWeakVarOccurAlts (wev:WeakExprVar)
     | T_Branch b1 b2                                           => doesWeakVarOccurAlts wev b1 || doesWeakVarOccurAlts wev b2
   end.
 
-(*Definition ensureCaseBindersAreNotUsed (we:WeakExpr) : UniqM WeakExpr := FIXME *)
+Definition checkDistinct :
+  forall {V}(EQ:EqDecidable V)(lv:list V), ???(distinct lv).
+  intros.
+  set (distinct_decidable lv) as q.
+  destruct q.
+  exact (OK d).
+  exact (Error "checkDistinct failed").
+  Defined.
 
 Definition weakExprToStrongExpr : forall
     (Γ:TypeEnv)
@@ -644,8 +651,9 @@ Definition weakExprToStrongExpr : forall
                 OK (ELR_branch Γ Δ ξ' lev _ _ b1' b2')
         end) rb
       in binds >>= fun binds' =>
+         checkDistinct CoreVarEqDecidable (map (@fst _ _) (leaves (varsTypes rb φ))) >>= fun rb_distinct =>
            weakExprToStrongExpr Γ Δ φ ψ ξ' ig' τ lev e >>= fun e' =>       
-             OK (ELetRec Γ Δ ξ lev τ _ binds' e')
+             OK (ELetRec Γ Δ ξ lev τ _ _ binds' e')
 
     | WECase vscrut escrut tbranches tc avars alts =>
         weakTypeOfWeakExpr escrut >>= fun tscrut =>
@@ -700,6 +708,8 @@ Definition weakExprToStrongExpr : forall
         destruct (ξ c).
         simpl.
       apply e1.
+      rewrite mapleaves.
+      apply rb_distinct.
 
     destruct case_pf.
       set (distinct_decidable (vec2list exprvars')) as dec.

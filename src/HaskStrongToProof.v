@@ -121,31 +121,83 @@ Lemma strip_lemma a x t : stripOutVars (a::x) t = stripOutVars (a::nil) (stripOu
   reflexivity.
   Qed.
 
-Lemma strip_twice_lemma x y t : stripOutVars x (stripOutVars y t) = stripOutVars (app y x) t.
-(*
-  induction x.
-  simpl.
+Lemma strip_nil_lemma       t : stripOutVars nil t = t.
+  induction t; simpl.
   unfold stripOutVars.
-  simpl.
-  rewrite mapOptionTree'_compose.
+    destruct a; reflexivity.
+    rewrite <- IHt1 at 2.
+    rewrite <- IHt2 at 2.
+    reflexivity.
+    Qed.
+
+Lemma strip_swap0_lemma : forall a a0 y t,
+  stripOutVars (a :: a0 :: y) t = stripOutVars (a0 :: a :: y) t.
+  intros.
+  unfold stripOutVars.
   induction t.
-  destruct a; try reflexivity.
-  simpl.
-  destruct (dropVar y v); reflexivity.
-  simpl.
-  rewrite IHt1.
-  rewrite IHt2.
-  reflexivity.
-  rewrite strip_lemma.
-  rewrite IHx.
-  rewrite <- strip_lemma.
-  rewrite app_comm_cons.
-  reflexivity.
-*)
-  admit.
+  destruct a1; simpl; [ idtac | reflexivity ].
+  destruct (eqd_dec v a); subst.
+  destruct (eqd_dec a a0); subst.
+    reflexivity.
+    reflexivity.
+  destruct (eqd_dec v a0); subst.
+    reflexivity.
+    reflexivity.
+    simpl in *.
+    rewrite IHt1.
+    rewrite IHt2.
+    reflexivity.
+    Qed.
+
+Lemma strip_swap1_lemma : forall a y t,
+  stripOutVars (a :: nil) (stripOutVars y t) =
+  stripOutVars y (stripOutVars (a :: nil) t).
+  intros.
+  induction y.
+    rewrite strip_nil_lemma.
+    rewrite strip_nil_lemma.
+    reflexivity.
+  rewrite (strip_lemma a0 y (stripOutVars (a::nil) t)).
+    rewrite <- IHy.
+    clear IHy.
+    rewrite <- (strip_lemma a y t).
+    rewrite <- strip_lemma.
+    rewrite <- strip_lemma.
+    apply strip_swap0_lemma.
+    Qed.
+
+Lemma strip_swap_lemma : forall  x y t, stripOutVars x (stripOutVars y t) = stripOutVars y (stripOutVars x t).
+  intros; induction t.
+    destruct a; simpl.
+
+    induction x.
+      rewrite strip_nil_lemma.
+        rewrite strip_nil_lemma.
+        reflexivity.
+      rewrite strip_lemma.
+        rewrite (strip_lemma a x [v]).
+        rewrite IHx.
+        clear IHx.
+        apply strip_swap1_lemma.
+    reflexivity.
+  unfold stripOutVars in *.
+    simpl.
+    rewrite IHt1.
+    rewrite IHt2.
+    reflexivity.
   Qed.
 
-Lemma strip_distinct a y : (not (In a (leaves y))) -> stripOutVars (a :: nil) y = y.
+Lemma strip_twice_lemma x y t : stripOutVars x (stripOutVars y t) = stripOutVars (app x y) t.
+  induction x; simpl.
+    apply strip_nil_lemma.
+    rewrite strip_lemma.
+    rewrite IHx.
+    clear IHx.
+    rewrite <- strip_lemma.
+    reflexivity.
+    Qed.
+
+Lemma notin_strip_inert a y : (not (In a (leaves y))) -> stripOutVars (a :: nil) y = y.
   intros.
   induction y.
   destruct a0; try reflexivity.
@@ -232,7 +284,7 @@ Lemma distinct3 {T}(a b c:list T) : distinct (app (app a b) c) -> distinct (app 
   auto.
   Qed.
 
-Lemma strip_distinct' y : forall x, distinct (app x (leaves y)) -> stripOutVars x y = y.
+Lemma notin_strip_inert' y : forall x, distinct (app x (leaves y)) -> stripOutVars x y = y.
   induction x; intros.
   simpl in H.
   unfold stripOutVars.
@@ -250,11 +302,24 @@ Lemma strip_distinct' y : forall x, distinct (app x (leaves y)) -> stripOutVars 
   set (IHx H3) as qq.
   rewrite strip_lemma.
   rewrite IHx.
-  apply strip_distinct.
+  apply notin_strip_inert.
   unfold not; intros.
   apply H2.
   apply In_both'.
   auto.
+  auto.
+  Qed.
+
+Lemma dropvar_lemma v v' y : dropVar y v = Some v' -> v=v'.
+  intros.
+  induction y; auto.
+  simpl in H.
+  inversion H.
+  auto.
+  apply IHy.
+  simpl in H.
+  destruct (eqd_dec v a).
+  inversion H.
   auto.
   Qed.
 
@@ -264,40 +329,193 @@ Lemma updating_stripped_tree_is_inert'
   lv tree2 :
     mapOptionTree (update_ξ ξ lev lv) (stripOutVars (map (@fst _ _) lv) tree2)
   = mapOptionTree ξ (stripOutVars (map (@fst _ _) lv) tree2).
+
   induction tree2.
-  destruct a.
+    destruct a; [ idtac | reflexivity ]; simpl.
+    induction lv; [ reflexivity | idtac ]; simpl.
+    destruct a; simpl.
+    set (eqd_dec v v0) as q; destruct q; auto.
+    set (dropVar (map (@fst _ _) lv) v) as b in *.
+      assert (dropVar (map (@fst _ _) lv) v=b). reflexivity.
+      destruct b; [ idtac | reflexivity ].
+      apply dropvar_lemma in H.
+      subst.
+      inversion IHlv.
+      rewrite H0.
+      clear H0 IHlv.
+      destruct (eqd_dec v0 v1).
+      subst.
+      assert False. apply n. intros; auto. inversion H.
+      reflexivity.
+    unfold stripOutVars in *.
+      simpl.
+      rewrite <- IHtree2_1.
+      rewrite <- IHtree2_2.
+      reflexivity.
+    Qed.
+
+Lemma distinct_bogus : forall {T}a0 (a:list T), distinct (a0::(app a (a0::nil))) -> False.
+  intros; induction a; auto.
+  simpl in H.
+  inversion H; subst.
+  apply H2; auto.
+  unfold In; simpl.
+  left; auto.
+  apply IHa.
+  clear IHa.
+  rewrite <- app_comm_cons in H.
+  inversion H; subst.
+  inversion H3; subst.
+  apply distinct_cons; auto.
+  intros.
+  apply H2.
   simpl.
-  induction lv.
-  reflexivity.
-  simpl.
-  destruct a.
-  simpl.
-  set (eqd_dec v v0) as q.
-  destruct q.
-  auto.
-  set (dropVar (map (@fst _ _) lv) v) as b in *.
-  destruct b.
-  inversion IHlv.
-  admit.
-  auto.
-  reflexivity.
-  simpl.
-  unfold stripOutVars in *.
-  rewrite <- IHtree2_1.
-  rewrite <- IHtree2_2.
-  reflexivity.
+  right; auto.
   Qed.
 
-Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)),
+Lemma distinct_swap' : forall {T}a (b:list T), distinct (app b (a::nil)) -> distinct (a::b).
+  intros.
+  apply distinct_cons.
+    induction b; intros; simpl; auto.
+    rewrite <- app_comm_cons in H.
+    inversion H; subst.
+    set (IHb H4) as H4'.
+    apply H4'.
+    inversion H0; subst; auto.
+    apply distinct_bogus in H; inversion H.
+  induction b; intros; simpl; auto.
+    apply distinct_nil.
+    apply distinct_app in H.
+    destruct H; auto.
+  Qed.
+
+Lemma in_both : forall {T}(a b:list T) x, In x (app a b) -> In x a \/ In x b.
+  induction a; intros; simpl; auto.
+  rewrite <- app_comm_cons in H.
+  inversion H.
+  subst.
+  left; left; auto.
+  set (IHa _ _ H0) as H'.
+  destruct H'.
+  left; right; auto.
+  right; auto.
+  Qed.
+
+Lemma distinct_lemma : forall {T} (a b:list T) a0, distinct (app a (a0 :: b)) -> distinct (app a b).
+  intros.
+  induction a; simpl; auto.
+  simpl in H.
+  inversion H; auto.
+  assert (distinct (app a1 b)) as Q.
+  intros.
+  apply IHa.
+  clear IHa.
+  rewrite <- app_comm_cons in H.
+  inversion H; subst; auto.
+  apply distinct_cons; [ idtac | apply Q ].
+  intros.
+  apply in_both in H0.
+  destruct H0.
+  rewrite <- app_comm_cons in H.
+  inversion H; subst; auto.
+  apply H3.
+  apply In_both; auto.
+  rewrite <- app_comm_cons in H.
+  inversion H; subst; auto.
+  apply H3.
+  apply In_both'; auto.
+  simpl.
+  right; auto.
+  Qed.
+
+Lemma nil_app : forall {T}(a:list T) x, x::a = (app (x::nil) a).
+  induction a; intros; simpl; auto.
+  Qed.
+
+Lemma distinct_swap : forall {T}(a b:list T), distinct (app a b) -> distinct (app b a).
+  intros.
+  induction b.
+  rewrite <- app_nil_end in H; auto.
+  rewrite <- app_comm_cons.
+  set (distinct_lemma _ _ _ H) as H'.
+  set (IHb H') as H''.
+  apply distinct_cons; [ idtac | apply H'' ].
+  intros.
+  apply in_both in H0.
+  clear H'' H'.
+  destruct H0.
+  apply distinct_app in H.
+  destruct H.
+  inversion H1; auto.
+  clear IHb.
+  rewrite nil_app in H.
+  rewrite ass_app in H.
+  apply distinct_app in H.
+  destruct H; auto.
+  apply distinct_swap' in H.
+  inversion H; auto.
+  Qed.
+
+Lemma update_ξ_lemma' `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
+  forall v1 v2,
+  distinct (map (@fst _ _) (leaves (v1,,(varstypes,,v2)))) ->
+  mapOptionTree (update_ξ ξ lev (leaves (v1,,(varstypes,,v2)))) (mapOptionTree (@fst _ _) varstypes) =
+  mapOptionTree (fun t => t@@ lev) (mapOptionTree (@snd _ _) varstypes).
+  induction varstypes; intros.
+  destruct a; simpl; [ idtac | reflexivity ].
+  destruct p.
+  simpl.
+  simpl in H.
+  induction (leaves v1).
+    simpl; auto.
+    destruct (eqd_dec v v); auto.
+    assert False. apply n. auto. inversion H0.
+    simpl.
+    destruct a.
+      destruct (eqd_dec v0 v); subst; auto.
+      simpl in H.
+      rewrite map_app in H.
+      simpl in H.
+      rewrite nil_app in H.
+      apply distinct_swap in H.
+      rewrite app_ass in H.
+      apply distinct_app in H.
+      destruct H.
+      apply distinct_swap in H0.
+      simpl in H0.
+      inversion H0; subst.
+      assert False.
+      apply H3.
+      simpl; left; auto.
+      inversion H1.
+    apply IHl.
+      simpl in H.
+      inversion H; auto.
+  set (IHvarstypes1 v1 (varstypes2,,v2)) as i1.
+    set (IHvarstypes2 (v1,,varstypes1) v2) as i2.
+    simpl in *.
+    rewrite <- i1.
+    rewrite <- i2.
+    rewrite ass_app. 
+    rewrite ass_app. 
+    rewrite ass_app. 
+    rewrite ass_app. 
+    reflexivity.
+    clear i1 i2 IHvarstypes1 IHvarstypes2.
+    repeat rewrite ass_app in *; auto.
+    clear i1 i2 IHvarstypes1 IHvarstypes2.
+    repeat rewrite ass_app in *; auto.
+    Qed.
+
+Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
   distinct (map (@fst _ _) (leaves varstypes)) ->
   mapOptionTree (update_ξ ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) =
   mapOptionTree (fun t => t@@ lev) (mapOptionTree (@snd _ _) varstypes).
-  admit.
+  set (update_ξ_lemma' Γ ξ lev varstypes [] []) as q.
+  simpl in q.
+  rewrite <- app_nil_end in q.
+  apply q.
   Qed.
-
-
-
-
 
 Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ??VV :=
   match exp as E in Expr Γ Δ ξ τ with
@@ -315,7 +533,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => expr2antecedent e
   | ECoApp   Γ Δ κ γ σ₁ σ₂ σ ξ l      e           => expr2antecedent e
   | ETyApp   Γ Δ κ σ τ ξ  l    e                  => expr2antecedent e
-  | ELetRec  Γ Δ ξ l τ vars branches body         =>
+  | ELetRec  Γ Δ ξ l τ vars _ branches body       =>
       let branch_context := eLetRecContext branches
    in let all_contexts := (expr2antecedent body),,branch_context
    in     stripOutVars (leaves (mapOptionTree (@fst _ _ ) vars)) all_contexts
@@ -499,10 +717,6 @@ Definition arrangeContextAndWeaken
   refine (RLeft _ (RWeak _)).
   Defined.
 
-Lemma cheat : forall {T}(a b:list T), distinct (app a b) -> distinct (app b a).
-  admit.
-  Qed.
-
 Definition arrangeContextAndWeaken''
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
@@ -547,11 +761,11 @@ Definition arrangeContextAndWeaken''
     eapply RComp.
       apply qq.
       clear qq IHv2' IHv2 IHv1.
+      rewrite strip_swap_lemma.
       rewrite strip_twice_lemma.
-
-      rewrite (strip_distinct' v1 (leaves v2)).
+      rewrite (notin_strip_inert' v1 (leaves v2)).
         apply RCossa.
-        apply cheat.
+        apply distinct_swap.
         auto.
     Defined.
 
@@ -592,11 +806,10 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
   Defined.
 
 Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
-    forall branches body,
-    distinct (leaves (mapOptionTree (@fst _ _) tree)) ->
+    forall branches body (dist:distinct (leaves (mapOptionTree (@fst _ _) tree))),
     ND Rule [] [Γ > Δ > mapOptionTree (update_ξ ξ lev (leaves tree)) (expr2antecedent body) |- [τ @@ lev]] -> 
     LetRecSubproofs Γ Δ (update_ξ ξ lev (leaves tree)) lev tree branches ->
-    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree branches body)) |- [τ @@ lev]].
+    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree dist branches body)) |- [τ @@ lev]].
 
   (* NOTE: how we interpret stuff here affects the order-of-side-effects *)
   intro branches.
@@ -605,8 +818,11 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   intro pf.
   intro lrsp.
 
-  rewrite mapleaves in disti.
-  set (@update_ξ_lemma _ Γ ξ lev tree disti) as ξlemma.
+  assert (distinct (leaves (mapOptionTree (@fst _ _) tree))) as disti'.
+    apply disti.
+    rewrite mapleaves in disti'.
+
+  set (@update_ξ_lemma _ Γ ξ lev tree disti') as ξlemma.
     rewrite <- mapOptionTree_compose in ξlemma.
 
   set ((update_ξ ξ lev (leaves tree))) as ξ' in *.
@@ -620,7 +836,6 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   set (@arrangeContextAndWeaken''  Γ Δ  pctx ξ' (expr2antecedent body,,eLetRecContext branches)) as q'.
   unfold passback in *; clear passback.
   unfold pctx in *; clear pctx.
-  rewrite <- mapleaves in disti.
   set (q' disti) as q''.
 
   unfold ξ' in *.
@@ -722,7 +937,7 @@ Definition expr2proof  :
     | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in (fun e' => _) (expr2proof _ _ _ _ e)
     | ELet     Γ Δ ξ tv t      v lev ev ebody       => let case_ELet := tt in 
                                                        (fun pf_let pf_body => _) (expr2proof _ _ _ _ ev) (expr2proof _ _ _ _ ebody) 
-    | ELetRec  Γ Δ ξ lev t tree branches ebody      =>
+    | ELetRec  Γ Δ ξ lev t tree disti branches ebody =>
       let ξ' := update_ξ ξ lev (leaves tree) in
       let case_ELetRec := tt in  (fun e' subproofs => _) (expr2proof _ _ _ _ ebody) 
         ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
@@ -929,7 +1144,6 @@ Definition expr2proof  :
       unfold ξ'1 in *.
       clear ξ'1.
       apply letRecSubproofsToND'.
-      admit.
       apply e'.
       apply subproofs.
 
