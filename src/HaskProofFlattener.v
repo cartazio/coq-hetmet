@@ -45,83 +45,65 @@ Require Import HaskProofStratified.
 
 Open Scope nd_scope.
 
-
 (*
  *  The flattening transformation.  Currently only TWO-level languages are
  *  supported, and the level-1 sublanguage is rather limited.
-*
+ *
  *  This file abuses terminology pretty badly.  For purposes of this file,
  *  "PCF" means "the level-1 sublanguage" and "FC" (aka System FC) means 
  *  the whole language (level-0 language including bracketed level-1 terms)
  *)
 Section HaskProofFlattener.
 
+  Context {Γ:TypeEnv}.
+  Context {Δ:CoercionEnv Γ}.
+  Context {ec:HaskTyVar Γ ★}.
 
-(*
-  Definition code2garrow0 {Γ}(ec t1 t2:RawHaskType Γ ★) : RawHaskType Γ ★.
+  Lemma unlev_lemma : forall (x:Tree ??(HaskType Γ ★)) lev, x = mapOptionTree unlev (x @@@ lev).
+    intros.
+    rewrite <- mapOptionTree_compose.
+    simpl.
+    induction x.
+    destruct a; simpl; auto.
+    simpl.
+    rewrite IHx1 at 1.
+    rewrite IHx2 at 1.
+    reflexivity.
+    Qed.
+
+  Context (ga_rep      : Tree ??(HaskType Γ ★) -> HaskType Γ ★ ).
+  Context (ga_type     : HaskType Γ ★ -> HaskType Γ ★ -> HaskType Γ ★).
+
+  Lemma magic : forall a b c,
+    ([]                   ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type a b @@ nil]) ->
+    ([ga_type b c @@ nil] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type a c @@ nil]).
     admit.
-    Defined.
-  Definition code2garrow Γ (ec t:RawHaskType Γ ★) :=
-      match t with
-(*        | TApp ★ ★ (TApp _ ★ TArrow tx) t' => code2garrow0 ec tx       t'*)
-        |                               _  => code2garrow0 ec unitType t
-      end.
-  Opaque code2garrow.
-  Fixpoint typeMap {TV}{κ}(ty:@RawHaskType TV κ) : @RawHaskType TV κ :=
-      match ty as TY in RawHaskType _ K return RawHaskType TV K with
-        | TCode ec t        => code2garrow _ ec t
-        | TApp _ _ t1 t2    => TApp (typeMap t1) (typeMap t2)
-        | TAll _ f          => TAll _ (fun tv => typeMap (f tv))
-        | TCoerc _ t1 t2 t3 => TCoerc (typeMap t1) (typeMap t2) (typeMap t3)
-        | TVar   _ v        => TVar v
-        | TArrow            => TArrow
-        | TCon  tc          => TCon tc 
-        | TyFunApp  tf rhtl => (* FIXME *) TyFunApp tf rhtl
-      end.
-*)
+    Qed.
 
+  Context (ga_lit       : forall lit,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep   []   )      (ga_rep [literalType lit])@@ nil]).
+  Context (ga_id        : forall σ,       [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep   σ    )      (ga_rep σ                )@@ nil]).
+  Context (ga_cancell   : forall c  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep ([],,c))      (ga_rep c                )@@ nil]).
+  Context (ga_cancelr   : forall c  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep (c,,[]))      (ga_rep c                )@@ nil]).
+  Context (ga_uncancell : forall c  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep  c     )      (ga_rep ([],,c)          )@@ nil]).
+  Context (ga_uncancelr : forall c  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep  c     )      (ga_rep (c,,[])          )@@ nil]).
+  Context (ga_assoc     : forall a b c,   [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep ((a,,b),,c))  (ga_rep (a,,(b,,c))      )@@ nil]).
+  Context (ga_unassoc   : forall a b c,   [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep ( a,,(b,,c))) (ga_rep ((a,,b),,c))      @@ nil]).
+  Context (ga_swap      : forall a b,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep (a,,b) )      (ga_rep (b,,a)           )@@ nil]).
+  Context (ga_copy      : forall a  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep  a     )      (ga_rep (a,,a)           )@@ nil]).
+  Context (ga_drop      : forall a  ,     [] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep  a     )      (ga_rep []               )@@ nil]).
+  Context (ga_first     : forall a b c,   [ga_type (ga_rep a) (ga_rep b) @@nil] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep (a,,c)) (ga_rep (b,,c)) @@nil]).
+  Context (ga_second    : forall a b c,   [ga_type (ga_rep a) (ga_rep b) @@nil] ~~{TypesL (SystemFCa Γ Δ)}~~> [ga_type (ga_rep (c,,a)) (ga_rep (c,,b)) @@nil]).
+  Context (ga_comp      : forall a b c,
+    [ga_type (ga_rep a) (ga_rep b) @@nil],,[ga_type (ga_rep b) (ga_rep c) @@nil]
+    ~~{TypesL (SystemFCa Γ Δ)}~~>
+    [ga_type (ga_rep a) (ga_rep c) @@nil]).
 
-(*
-  Definition code2garrow Γ (ec t:RawHaskType Γ ★) :=
-      match t with
-(*        | TApp ★ ★ (TApp _ ★ TArrow tx) t' => code2garrow0 ec tx       t'*)
-        |                               _  => code2garrow0 ec unitType t
-      end.
-  Opaque code2garrow.
-  Fixpoint typeMap {TV}{κ}(ty:@RawHaskType TV κ) : @RawHaskType TV κ :=
-      match ty as TY in RawHaskType _ K return RawHaskType TV K with
-        | TCode ec t        => code2garrow _ ec t
-        | TApp _ _ t1 t2    => TApp (typeMap t1) (typeMap t2)
-        | TAll _ f          => TAll _ (fun tv => typeMap (f tv))
-        | TCoerc _ t1 t2 t3 => TCoerc (typeMap t1) (typeMap t2) (typeMap t3)
-        | TVar   _ v        => TVar v
-        | TArrow            => TArrow
-        | TCon  tc          => TCon tc 
-        | TyFunApp  tf rhtl => (* FIXME *) TyFunApp tf rhtl
-      end.
-          
-  Definition typeMapL {Γ}(lht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★  :=
-    match lht with
-(*      | t @@ nil       => (fun TV ite => typeMap (t TV ite)) @@ lev*)
-      | t @@ lev => (fun TV ite => typeMap (t TV ite)) @@ lev
-    end.
-*)
-
-  (* gathers a tree of guest-language types into a single host-language types via the tensor *)
-  Definition tensorizeType {Γ} (lt:Tree ??(HaskType Γ ★)) : HaskType Γ ★.
-    admit.
-    Defined.
-
-  Definition mkGA {Γ} : HaskType Γ ★ -> HaskType Γ ★ -> HaskType Γ ★. 
-    admit.
-    Defined.
-
-  Definition guestJudgmentAsGArrowType {Γ}{Δ}(lt:PCFJudg Γ Δ) : HaskType Γ ★ :=
+  Definition guestJudgmentAsGArrowType (lt:PCFJudg Γ ec) : HaskType Γ ★ :=
     match lt with
-      (x,y) => (mkGA (tensorizeType x) (tensorizeType y)) 
+      (x,y) => (ga_type (ga_rep x) (ga_rep y)) 
     end.
 
-  Definition obact {Γ}{Δ} (X:Tree ??(PCFJudg Γ Δ)) : Tree ??(LeveledHaskType Γ ★) :=
+  Definition obact (X:Tree ??(PCFJudg Γ ec)) : Tree ??(LeveledHaskType Γ ★) :=
     mapOptionTree guestJudgmentAsGArrowType X @@@ nil.
 
   Hint Constructors Rule_Flat.
@@ -133,10 +115,10 @@ Section HaskProofFlattener.
    * NaturalDeduction.v) handy as a cross-reference.
    *)
   Hint Constructors Rule_Flat.
-  Definition FlatteningFunctor_fmor {Γ}{Δ}{ec}
+  Definition FlatteningFunctor_fmor
     : forall h c,
       (h~~{JudgmentsL (PCF Γ Δ ec)}~~>c) ->
-      ((obact(Δ:=ec) h)~~{TypesL (SystemFCa Γ Δ)}~~>(obact(Δ:=ec) c)).
+      ((obact h)~~{TypesL (SystemFCa Γ Δ)}~~>(obact c)).
 
     set (@nil (HaskTyVar Γ ★)) as lev.
 
@@ -164,7 +146,7 @@ Section HaskProofFlattener.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply (org_fc _ _ [(_,_)] [(_,_)] (RArrange _ _ _ _ _ (RCont _))) ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       set (snd_initial(SequentND:=pl_snd(ProgrammingLanguage:=SystemFCa Γ Δ))
-        (mapOptionTree (guestJudgmentAsGArrowType(Δ:=ec)) h @@@ lev)) as q.
+        (mapOptionTree (guestJudgmentAsGArrowType) h @@@ lev)) as q.
       eapply nd_comp.
       eapply nd_prod.
       apply q.
@@ -193,10 +175,7 @@ Section HaskProofFlattener.
     eapply nd_comp.
       apply (nd_llecnac ;; nd_prod IHX1 IHX2).
       clear IHX1 IHX2 X1 X2.
-      (*
-      apply (@snd_cut _ _ _ _ _ _ (@pl_cnd _ _ _ _ (SystemFCa Γ Δ))).
-      *)
-      admit.
+      apply (@snd_cut _ _ _ _ (pl_snd(ProgrammingLanguage:=SystemFCa Γ Δ))). 
 
     (* nd_cancell becomes RVar;;RuCanL *)
     eapply nd_comp;
@@ -235,7 +214,16 @@ Section HaskProofFlattener.
       apply Flat_RArrange.
 
       destruct r as [r rp].
-      refine (match rp as R in @Rule_PCF _ _ _ H C _ with
+      rename h into h'.
+      rename c into c'.
+      rename r into r'.
+
+      refine (match rp as R in @Rule_PCF _ _ _ H C _
+                return
+                ND (OrgR Γ Δ) []
+                [sequent (mapOptionTree guestJudgmentAsGArrowType H @@@ nil)
+                  (mapOptionTree guestJudgmentAsGArrowType C @@@ nil)]
+                with
                 | PCF_RArrange         h c r q          => let case_RURule        := tt in _
                 | PCF_RLit             lit              => let case_RLit          := tt in _
                 | PCF_RNote            Σ τ   n          => let case_RNote         := tt in _
@@ -248,12 +236,20 @@ Section HaskProofFlattener.
               (*| PCF_RCase            T κlen κ θ l x   => let case_RCase         := tt in _*)
               (*| PCF_RLetRec          Σ₁ τ₁ τ₂ lev     => let case_RLetRec       := tt in _*)
               end); simpl in *.
-      clear rp.
-      clear r h c.
-      rename r0 into r; rename h0 into h; rename c0 into c.
+      clear rp h' c' r'.
 
+      rewrite (unlev_lemma h (ec::nil)).
+      rewrite (unlev_lemma c (ec::nil)).
       destruct case_RURule.
-        refine (match q with
+        refine (match q as Q in Arrange H C
+                return
+                H=(h @@@ (ec :: nil)) ->
+                C=(c @@@ (ec :: nil)) ->
+                ND (OrgR Γ Δ) []
+                [sequent
+                  [ga_type (ga_rep (mapOptionTree unlev H)) (ga_rep r) @@ nil ]
+                  [ga_type (ga_rep (mapOptionTree unlev C)) (ga_rep r) @@ nil ] ]
+                  with
           | RLeft   a b c r => let case_RLeft  := tt in _
           | RRight  a b c r => let case_RRight := tt in _
           | RCanL     b     => let case_RCanL  := tt in _
@@ -266,59 +262,64 @@ Section HaskProofFlattener.
           | RWeak     b     => let case_RWeak  := tt in _
           | RCont     b     => let case_RCont  := tt in _
           | RComp a b c f g => let case_RComp  := tt in _
-        end).
+        end (refl_equal _) (refl_equal _));
+        intros; simpl in *;
+        subst;
+        try rewrite <- unlev_lemma in *.
 
       destruct case_RCanL.
-        (* ga_cancell *)
-        admit.
+        apply magic.
+        apply ga_uncancell.
         
       destruct case_RCanR.
-        (* ga_cancelr *)
-        admit.
+        apply magic.
+        apply ga_uncancelr.
 
       destruct case_RuCanL.
-        (* ga_uncancell *)
-        admit.
-        
+        apply magic.
+        apply ga_cancell.
+
       destruct case_RuCanR.
-        (* ga_uncancelr *)
-        admit.
-        
+        apply magic.
+        apply ga_cancelr.
+
       destruct case_RAssoc.
-        (* ga_assoc *)
-        admit.
+        apply magic.
+        apply ga_assoc.
         
       destruct case_RCossa.
-        (* ga_unassoc *)
-        admit.
+        apply magic.
+        apply ga_unassoc.
 
       destruct case_RExch.
-        (* ga_swap *)
-        admit.
+        apply magic.
+        apply ga_swap.
         
       destruct case_RWeak.
-        (* ga_drop *)
-        admit.
+        apply magic.
+        apply ga_drop.
         
       destruct case_RCont.
-        (* ga_copy *)
-        admit.
+        apply magic.
+        apply ga_copy.
         
       destruct case_RLeft.
-        (* ga_second *)
+        apply magic.
+        (*apply ga_second.*)
         admit.
         
       destruct case_RRight.
-        (* ga_first *)
+        apply magic.
+        (*apply ga_first.*)
         admit.
 
       destruct case_RComp.
-        (* ga_comp *)
+        apply magic.
+        (*apply ga_comp.*)
         admit.
 
       destruct case_RLit.
-        (* ga_literal *)
-        admit.
+        apply ga_lit.
 
       (* hey cool, I figured out how to pass CoreNote's through... *)
       destruct case_RNote.
@@ -331,48 +332,44 @@ Section HaskProofFlattener.
         apply Flat_RNote.
         
       destruct case_RVar.
-        (* ga_id *)
-        admit.
+        apply ga_id.
 
+      (*
+       *   class GArrow g (**) u => GArrowApply g (**) u (~>) where
+       *     ga_applyl    :: g (x**(x~>y)   ) y
+       *     ga_applyr    :: g (   (x~>y)**x) y
+       *   
+       *   class GArrow g (**) u => GArrowCurry g (**) u (~>) where
+       *     ga_curryl    :: g (x**y) z  ->  g x (y~>z)
+       *     ga_curryr    :: g (x**y) z  ->  g y (x~>z)
+       *)
       destruct case_RLam.
-        (* ga_curry, but try to avoid this someday in the future if the argument type isn't a function *)
+        (* GArrowCurry.ga_curry *)
         admit.
 
       destruct case_RApp.
-        (* ga_apply *)
+        (* GArrowApply.ga_apply *)
         admit.
 
       destruct case_RLet.
-        (* ga_comp! perhaps this means the ga_curry avoidance can be done by turning lambdas into lets? *)
         admit.
 
       destruct case_RVoid.
-        (* ga_id u *)
-        admit.
+        apply ga_id.
 
       destruct case_RJoin.
-        (* ga_first+ga_second; technically this assumes a specific evaluation order, which is bad *)
+        (* this assumes we want effects to occur in syntactically-left-to-right order *)
         admit.
+        Defined.
 
-      Defined.
-
+(*
   Instance FlatteningFunctor {Γ}{Δ}{ec} : Functor (JudgmentsL (PCF Γ Δ ec)) (TypesL (SystemFCa Γ Δ)) (obact) :=
     { fmor := FlatteningFunctor_fmor }.
-    admit.
-    admit.
-    admit.
-    Defined.
+    Admitted.
 
-  (*
   Definition ReificationFunctor Γ Δ : Functor (JudgmentsL _ _ (PCF n Γ Δ)) SystemFCa' (mapOptionTree brakifyJudg).
     refine {| fmor := ReificationFunctor_fmor Γ Δ |}; unfold hom; unfold ob; simpl ; intros.
-    unfold ReificationFunctor_fmor; simpl.
-    admit.
-    unfold ReificationFunctor_fmor; simpl.
-    admit.
-    unfold ReificationFunctor_fmor; simpl.
-    admit.
-    Defined.
+    Admitted.
 
   Definition PCF_SMME (n:nat)(Γ:TypeEnv)(Δ:CoercionEnv Γ) : ProgrammingLanguageSMME.
     refine {| plsmme_pl := PCF n Γ Δ |}.
@@ -391,17 +388,9 @@ Section HaskProofFlattener.
   (* 5.1.4 *)
   Definition PCF_SystemFCa_two_level n Γ Δ : TwoLevelLanguage (PCF_SMME n Γ Δ) (SystemFCa_SMME (S n) Γ Δ).
     admit.
-    (*  ... and the retraction exists *)
     Defined.
-  *)
-  (* Any particular proof in HaskProof is only finitely large, so it uses only finitely many levels of nesting, so
-   * it falls within (SystemFCa n) for some n.  This function calculates that "n" and performs the translation *)
-  (*
-  Definition HaskProof_to_SystemFCa :
-    forall h c (pf:ND Rule h c),
-      { n:nat & h ~~{JudgmentsL (SystemFCa_SMME n)}~~> c }.
-      *)
-  (* for every n we have a functor from the category of (n+1)-bounded proofs to the category of n-bounded proofs *)
+*)
+  (*  ... and the retraction exists *)
 
 End HaskProofFlattener.
 
