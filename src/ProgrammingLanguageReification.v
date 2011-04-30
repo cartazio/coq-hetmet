@@ -28,6 +28,7 @@ Require Import Reification.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import ProgrammingLanguage.
+Require Import ProgrammingLanguageCategory.
 Require Import Enrichments.
 
 Section ProgrammingLanguageReification.

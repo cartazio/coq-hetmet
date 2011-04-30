@@ -30,7 +30,7 @@ Require Import FunctorCategories_ch7_7.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 
-Require Import ProgrammingLanguage.
+Require Import ProgrammingLanguageCategory.
 Require Import FreydCategories.
 Require Import Enrichments.
 Require Import GeneralizedArrow.

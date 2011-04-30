@@ -1,7 +1,7 @@
 (*********************************************************************************************************************************)
-(* ProgrammingLanguageArrow                                                                                                      *)
+(* ProgrammingLanguageEnrichment                                                                                                 *)
 (*                                                                                                                               *)
-(*   Arrows in ProgrammingLanguages.                                                                                             *)
+(*   Types are enriched in Judgments.                                                                                            *)
 (*                                                                                                                               *)
 (*********************************************************************************************************************************)
 
@@ -18,30 +18,35 @@ Require Import Enrichment_ch2_8.
 Require Import Subcategories_ch7_1.
 Require Import NaturalTransformations_ch7_4.
 Require Import NaturalIsomorphisms_ch7_5.
+Require Import BinoidalCategories.
+Require Import PreMonoidalCategories.
 Require Import MonoidalCategories_ch7_8.
 Require Import Coherence_ch7_8.
 Require Import Enrichment_ch2_8.
 Require Import RepresentableStructure_ch7_2.
 Require Import FunctorCategories_ch7_7.
 
+Require Import Enrichments.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
+Require Import ProgrammingLanguageCategory.
+        Export ProgrammingLanguageCategory.
 
-Require Import Enrichments.
-Require Import Reification.
-Require Import GeneralizedArrow.
-Require Import ProgrammingLanguageEnrichment.
+Section ProgrammingLanguageEnrichment.
 
-Section ProgrammingLanguageGeneralizedArrow.
+  Context `(PL:ProgrammingLanguage).
 
-  Context
-  `(Guest        : ProgrammingLanguage)
-  `(Host         : ProgrammingLanguage)
-   (HostMonoidal : MonoidalEnrichment (TypesEnrichedInJudgments Host))
-   (HostMonic    : MonicEnrichment    (TypesEnrichedInJudgments Host)).
+  Definition TypesEnrichedInJudgments : SurjectiveEnrichment.
+    refine
+      {| senr_c_pm     := TypesL_PreMonoidal PL
+       ; senr_v        := JudgmentsL PL
+       ; senr_v_bin    := Judgments_Category_binoidal _
+       ; senr_v_pmon   := Judgments_Category_premonoidal _
+       ; senr_v_mon    := Judgments_Category_monoidal _
+       ; senr_c_bin    := Types_binoidal PL
+       ; senr_c        := TypesL PL
+      |}.
+      Defined.
 
-  Definition GeneralizedArrowInLanguage 
-    := GeneralizedArrow (TypesEnrichedInJudgments Guest) HostMonoidal.
-
-End ProgrammingLanguageGeneralizedArrow.
+End ProgrammingLanguageEnrichment.
 

@@ -229,18 +229,7 @@ Section Natural_Deduction.
   Hint Constructors Structural.
   Hint Constructors BuiltFrom.
   Hint Constructors NDPredicateClosure.
-
-  Hint Extern 1 => apply nd_structural_id0.     
-  Hint Extern 1 => apply nd_structural_id1.     
-  Hint Extern 1 => apply nd_structural_cancell. 
-  Hint Extern 1 => apply nd_structural_cancelr. 
-  Hint Extern 1 => apply nd_structural_llecnac. 
-  Hint Extern 1 => apply nd_structural_rlecnac. 
-  Hint Extern 1 => apply nd_structural_assoc.   
-  Hint Extern 1 => apply nd_structural_cossa.   
-  Hint Extern 1 => apply ndpc_p.
-  Hint Extern 1 => apply ndpc_prod.
-  Hint Extern 1 => apply ndpc_comp.
+  Hint Unfold StructuralND.
 
   Lemma nd_id_structural : forall sl, StructuralND (nd_id sl).
     intros.
@@ -464,42 +453,6 @@ Coercion sndr_ndr  : SequentND_Relation >-> ND_Relation.
 Coercion cndr_sndr : ContextND_Relation >-> SequentND_Relation.
 
 Implicit Arguments ND [ Judgment ].
-Hint Constructors Structural.
-Hint Extern 1 => apply nd_id_structural.
-Hint Extern 1 => apply ndr_builtfrom_structural.
-Hint Extern 1 => apply nd_structural_id0.     
-Hint Extern 1 => apply nd_structural_id1.     
-Hint Extern 1 => apply nd_structural_cancell. 
-Hint Extern 1 => apply nd_structural_cancelr. 
-Hint Extern 1 => apply nd_structural_llecnac. 
-Hint Extern 1 => apply nd_structural_rlecnac. 
-Hint Extern 1 => apply nd_structural_assoc.   
-Hint Extern 1 => apply nd_structural_cossa.   
-Hint Extern 1 => apply ndpc_p.
-Hint Extern 1 => apply ndpc_prod.
-Hint Extern 1 => apply ndpc_comp.
-Hint Extern 1 => apply builtfrom_refl.
-Hint Extern 1 => apply builtfrom_prod1.
-Hint Extern 1 => apply builtfrom_prod2.
-Hint Extern 1 => apply builtfrom_comp1.
-Hint Extern 1 => apply builtfrom_comp2.
-Hint Extern 1 => apply builtfrom_P.
-
-Hint Extern 1 => apply snd_inert_initial.
-Hint Extern 1 => apply snd_inert_cut.
-Hint Extern 1 => apply snd_inert_structural.
-
-Hint Extern 1 => apply cnd_inert_initial.
-Hint Extern 1 => apply cnd_inert_cut.
-Hint Extern 1 => apply cnd_inert_structural.
-Hint Extern 1 => apply cnd_inert_cnd_ant_assoc.
-Hint Extern 1 => apply cnd_inert_cnd_ant_cossa.
-Hint Extern 1 => apply cnd_inert_cnd_ant_cancell.
-Hint Extern 1 => apply cnd_inert_cnd_ant_cancelr.
-Hint Extern 1 => apply cnd_inert_cnd_ant_llecnac.
-Hint Extern 1 => apply cnd_inert_cnd_ant_rlecnac.
-Hint Extern 1 => apply cnd_inert_se_expand_left.
-Hint Extern 1 => apply cnd_inert_se_expand_right.
 
 (* This first notation gets its own scope because it can be confusing when we're working with multiple different kinds
  * of proofs.  When only one kind of proof is in use, it's quite helpful though. *)
@@ -509,9 +462,38 @@ Notation "a ** b"   := (nd_prod a b)             : nd_scope.
 Notation "[# a #]"  := (nd_rule a)               : nd_scope.
 Notation "a === b"  := (@ndr_eqv _ _ _ _ _ a b)  : nd_scope.
 
+Hint Constructors Structural.
+Hint Constructors ND_Relation.
+Hint Constructors BuiltFrom.
+Hint Constructors NDPredicateClosure.
+Hint Constructors ContextND_Inert.
+Hint Constructors SequentND_Inert.
+Hint Unfold StructuralND.
+
 (* enable setoid rewriting *)
 Open Scope nd_scope.
 Open Scope pf_scope.
+
+Hint Extern 2 (StructuralND (nd_id _)) => apply nd_id_structural.
+Hint Extern 2 (NDPredicateClosure _ ( _ ;; _ ) ) => apply ndpc_comp.
+Hint Extern 2 (NDPredicateClosure _ ( _ ** _ ) ) => apply ndpc_prod.
+Hint Extern 2 (NDPredicateClosure (@Structural _ _) (nd_id _)) => apply nd_id_structural.
+Hint Extern 2 (BuiltFrom _ _ ( _ ;; _ ) ) => apply builtfrom_comp1.
+Hint Extern 2 (BuiltFrom _ _ ( _ ;; _ ) ) => apply builtfrom_comp2.
+Hint Extern 2 (BuiltFrom _ _ ( _ ** _ ) ) => apply builtfrom_prod1.
+Hint Extern 2 (BuiltFrom _ _ ( _ ** _ ) ) => apply builtfrom_prod2.
+
+(* Hint Constructors has failed me! *)
+Hint Extern 2 (@Structural _ _ _ _ (@nd_id0 _ _))         => apply nd_structural_id0.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_id1 _ _ _))       => apply nd_structural_id1.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_cancell _ _ _))   => apply nd_structural_cancell.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_cancelr _ _ _))   => apply nd_structural_cancelr.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_llecnac _ _ _))   => apply nd_structural_llecnac.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_rlecnac _ _ _))   => apply nd_structural_rlecnac.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_assoc _ _ _ _ _)) => apply nd_structural_assoc.
+Hint Extern 2 (@Structural _ _ _ _ (@nd_cossa _ _ _ _ _)) => apply nd_structural_cossa.
+
+Hint Extern 4 (NDPredicateClosure _ _) => apply ndpc_p.
 
 Add Parametric Relation {jt rt ndr h c} : (h/⋯⋯/c) (@ndr_eqv jt rt ndr h c)
   reflexivity proved by  (@Equivalence_Reflexive  _ _ (ndr_eqv_equivalence h c))
@@ -534,7 +516,8 @@ Section ND_Relation_Facts.
 
   (* useful *)
   Lemma ndr_comp_right_identity : forall h c (f:h/⋯⋯/c), ndr_eqv (f ;; nd_id c) f.
-    intros; apply (ndr_builtfrom_structural f); auto.
+    intros; apply (ndr_builtfrom_structural f). auto.
+    auto.
     Defined.
 
   (* useful *)

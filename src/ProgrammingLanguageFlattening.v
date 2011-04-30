@@ -27,7 +27,7 @@ Require Import Reification.
 Require Import NaturalDeduction.
 Require Import NaturalDeductionCategory.
 Require Import GeneralizedArrow.
-Require Import ProgrammingLanguage.
+Require Import ProgrammingLanguageEnrichment.
 Require Import ProgrammingLanguageReification.
 Require Import SectionRetract_ch2_4.
 Require Import GeneralizedArrowFromReification.

@@ -136,9 +136,9 @@ Section Judgments_Category.
   ; pmon_assoc_ll := jud_mon_assoc_ll
   }.
     unfold functor_fobj; unfold fmor; simpl;
-      apply Build_Pentagon; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto.
+      apply Build_Pentagon; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto 10.
     unfold functor_fobj; unfold fmor; simpl;
-      apply Build_Triangle; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto.
+      apply Build_Triangle; simpl; intros; apply (ndr_builtfrom_structural nd_id0); auto 10.
     intros; unfold eqv; simpl; auto; reflexivity.
     intros; unfold eqv; simpl; auto; reflexivity.
     intros; unfold eqv; simpl; apply Judgments_Category_Commutative.
