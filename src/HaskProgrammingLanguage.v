@@ -39,48 +39,26 @@ Require Import HaskProof.
 Require Import HaskStrongToProof.
 Require Import HaskProofToStrong.
 Require Import ProgrammingLanguage.
-Require Import PCF.
 
 Open Scope nd_scope.
 
+(* The judgments any specific Γ,Δ form a category with proofs as morphisms *)
 Section HaskProgrammingLanguage.
 
   Context (ndr_systemfc:@ND_Relation _ Rule).
+
   Context Γ (Δ:CoercionEnv Γ).
 
-  (* An organized deduction has been reorganized into contiguous blocks whose
-   * hypotheses (if any) and conclusion have the same Γ and Δ and a fixed nesting depth.  The boolean
-   * indicates if non-PCF rules have been used *)
-  Inductive OrgR : Tree ??(@FCJudg Γ) -> Tree ??(@FCJudg Γ) -> Type :=
+  
+  Definition JudgΓΔ := prod (Tree ??(LeveledHaskType Γ ★)) (Tree ??(LeveledHaskType Γ ★)).
 
-  | org_fc        : forall (h c:Tree ??(FCJudg Γ))
-    (r:Rule (mapOptionTree (fcjudg2judg Γ Δ) h) (mapOptionTree (fcjudg2judg Γ Δ) c)),
-    Rule_Flat r ->
-    OrgR h c
+  Definition RuleΓΔ : Tree ??JudgΓΔ -> Tree ??JudgΓΔ -> Type :=
+    fun h c =>
+      Rule
+      (mapOptionTree (fun j => Γ > Δ > fst j |- snd j) h)
+      (mapOptionTree (fun j => Γ > Δ > fst j |- snd j) c).
 
-  | org_pcf      : forall ec h c,
-    ND (PCFRule Γ Δ ec)  h c  ->
-    OrgR                (mapOptionTree (pcfjudg2fcjudg Γ ec) h)  (mapOptionTree (pcfjudg2fcjudg Γ ec) c).
-
-  (* any proof in organized form can be "dis-organized" *)
-  (*
-  Definition unOrgR : forall Γ Δ h c, OrgR Γ Δ h c -> ND Rule h c.
-    intros.
-    induction X.
-      apply nd_rule.
-      apply r.
-    eapply nd_comp.
-      (*
-      apply (mkEsc h).
-      eapply nd_comp; [ idtac |  apply (mkBrak c) ].
-      apply pcfToND.
-      apply n.
-      *)
-      Admitted.
-  Definition unOrgND Γ Δ h c :  ND (OrgR Γ Δ) h c -> ND Rule h c := nd_map (unOrgR Γ Δ).
-  *)
-
-  Definition SystemFCa_cut : forall a b c, ND OrgR ([(a,b)],,[(b,c)]) [(a,c)].
+  Definition SystemFCa_cut : forall a b c, ND RuleΓΔ ([(a,b)],,[(b,c)]) [(a,c)].
     intros.
     destruct b.
     destruct o.
@@ -114,7 +92,7 @@ Section HaskProgrammingLanguage.
     apply (Prelude_error "systemfc rule invoked with [a|=[b,,c]] [[b,,c]|=z]").
     Defined.
 
-  Instance SystemFCa_sequents : @SequentND _ OrgR _ _ :=
+  Instance SystemFCa_sequents : @SequentND _ RuleΓΔ _ _ :=
   { snd_cut := SystemFCa_cut }.
     apply Build_SequentND.
     intros.
@@ -142,7 +120,7 @@ Section HaskProgrammingLanguage.
       admit.
       Defined.
 
-  Definition SystemFCa_left a b c : ND OrgR [(b,c)] [((a,,b),(a,,c))].
+  Definition SystemFCa_left a b c : ND RuleΓΔ [(b,c)] [((a,,b),(a,,c))].
     admit.
     (*
     eapply nd_comp; [ apply nd_llecnac | eapply nd_comp; [ idtac | idtac ] ].
@@ -153,7 +131,7 @@ Section HaskProgrammingLanguage.
     *)
     Defined.
 
-  Definition SystemFCa_right a b c : ND OrgR [(b,c)] [((b,,a),(c,,a))].
+  Definition SystemFCa_right a b c : ND RuleΓΔ [(b,c)] [((b,,a),(c,,a))].
     admit.
     (*
     eapply nd_comp; [ apply nd_rlecnac | eapply nd_comp; [ idtac | idtac ] ].
@@ -195,7 +173,7 @@ Section HaskProgrammingLanguage.
       admit.
       Defined.
 
-  Instance OrgFC : @ND_Relation _ OrgR.
+  Instance OrgFC : @ND_Relation _ RuleΓΔ.
     Admitted.
 
   Instance OrgFC_SequentND_Relation : SequentND_Relation SystemFCa_sequent_join OrgFC.

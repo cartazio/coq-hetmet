@@ -90,29 +90,8 @@ Section PCF.
           [((pcf_vars ec Σ)         ,                              τ        )]
           [Γ > Δ >              Σ  |- (mapOptionTree (HaskBrak ec) τ @@@ lev)].
 
-  Definition fc_vars {Γ}(ec:HaskTyVar Γ ★)(t:Tree ??(LeveledHaskType Γ ★)) : Tree ??(HaskType Γ ★)
-    := mapOptionTreeAndFlatten (fun lt =>
-      match lt with t @@ l => match l with
-                                | ec'::nil => if eqd_dec ec ec' then [] else [t]
-                                | _ => []
-                              end
-      end) t.
-
-  Definition FCJudg :=
-    @prod (Tree ??(LeveledHaskType Γ ★)) (Tree ??(LeveledHaskType Γ ★)).
-  Definition fcjudg2judg (fc:FCJudg) :=
-    match fc with
-      (x,y) => Γ > Δ > x |- y
-        end.
-  Coercion fcjudg2judg : FCJudg >-> Judg.
-
   Definition pcfjudg2judg ec (cj:PCFJudg ec) :=
     match cj with (Σ,τ) => Γ > Δ > (Σ @@@ (ec::nil)) |- (τ @@@ (ec::nil)) end.
-
-  Definition pcfjudg2fcjudg ec (fc:PCFJudg ec) : FCJudg :=
-    match fc with
-      (x,y) => (x @@@ (ec::nil),y @@@ (ec::nil))
-        end.
 
   (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows     *)
   (* Rule_PCF consists of the rules allowed in flat PCF: everything except *)
@@ -171,13 +150,6 @@ Section PCF.
     apply (Prelude_error "mkBrak got multi-leaf succedent").
     Defined.
 
-    (*
-  Definition Partition {Γ} ec (Σ:Tree ??(LeveledHaskType Γ ★)) :=
-    { vars:(_ * _) | 
-      fc_vars  ec Σ = fst vars /\
-      pcf_vars ec Σ = snd vars }.
-      *)
-
   Definition pcfToND Γ Δ : forall ec h c,
     ND (PCFRule Γ Δ ec) h c -> ND Rule (mapOptionTree (pcfjudg2judg Γ Δ ec) h) (mapOptionTree (pcfjudg2judg Γ Δ ec) c).
     intros.
@@ -192,120 +164,6 @@ Section PCF.
     { ndr_eqv := fun a b f g => (pcfToND  _ _ _ _ _ f) === (pcfToND _ _ _ _ _ g) }.
     Admitted.
 
-  (*
-   * An intermediate representation necessitated by Coq's termination
-   * conditions.  This is basically a tree where each node is a
-   * subproof which is either entirely level-1 or entirely level-0
-   *)
-  Inductive Alternating : Tree ??Judg -> Type :=
-
-    | alt_nil    : Alternating []
-
-    | alt_branch : forall a b,
-      Alternating a -> Alternating b -> Alternating (a,,b)
-
-    | alt_fc     : forall h c,
-      Alternating h ->
-      ND Rule h c ->
-      Alternating c
-
-    | alt_pcf    : forall Γ Δ ec h c h' c',
-      MatchingJudgments Γ Δ  h  h' ->
-      MatchingJudgments Γ Δ  c  c' ->
-      Alternating h' ->
-      ND (PCFRule Γ Δ ec) h c ->
-      Alternating c'.
-
-  Require Import Coq.Logic.Eqdep.
-(*
-  Lemma magic a b c d ec e :
-    ClosedSIND(Rule:=Rule) [a > b > c |- [d @@  (ec :: e)]] ->
-    ClosedSIND(Rule:=Rule) [a > b > pcf_vars ec c @@@ (ec :: nil) |- [d @@  (ec :: nil)]].
-    admit.
-    Defined.
-
-  Definition orgify : forall Γ Δ Σ τ (pf:ClosedSIND(Rule:=Rule) [Γ > Δ > Σ |- τ]), Alternating [Γ > Δ > Σ |- τ].
-
-    refine (
-      fix  orgify_fc' Γ Δ Σ τ (pf:ClosedSIND [Γ > Δ > Σ |- τ]) {struct pf} : Alternating [Γ > Δ > Σ |- τ] :=
-        let case_main := tt in _
-      with orgify_fc c (pf:ClosedSIND c) {struct pf} : Alternating c :=
-      (match c as C return C=c -> Alternating C with
-        | T_Leaf None                    => fun _ => alt_nil
-        | T_Leaf (Some (Γ > Δ > Σ |- τ)) => let case_leaf := tt in fun eqpf => _
-        | T_Branch b1 b2                 => let case_branch := tt in fun eqpf => _
-      end (refl_equal _))
-      with orgify_pcf   Γ Δ ec pcfj j (m:MatchingJudgments Γ Δ pcfj j)
-        (pf:ClosedSIND (mapOptionTree (pcfjudg2judg Γ Δ ec) pcfj)) {struct pf} : Alternating j :=
-        let case_pcf := tt in _
-      for orgify_fc').
-
-      destruct case_main.
-      inversion pf; subst.
-      set (alt_fc _ _ (orgify_fc _ X) (nd_rule X0)) as backup.
-      refine (match X0 as R in Rule H C return
-                match C with
-                  | T_Leaf (Some (Γ > Δ > Σ |- τ)) =>
-                    h=H -> Alternating [Γ > Δ > Σ |- τ] -> Alternating [Γ > Δ > Σ |- τ]
-                  | _                              => True
-                end
-                 with
-                | RBrak   Σ a b c n m           => let case_RBrak := tt         in fun pf' backup => _
-                | REsc    Σ a b c n m           => let case_REsc := tt          in fun pf' backup => _
-                | _ => fun pf' x => x
-              end (refl_equal _) backup).
-      clear backup0 backup.
-
-      destruct case_RBrak.
-        rename c into ec.
-        set (@match_leaf Σ0 a ec n [b] m) as q.
-        set (orgify_pcf Σ0 a ec _ _ q) as q'.
-        apply q'.
-        simpl.
-        rewrite pf' in X.
-        apply magic in X.
-        apply X.
-
-      destruct case_REsc.
-        apply (Prelude_error "encountered Esc in wrong side of mkalt").
-
-    destruct case_leaf.
-      apply orgify_fc'.
-      rewrite eqpf.
-      apply pf.
-
-    destruct case_branch.
-      rewrite <- eqpf in pf.
-      inversion pf; subst.
-      apply no_rules_with_multiple_conclusions in X0.
-      inversion X0.
-      exists b1. exists b2.
-      auto.
-      apply (alt_branch _ _ (orgify_fc _ X) (orgify_fc _ X0)).
-
-    destruct case_pcf.
-    Admitted.
-
-  Definition pcfify Γ Δ ec : forall Σ τ,
-    ClosedSIND(Rule:=Rule) [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]
-      -> ND (PCFRule Γ Δ ec) [] [(Σ,τ)].
-
-    refine ((
-      fix pcfify Σ τ (pn:@ClosedSIND _ Rule [ Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)]) {struct pn}
-      : ND (PCFRule Γ Δ ec) [] [(Σ,τ)] :=
-     (match pn in @ClosedSIND _ _ J return J=[Γ > Δ > Σ@@@(ec::nil) |- τ @@@ (ec::nil)] -> _ with
-      | cnd_weak             => let case_nil    := tt in _
-      | cnd_rule h c cnd' r  => let case_rule   := tt in _
-      | cnd_branch _ _ c1 c2 => let case_branch := tt in _
-      end (refl_equal _)))).
-      intros.
-      inversion H.
-      intros.
-      destruct c; try destruct o; inversion H.
-      destruct j.
-      Admitted.
-*)
-    
   Hint Constructors Rule_Flat.
 
   Definition PCF_Arrange {Γ}{Δ}{lev} : forall x y z, Arrange x y -> ND (PCFRule Γ Δ lev) [(x,z)] [(y,z)].
