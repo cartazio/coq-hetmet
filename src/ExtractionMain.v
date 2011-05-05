@@ -33,8 +33,7 @@ Require Import HaskStrongToWeak.
 Require Import HaskWeakToCore.
 Require Import HaskProofToStrong.
 
-(*Require Import HaskFlattener.*)
-(*Require Import PCF.*)
+Require Import HaskFlattener.
 
 Open Scope string_scope.
 Extraction Language Haskell.
@@ -101,13 +100,11 @@ Section core2proof.
       | WCoerVar _   => Prelude_error "top-level xi got a coercion variable"
     end.
 
-
   Definition header : string :=
     "\documentclass{article}"+++eol+++
     "\usepackage{amsmath}"+++eol+++
     "\usepackage{amssymb}"+++eol+++
     "\usepackage{proof}"+++eol+++
-(*    "\usepackage{mathpartir}   % http://cristal.inria.fr/~remy/latex/"+++eol+++*)
     "\usepackage{trfrac}       % http://www.utdallas.edu/~hamlen/trfrac.sty"+++eol+++
     "\def\code#1#2{\Box_{#1} #2}"+++eol+++
     "\usepackage[paperwidth=\maxdimen,paperheight=\maxdimen]{geometry}"+++eol+++
@@ -236,7 +233,7 @@ Section core2proof.
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
 
                       (addErrorMessage ("HaskStrong...")
-                        (let haskProof := @expr2proof _ _ _ _ _ _ e
+                        (let haskProof := (*flatten_proof'*) (@expr2proof _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
                          OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                          >>= fun e' =>
@@ -264,17 +261,22 @@ Section core2proof.
 
   End CoreToCore.
 
+  Definition coreVarToWeakExprVarOrError cv :=
+    match coreVarToWeakVar cv with
+      | WExprVar wv => wv
+      | _           => Prelude_error "IMPOSSIBLE"
+    end.
+
   Definition coqPassCoreToCore
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
     (uniqueSupply : UniqSupply)
-    (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
-    match coreVarToWeakVar hetmet_brak with
-      | WExprVar hetmet_brak' => match coreVarToWeakVar hetmet_esc with
-                                   | WExprVar hetmet_esc' => coqPassCoreToCore' hetmet_brak' hetmet_esc' uniqueSupply lbinds
-                                   | _ => Prelude_error "IMPOSSIBLE"
-                                 end
-      | _ => Prelude_error "IMPOSSIBLE"
-    end.
+    (lbinds:list (@CoreBind CoreVar)
+    ) : list (@CoreBind CoreVar) :=
+    coqPassCoreToCore'
+      (coreVarToWeakExprVarOrError hetmet_brak)
+      (coreVarToWeakExprVarOrError hetmet_esc)
+      uniqueSupply
+      lbinds.
 
 End core2proof.
