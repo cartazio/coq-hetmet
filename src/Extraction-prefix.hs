@@ -113,7 +113,7 @@ coreKindToKind k =
                  else                                         Prelude.error ((Prelude.++) "coreKindToKind got an unknown kind: "
                                                                                (Outputable.showSDoc (Outputable.ppr k)))
 outputableToString :: Outputable.Outputable a => a -> Prelude.String
-outputableToString = (\x -> Outputable.showSDoc (Outputable.ppr x))
+outputableToString = (\x -> Outputable.showSDocDebug (Outputable.ppr x))
 
 coreViewDeep :: Type.Type -> Type.Type
 coreViewDeep t =
