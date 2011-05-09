@@ -519,7 +519,7 @@ Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstype
 
 Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ??VV :=
   match exp as E in Expr Γ Δ ξ τ with
-  | EGlobal  Γ Δ ξ _ _                            => []
+  | EGlobal  Γ Δ ξ _ _ _                          => []
   | EVar     Γ Δ ξ ev                             => [ev]
   | ELit     Γ Δ ξ lit lev                        => []
   | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e1),,(expr2antecedent e2)
@@ -929,7 +929,7 @@ Definition expr2proof  :
   refine (fix expr2proof Γ' Δ' ξ' τ' (exp:Expr Γ' Δ' ξ' τ') {struct exp}
     : ND Rule [] [Γ' > Δ' > mapOptionTree ξ' (expr2antecedent exp) |- [τ']] :=
     match exp as E in Expr Γ Δ ξ τ with
-    | EGlobal  Γ Δ ξ t wev                          => let case_EGlobal := tt in _
+    | EGlobal  Γ Δ ξ     g v lev                    => let case_EGlobal := tt in _
     | EVar     Γ Δ ξ ev                             => let case_EVar := tt in _
     | ELit     Γ Δ ξ lit lev                        => let case_ELit := tt in _
     | EApp     Γ Δ ξ t1 t2 lev e1 e2                => let case_EApp := tt in 
@@ -983,8 +983,7 @@ Definition expr2proof  :
     destruct case_EGlobal.
       apply nd_rule.
       simpl.
-      destruct t as [t lev].
-      apply (RGlobal _ _ _ _ wev).
+      apply (RGlobal _ _ _  g).
 
     destruct case_EVar.
       apply nd_rule.

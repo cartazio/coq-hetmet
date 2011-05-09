@@ -69,7 +69,7 @@ Section Raw.
   | TApp           : ∀ κ₁ κ₂, RawHaskType (κ₂⇛κ₁)        -> RawHaskType κ₂  -> RawHaskType κ₁                    (* φ φ      *)
   | TAll           : ∀ κ,                          (TV κ -> RawHaskType ★)  -> RawHaskType ★                     (* ∀a:κ.φ   *)
   | TCode          : RawHaskType ★                       -> RawHaskType ★   -> RawHaskType ★                     (* from λ^α *)
-  | TyFunApp       : ∀ tf, RawHaskTypeList (fst (tyFunKind tf))             -> RawHaskType (snd (tyFunKind tf))  (* S_n      *)
+  | TyFunApp       : forall (tf:TyFun) kl k, RawHaskTypeList kl             -> RawHaskType k                     (* S_n      *)
   with RawHaskTypeList : list Kind -> Type :=
   | TyFunApp_nil   : RawHaskTypeList nil
   | TyFunApp_cons  : ∀ κ kl, RawHaskType κ -> RawHaskTypeList kl -> RawHaskTypeList (κ::kl).
@@ -168,27 +168,31 @@ Definition HaskAppT {Γ}{κ₁}{κ₂}(t1:HaskType Γ (κ₂⇛κ₁))(t2:HaskTy
 Definition mkHaskCoercionKind {Γ}{κ}(t1:HaskType Γ κ)(t2:HaskType Γ κ) : HaskCoercionKind Γ :=
  fun TV ite => mkRawCoercionKind _ (t1 TV ite) (t2 TV ite).
 
-(* PHOAS substitution on types *)
-Definition substT {Γ}{κ₁}{κ₂}(exp:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ₁ -> RawHaskType TV κ₂)(v:@HaskType Γ κ₁)
-  : @HaskType Γ κ₂ :=
-fun TV env => 
-    (fix flattenT {κ} (exp: RawHaskType (fun k => RawHaskType TV k) κ) : RawHaskType TV κ :=
+Section Flatten.
+  Context {TV:Kind -> Type }.
+Fixpoint flattenT {κ} (exp: RawHaskType (fun k => RawHaskType TV k) κ) : RawHaskType TV κ :=
      match exp with
     | TVar    _  x        => x
-    | TAll     _ y        => TAll   _  (fun v => flattenT _ (y (TVar v)))
-    | TApp   _ _ x y      => TApp      (flattenT _ x) (flattenT _ y)
+    | TAll     _ y        => TAll   _  (fun v => flattenT  (y (TVar v)))
+    | TApp   _ _ x y      => TApp      (flattenT  x) (flattenT  y)
     | TCon       tc       => TCon      tc
-    | TCoerc _ t1 t2 t    => TCoerc    (flattenT _ t1) (flattenT _ t2)   (flattenT _ t)
+    | TCoerc _ t1 t2 t    => TCoerc    (flattenT  t1) (flattenT  t2)   (flattenT  t)
     | TArrow              => TArrow
-    | TCode      v e      => TCode     (flattenT _ v) (flattenT _ e)
-    | TyFunApp       tfc lt => TyFunApp tfc (flattenTyFunApp _ lt)
+    | TCode      v e      => TCode     (flattenT  v) (flattenT  e)
+    | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (flattenTyFunApp _ lt)
     end
     with flattenTyFunApp (lk:list Kind)(exp:@RawHaskTypeList (fun k => RawHaskType TV k) lk) : @RawHaskTypeList TV lk :=
     match exp in @RawHaskTypeList _ LK return @RawHaskTypeList TV LK with
     | TyFunApp_nil               => TyFunApp_nil
-    | TyFunApp_cons  κ kl t rest => TyFunApp_cons _ _ (flattenT _ t) (flattenTyFunApp _ rest)
-    end
-    for flattenT) _ (exp (fun k => RawHaskType TV k) (ilmap (fun κ tv => TVar tv) env) (v TV env)).
+    | TyFunApp_cons  κ kl t rest => TyFunApp_cons _ _ (flattenT  t) (flattenTyFunApp _ rest)
+    end.
+End Flatten.
+
+(* PHOAS substitution on types *)
+Definition substT {Γ}{κ₁}{κ₂}(exp:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ₁ -> RawHaskType TV κ₂)(v:@HaskType Γ κ₁)
+  : @HaskType Γ κ₂ :=
+  fun TV env =>
+    flattenT (exp (fun k => RawHaskType TV k) (ilmap (fun κ tv => TVar tv) env) (v TV env)).
 
 Notation "t @@  l" := (@mkLeveledHaskType _ _ t l) (at level 20).
 Notation "t @@@ l" := (mapOptionTree (fun t' => t' @@ l) t) (at level 20).
@@ -197,6 +201,13 @@ Notation "'<[' a '|-' t ']>'" := (@HaskBrak _ a t).
 Definition unlev {Γ}{κ}(lht:LeveledHaskType Γ κ) :=
   match lht with t@@l => t end.
 
+Structure Global Γ :=
+{ glob_wv    : WeakExprVar
+; glob_kinds : list Kind
+; glob_tf    : IList _ (fun κ => HaskType Γ κ) glob_kinds -> HaskType Γ ★
+}.
+Coercion glob_tf : Global >-> Funclass.
+Coercion glob_wv : Global >-> WeakExprVar.
 
 
 
@@ -461,7 +472,7 @@ match t1 with
 | TArrow           => match t2 with TArrow => true | _ => false end
 | TCode      ec t  => match t2 with TCode ec' t' => if compareT n ec ec' then compareT n t t' else false | _ => false end
 | TCoerc _ t1 t2 t => match t2 with TCoerc _ t1' t2' t' => compareT n t1 t1' && compareT n t2 t2' && compareT n t t' | _ =>false end
-| TyFunApp tfc lt  => match t2 with TyFunApp tfc' lt' => eqd_dec tfc tfc' && compareTL n lt lt' | _ => false end
+| TyFunApp tfc kl k lt  => match t2 with TyFunApp tfc' kl' k' lt' => eqd_dec tfc tfc' && compareTL n lt lt' | _ => false end
 end
 with compareTL (n:nat){κ₁}(t1:@RawHaskTypeList (fun _ => nat) κ₁){κ₂}(t2:@RawHaskTypeList (fun _ => nat) κ₂) : bool :=
 match t1 with
@@ -556,7 +567,7 @@ Fixpoint typeToString' (needparens:bool)(n:nat){κ}(t:RawHaskType (fun _ => nat)
                               in "(forall "+++ alpha +++ ":"+++ toString k +++")"+++
                                    typeToString' false (S n) (f n)
     | TCode  ec t          => "<["+++(typeToString' true n t)+++"]>@"+++(typeToString' false n ec)
-    | TyFunApp   tfc lt    => toString tfc+++ "_" +++ toString n+++" ["+++
+    | TyFunApp   tfc kl k lt    => toString tfc+++ "_" +++ toString n+++" ["+++
       (fold_left (fun x y => " \  "+++x+++y) (typeList2string false n lt) "")+++"]"
   end
   with typeList2string (needparens:bool)(n:nat){κ}(t:RawHaskTypeList κ) {struct t} : list string :=

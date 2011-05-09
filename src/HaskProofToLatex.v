@@ -101,7 +101,7 @@ Fixpoint typeToLatexMath (needparens:bool){κ}(t:RawHaskType (fun _ => LatexMath
                                       ; let body := t1'+++(rawLatexMath " ")+++t2'
                                         in return (if needparens then (rawLatexMath "(")+++body+++(rawLatexMath ")") else body)
                 end
-  | TyFunApp   tfc lt  => bind rest = typeListToRawLatexMath false lt
+  | TyFunApp   tfc _ _ lt  => bind rest = typeListToRawLatexMath false lt
                         ; return (rawLatexMath "{\text{\tt{")+++(toLatexMath (toString tfc))+++(rawLatexMath "}}}")+++
                                  (rawLatexMath "_{")+++(rawLatexMath (toString (length (fst (tyFunKind tfc)))))+++
                                  (rawLatexMath "}")+++

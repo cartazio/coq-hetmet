@@ -61,7 +61,7 @@ Section HaskStrongToWeak.
                                      | WTyVarTy ec => return WCodeTy ec t2'
                                      | _           => failM  "impossible"
                                    end
-    | TyFunApp    tfc tls       => bind tls' = rawHaskTypeListToWeakType tls
+    | TyFunApp    tfc _ _ tls       => bind tls' = rawHaskTypeListToWeakType tls
                                  ; return WTyFunApp tfc tls'
   end
   with rawHaskTypeListToWeakType {κ}(rht:RawHaskTypeList κ) : UniqM (list WeakType) :=
@@ -111,7 +111,8 @@ Section HaskStrongToWeak.
     -> UniqM WeakExpr :=
     match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> UniqM WeakExpr with
     | EVar  Γ' _ ξ' ev              => fun ite => match χ ev with OK v => return WEVar v | Error s => failM s end
-    | EGlobal Γ' _ ξ' t wev         => fun ite => return WEVar wev
+    | EGlobal Γ' _ ξ'   g v lev     => fun ite => bind tv' = mapM (ilist_to_list (ilmap (fun κ x => typeToWeakType x ite) v))
+                                                ; return (fold_left (fun x y => WETyApp x y) tv' (WEVar g))
     | ELam  Γ'   _ _ tv _ _ cv e    => fun ite => bind tv' = typeToWeakType tv ite
                                                 ; bind ev' = mkWeakExprVar tv'
                                                 ; bind e'  = exprToWeakExpr (update_χ χ cv ev') e ite

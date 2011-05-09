@@ -569,7 +569,6 @@ Section HaskProofToStrong.
   destruct case_RGlobal.
     apply ILeaf; simpl; intros; refine (return ILeaf _ _).
     apply EGlobal.
-    apply wev.
 
   destruct case_RLam.
     apply ILeaf.

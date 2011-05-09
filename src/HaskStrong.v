@@ -31,7 +31,7 @@ Section HaskStrong.
   Inductive Expr : forall Γ (Δ:CoercionEnv Γ), (VV -> LeveledHaskType Γ ★) -> LeveledHaskType Γ ★ -> Type :=
 
   (* an "EGlobal" is any variable which is free in the expression which was passed to -fcoqpass (ie bound outside it) *)
-  | EGlobal: ∀ Γ Δ ξ t,       WeakExprVar ->                                                         Expr Γ Δ ξ t
+  | EGlobal: forall Γ Δ ξ   (g:Global Γ) v lev,                                                      Expr Γ Δ ξ (g v @@ lev)
 
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
   | ELit   : ∀ Γ Δ ξ lit   l,                                                                        Expr Γ Δ ξ (literalType lit@@l)
@@ -79,7 +79,7 @@ Section HaskStrong.
   Fixpoint exprToString {Γ}{Δ}{ξ}{τ}(exp:Expr Γ Δ ξ τ) : string :=
     match exp with
     | EVar  Γ' _ ξ' ev              => "var."+++ toString ev
-    | EGlobal Γ' _ ξ' t wev         => "global." +++ toString (wev:CoreVar)
+    | EGlobal Γ' _ ξ'   g v _       => "global." +++ toString (g:CoreVar)
     | ELam  Γ'   _ _ tv _ _ cv e    => "\("+++ toString cv +++":t) -> "+++ exprToString e
     | ELet  Γ' _ _ t _ _ ev e1 e2   => "let "+++toString ev+++" = "+++exprToString e1+++" in "+++exprToString e2
     | ELit  _ _ _ lit _             => "lit."+++toString lit

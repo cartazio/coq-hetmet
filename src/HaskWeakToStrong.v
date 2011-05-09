@@ -176,7 +176,7 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     apply OK.
     eapply haskTypeOfSomeKind.
     unfold HaskType; intros.
-    apply TyFunApp.
+    apply (TyFunApp tc (fst (tyFunKind tc)) (snd (tyFunKind tc))).
     apply lt'.
     apply X.
 
@@ -519,6 +519,14 @@ Definition checkDistinct :
   exact (Error "checkDistinct failed").
   Defined.
 
+(* FIXME: check the kind of the type of the weakexprvar to support >0 *)
+Definition mkGlobal Γ (τ:HaskType Γ ★) (wev:WeakExprVar) : Global Γ.
+  refine {| glob_kinds := nil |}.
+  apply wev.
+  intros.
+  apply τ.
+  Defined.
+
 Definition weakExprToStrongExpr : forall
     (Γ:TypeEnv)
     (Δ:CoercionEnv Γ)
@@ -544,7 +552,7 @@ Definition weakExprToStrongExpr : forall
     match we with
 
     | WEVar   v                         => if ig v
-                                              then OK (EGlobal Γ Δ ξ (τ@@lev) v)
+                                              then OK ((EGlobal Γ Δ ξ (mkGlobal Γ τ v) INil lev) : Expr Γ Δ ξ (τ@@lev))
                                               else castExpr we ("WEVar "+++toString (v:CoreVar)) (τ @@ lev) (EVar Γ Δ ξ v)
 
     | WELit   lit                       => castExpr we ("WELit "+++toString lit) (τ @@ lev) (ELit Γ Δ ξ lit lev)
