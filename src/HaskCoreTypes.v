@@ -9,7 +9,8 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskCoreVars.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 
 Variable CoreCoercion        : Type.                      Extract Inlined Constant CoreCoercion          => "Coercion.Coercion".
 Variable classTyCon          : Class_ -> CoreTyCon.       Extract Inlined Constant classTyCon            => "Class.classTyCon".

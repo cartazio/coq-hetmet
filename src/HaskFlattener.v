@@ -17,7 +17,8 @@ Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskProof.
 Require Import NaturalDeduction.

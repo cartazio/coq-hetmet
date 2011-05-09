@@ -8,7 +8,8 @@ Require Import General.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskCore.

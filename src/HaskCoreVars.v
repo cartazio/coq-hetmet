@@ -6,7 +6,8 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 
 (* GHC uses a single type for expression variables, type variables, and coercion variables; this is that type *)
 Variable CoreVar            : Type.                                               Extract Inlined Constant CoreVar    => "Var.Var".

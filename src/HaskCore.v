@@ -7,7 +7,8 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import HaskKinds.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskCoreTypes.
 Require Import HaskCoreVars.
 

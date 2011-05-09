@@ -1,5 +1,5 @@
 (*********************************************************************************************************************************)
-(* HaskLiteralsAndTyCons: representation of compile-time constants (literals)                                                    *)
+(* HaskLiterals: representation of compile-time constants (literals)                                                             *)
 (*********************************************************************************************************************************)
 
 Generalizable All Variables.
@@ -7,12 +7,7 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Strings.String.
 Require Import HaskKinds.
-
-Variable CoreDataCon     : Type.                      Extract Inlined Constant CoreDataCon          => "DataCon.DataCon".
-
-(* once again, we pull the trick of having multiple Coq types map to a single Haskell type to provide stronger typing *)
-Variable TyCon           : Type.                      Extract Inlined Constant TyCon                => "TyCon.TyCon".
-Variable TyFun           : Type.                      Extract Inlined Constant TyFun                => "TyCon.TyCon".
+Require Import HaskTyCons.
 
 (* Since GHC is written in Haskell, compile-time Haskell constants are represented using Haskell (Prelude) types *)
 Variable HaskInt         : Type.                      Extract Inlined Constant HaskInt               => "Prelude.Int".
@@ -20,11 +15,6 @@ Variable HaskChar        : Type.                      Extract Inlined Constant H
 Variable HaskFastString  : Type.                      Extract Inlined Constant HaskFastString        => "FastString.FastString".
 Variable HaskInteger     : Type.                      Extract Inlined Constant HaskInteger           => "Prelude.Integer".
 Variable HaskRational    : Type.                      Extract Inlined Constant HaskRational          => "Prelude.Rational".
-
-Variable CoreName        : Type.                      Extract Inlined Constant CoreName              => "Name.Name".
-Variable Class_          : Type.                      Extract Inlined Constant Class_                => "Class.Class".
-Variable CoreIPName      : Type -> Type.              Extract         Constant CoreIPName "’a"       => "BasicTypes.IPName".
-                                                      Extraction Inline CoreIPName.
 
 (* This type extracts exactly onto GHC's Literal.Literal type *)
 Inductive HaskLiteral :=
@@ -81,15 +71,3 @@ match lit with
   | HaskMachDouble _    => doublePrimTyCon
   | HaskMachLabel _ _ _ => addrPrimTyCon
 end.
-
-Variable tyConToString   : TyCon   -> string.     Extract Inlined Constant tyConToString         => "outputableToString".
-Variable tyFunToString   : TyFun   -> string.     Extract Inlined Constant tyFunToString         => "outputableToString".
-Instance TyConToString   : ToString TyCon := { toString := tyConToString }.
-Instance TyFunToString   : ToString TyFun := { toString := tyFunToString }.
-Instance TyConToLatex    : ToLatex  TyCon := { toLatex  := fun x => toLatex (toString x) }.
-Instance TyFunToLatex    : ToLatex  TyCon := { toLatex  := fun x => toLatex (toString x) }.
-
-Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
-Variable PairTyCon       : TyFun.        Extract Inlined Constant PairTyCon     => "TysWiredIn.pairTyCon".
-Variable UnitTyCon       : TyFun.        Extract Inlined Constant UnitTyCon     => "TysWiredIn.unitTyCon".
-Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".

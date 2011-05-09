@@ -11,7 +11,8 @@ Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskProof.

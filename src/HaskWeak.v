@@ -7,7 +7,8 @@ Require Import Preamble.
 Require Import General.
 Require Import Coq.Lists.List.
 Require Import HaskKinds.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 

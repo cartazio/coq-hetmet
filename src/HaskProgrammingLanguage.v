@@ -27,7 +27,8 @@ Require Import Coherence_ch7_8.
 
 Require Import HaskKinds.
 Require Import HaskCoreTypes.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskProof.
 Require Import NaturalDeduction.

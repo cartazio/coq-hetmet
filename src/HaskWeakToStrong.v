@@ -10,7 +10,8 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.
 Require Import HaskKinds.
-Require Import HaskLiteralsAndTyCons.
+Require Import HaskLiterals.
+Require Import HaskTyCons.
 Require Import HaskWeakTypes.
 Require Import HaskWeakVars.
 Require Import HaskWeak.
