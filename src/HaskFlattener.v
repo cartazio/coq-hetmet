@@ -199,6 +199,7 @@ Section HaskFlattener.
   Set Printing Width 130.
 
   Context (hetmet_flatten : WeakExprVar).
+  Context (hetmet_unflatten : WeakExprVar).
   Context (hetmet_id      : WeakExprVar).
   Context {unitTy : forall TV, RawHaskType TV ★                                          }.
   Context {prodTy : forall TV, RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
@@ -908,6 +909,13 @@ Section HaskFlattener.
       rename σ into l.
       destruct l as [|ec lev]; simpl. 
         destruct (eqd_dec (g:CoreVar) (hetmet_flatten:CoreVar)).
+          set (garrowfy_code_types (g wev)) as t.
+          set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
+          simpl in q.
+          apply nd_rule.
+          apply q.
+          apply INil.
+        destruct (eqd_dec (g:CoreVar) (hetmet_unflatten:CoreVar)).
           set (garrowfy_code_types (g wev)) as t.
           set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
           simpl in q.

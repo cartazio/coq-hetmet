@@ -167,6 +167,7 @@ Section core2proof.
     Context (hetmet_brak    : WeakExprVar).
     Context (hetmet_esc     : WeakExprVar).
     Context (hetmet_flatten : WeakExprVar).
+    Context (hetmet_unflatten : WeakExprVar).
     Context (hetmet_flattened_id : WeakExprVar).
     Context (uniqueSupply   : UniqSupply).
 
@@ -273,6 +274,7 @@ Section core2proof.
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
     (hetmet_flatten : CoreVar)
+    (hetmet_unflatten : CoreVar)
     (hetmet_flattened_id : CoreVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
@@ -396,6 +398,7 @@ Section core2proof.
     Definition hetmet_brak' := coreVarToWeakExprVarOrError hetmet_brak.
     Definition hetmet_esc'  := coreVarToWeakExprVarOrError hetmet_esc.
     Definition hetmet_flatten'  := coreVarToWeakExprVarOrError hetmet_flatten.
+    Definition hetmet_unflatten'  := coreVarToWeakExprVarOrError hetmet_unflatten.
     Definition hetmet_flattened_id'  := coreVarToWeakExprVarOrError hetmet_flattened_id.
 
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
@@ -411,7 +414,8 @@ Section core2proof.
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
 
                       (addErrorMessage ("HaskStrong...")
-                        (let haskProof := flatten_proof hetmet_flatten' hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
+                        (let haskProof := flatten_proof hetmet_flatten' hetmet_unflatten'
+                                            hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
                          OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                          >>= fun e' =>
@@ -454,6 +458,7 @@ Section core2proof.
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
     (hetmet_flatten   : CoreVar)
+    (hetmet_unflatten   : CoreVar)
     (hetmet_flattened_id   : CoreVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
@@ -479,6 +484,7 @@ Section core2proof.
        hetmet_brak  
        hetmet_esc   
        hetmet_flatten
+       hetmet_unflatten
        hetmet_flattened_id
        uniqueSupply 
        hetmet_PGArrowTyCon
