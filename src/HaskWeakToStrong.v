@@ -124,7 +124,8 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
     | WAppTy  t1 t2     => let case_WAppTy := tt    in weakTypeToType _ φ t1 >>= fun t1' => weakTypeToType _ φ t2 >>= fun t2' => _
     | WTyVarTy  v       => let case_WTyVarTy := tt  in φ v >>= fun v' => _
     | WForAllTy wtv t   => let case_WForAllTy := tt in weakTypeToType _ (upφ wtv φ) t >>= fun t => _
-    | WCodeTy ec tbody  => let case_WCodeTy := tt   in weakTypeToType _ φ tbody >>= fun tbody' => φ (@fixkind ★ ec) >>= fun ec' => _
+    | WCodeTy ec tbody  => let case_WCodeTy := tt   in weakTypeToType _ φ tbody
+                                 >>= fun tbody' => φ (@fixkind ECKind ec) >>= fun ec' => _
     | WCoFunTy t1 t2 t3 => let case_WCoFunTy := tt  in
       weakTypeToType _ φ t1 >>= fun t1' =>
       weakTypeToType _ φ t2 >>= fun t2' =>

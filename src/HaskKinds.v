@@ -37,6 +37,10 @@ Instance KindToString : ToString Kind := { toString := kindToString }.
 Notation "'★'"   := KindStar.
 Notation "a ⇛ b" := (KindArrow a b).
 
+(* the kind of environment classifiers *)
+Definition ECKind := ★ .  
+Opaque ECKind.
+
 Fixpoint kindToLatexMath (k:Kind) : LatexMath :=
   match k with
   | ★                            => rawLatexMath "\star"

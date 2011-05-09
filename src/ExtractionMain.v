@@ -335,13 +335,13 @@ Section core2proof.
     Definition ga_unit TV : RawHaskType TV ★ := @TyFunApp TV UnitTyCon nil         ★ TyFunApp_nil.
     Definition ga_prod TV (a b:RawHaskType TV ★) : RawHaskType TV ★  :=
       TApp (TApp (@TyFunApp TV PairTyCon nil _ TyFunApp_nil) a) b.
-    Definition ga_type {TV}(a b c:RawHaskType TV ★) : RawHaskType TV ★ :=
+    Definition ga_type {TV}(a:RawHaskType TV ECKind)(b c:RawHaskType TV ★) : RawHaskType TV ★ :=
       TApp (TApp (TApp (@TyFunApp TV 
         hetmet_PGArrowTyCon
         nil _ TyFunApp_nil) a) b) c.
     Definition ga := @ga_mk ga_unit ga_prod (@ga_type).
 
-    Definition ga_type' {Γ}(a b c:HaskType Γ ★) : HaskType Γ ★ :=
+    Definition ga_type' {Γ}(a:HaskType Γ ECKind)(b c:HaskType Γ ★) : HaskType Γ ★ :=
       fun TV ite => TApp (TApp (TApp (@TyFunApp TV 
         hetmet_PGArrowTyCon
         nil _ TyFunApp_nil) (a TV ite)) (b TV ite)) (c TV ite).

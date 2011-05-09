@@ -196,12 +196,12 @@ Section HaskFlattener.
 
   Context {unitTy : forall TV, RawHaskType TV ★                                          }.
   Context {prodTy : forall TV, RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
-  Context {gaTy   : forall TV, RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
+  Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
 
   Definition ga_mk_tree {Γ} (tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
     fun TV ite => reduceTree (unitTy TV) (prodTy TV) (mapOptionTree (fun x => x TV ite) tr).
 
-  Definition ga_mk {Γ}(ec:HaskType Γ ★ )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
+  Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
     fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ant TV ite) (ga_mk_tree suc TV ite).
 
   Class garrow :=
@@ -257,7 +257,7 @@ Section HaskFlattener.
     fun TV ite =>
       garrowfy_raw_codetypes (ht TV ite).
 
-  Definition v2t {Γ}(ec:HaskTyVar Γ ★) := fun TV ite => TVar (ec TV ite).
+  Definition v2t {Γ}(ec:HaskTyVar Γ ECKind) := fun TV ite => TVar (ec TV ite).
 
   Fixpoint garrowfy_leveled_code_types' {Γ}(ht:HaskType Γ ★)(lev:HaskLevel Γ) : HaskType Γ ★ :=
     match lev with
@@ -509,7 +509,7 @@ Section HaskFlattener.
 *)
   Definition garrowfy_arrangement' :
     forall Γ (Δ:CoercionEnv Γ)
-      (ec:HaskTyVar Γ ★) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2),
+      (ec:HaskTyVar Γ ECKind) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2),
       ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant2) (take_lev (ec :: lev) ant1) @@ nil] ].
 
       intros Γ Δ ec lev.
@@ -554,7 +554,7 @@ Section HaskFlattener.
 
   Definition garrowfy_arrangement :
     forall Γ (Δ:CoercionEnv Γ) n
-      (ec:HaskTyVar Γ ★) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2) succ,
+      (ec:HaskTyVar Γ ECKind) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2) succ,
       ND Rule
       [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) (drop_lev n ant1)
         |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant1) (mapOptionTree (unlev' ) succ) @@ nil]]

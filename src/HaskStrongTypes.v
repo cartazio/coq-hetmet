@@ -68,7 +68,7 @@ Section Raw.
   | TCoerc         : ∀ κ, RawHaskType κ -> RawHaskType κ -> RawHaskType ★   -> RawHaskType ★                     (* (+>)     *)
   | TApp           : ∀ κ₁ κ₂, RawHaskType (κ₂⇛κ₁)        -> RawHaskType κ₂  -> RawHaskType κ₁                    (* φ φ      *)
   | TAll           : ∀ κ,                          (TV κ -> RawHaskType ★)  -> RawHaskType ★                     (* ∀a:κ.φ   *)
-  | TCode          : RawHaskType ★                       -> RawHaskType ★   -> RawHaskType ★                     (* from λ^α *)
+  | TCode          : RawHaskType ECKind                  -> RawHaskType ★   -> RawHaskType ★                     (* from λ^α *)
   | TyFunApp       : forall (tf:TyFun) kl k, RawHaskTypeList kl             -> RawHaskType k                     (* S_n      *)
   with RawHaskTypeList : list Kind -> Type :=
   | TyFunApp_nil   : RawHaskTypeList nil
@@ -131,7 +131,7 @@ Definition InstantiatedCoercionEnv (TV:Kind->Type) CV       (Γ:TypeEnv)(Δ:Coer
 (* A (HaskXX Γ) is an XX which is valid in environments of shape Γ; they are always PHOAS-uninstantiated *)
 Definition HaskTyVar (Γ:TypeEnv) κ :=  forall TV    (env:@InstantiatedTypeEnv TV Γ), TV κ.
 Definition HaskCoVar Γ Δ           :=  forall TV CV (env:@InstantiatedTypeEnv TV Γ)(cenv:@InstantiatedCoercionEnv TV CV Γ Δ), CV.
-Definition HaskLevel (Γ:TypeEnv)   :=  list (HaskTyVar Γ ★).
+Definition HaskLevel (Γ:TypeEnv)   :=  list (HaskTyVar Γ ECKind).
 Definition HaskType  (Γ:TypeEnv) κ := ∀ TV, @InstantiatedTypeEnv TV Γ -> RawHaskType TV κ.
 Definition haskTyVarToType {Γ}{κ}(htv:HaskTyVar Γ κ) : HaskType Γ κ := fun TV ite => TVar (htv TV ite).
 
@@ -159,7 +159,7 @@ Definition HaskTAll {Γ}(κ:Kind)(σ:forall TV (env:@InstantiatedTypeEnv TV Γ),
 Definition HaskTApp {Γ}{κ}(σ:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV ★)
   (cv:HaskTyVar Γ κ) : HaskType Γ ★
   := fun TV env => σ TV env (cv TV env).
-Definition HaskBrak {Γ}(v:HaskTyVar Γ ★)(t:HaskType Γ ★) : HaskType Γ ★:=
+Definition HaskBrak {Γ}(v:HaskTyVar Γ ECKind)(t:HaskType Γ ★) : HaskType Γ ★:=
   fun TV env => @TCode TV (TVar (v TV env)) (t TV env).
 Definition HaskTCon {Γ}(tc:TyCon) : HaskType Γ (fold_right KindArrow ★ (tyConKind tc))
   := fun TV ite => TCon tc.

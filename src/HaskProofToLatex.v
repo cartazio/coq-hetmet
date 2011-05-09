@@ -126,7 +126,7 @@ Definition ltypeToLatexMath {Γ:TypeEnv}{κ}(t:LeveledHaskType Γ κ) : VarNameS
     | nil => t''
     | lv  => (rawLatexMath " ")+++t''+++(rawLatexMath " @ ")+++
            (fold_left (fun x y => x+++(rawLatexMath ":")+++y)
-             (map (fun l:HaskTyVar Γ ★ => l (fun _ => LatexMath) ite) lv) (rawLatexMath ""))
+             (map (fun l:HaskTyVar Γ _ => l (fun _ => LatexMath) ite) lv) (rawLatexMath ""))
     end
     end); try apply ConcatenableLatexMath.
     try apply VarNameMonad.
