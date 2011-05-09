@@ -164,9 +164,11 @@ Section core2proof.
     Definition mkWeakExprVar (u:Unique)(t:WeakType)             : WeakExprVar :=
       weakExprVar (mkExVar (mkSystemName u "ev" O) (weakTypeToCoreType t)) t.
 
-    Context (hetmet_brak  : WeakExprVar).
-    Context (hetmet_esc   : WeakExprVar).
-    Context (uniqueSupply : UniqSupply).
+    Context (hetmet_brak    : WeakExprVar).
+    Context (hetmet_esc     : WeakExprVar).
+    Context (hetmet_flatten : WeakExprVar).
+    Context (hetmet_flattened_id : WeakExprVar).
+    Context (uniqueSupply   : UniqSupply).
 
     Definition useUniqueSupply {T}(ut:UniqM T) : ???T :=
       match ut with
@@ -270,6 +272,8 @@ Section core2proof.
     Context
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
+    (hetmet_flatten : CoreVar)
+    (hetmet_flattened_id : CoreVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
@@ -391,6 +395,8 @@ Section core2proof.
 
     Definition hetmet_brak' := coreVarToWeakExprVarOrError hetmet_brak.
     Definition hetmet_esc'  := coreVarToWeakExprVarOrError hetmet_esc.
+    Definition hetmet_flatten'  := coreVarToWeakExprVarOrError hetmet_flatten.
+    Definition hetmet_flattened_id'  := coreVarToWeakExprVarOrError hetmet_flattened_id.
 
     Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
       addErrorMessage ("input CoreSyn: " +++ toString ce)
@@ -405,12 +411,13 @@ Section core2proof.
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
 
                       (addErrorMessage ("HaskStrong...")
-                        (let haskProof := flatten_proof my_ga (@expr2proof _ _ _ _ _ _ e)
+                        (let haskProof := flatten_proof hetmet_flatten' hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
                          OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                          >>= fun e' =>
                            (snd e') >>= fun e'' =>
-                         strongExprToWeakExpr hetmet_brak' hetmet_esc' mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
+                         strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                           mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
                            (projT2 e'') INil
                          >>= fun q =>
                            OK (weakExprToCoreExpr q)
@@ -446,6 +453,8 @@ Section core2proof.
     Definition coqPassCoreToCore 
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
+    (hetmet_flatten   : CoreVar)
+    (hetmet_flattened_id   : CoreVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
@@ -469,6 +478,8 @@ Section core2proof.
     coqPassCoreToCore'
        hetmet_brak  
        hetmet_esc   
+       hetmet_flatten
+       hetmet_flattened_id
        uniqueSupply 
        hetmet_PGArrowTyCon
        hetmet_pga_id 

@@ -14,6 +14,9 @@ Require Import Coq.Lists.List.
 
 Require Import HaskKinds.
 Require Import HaskCoreTypes.
+Require Import HaskCoreVars.
+Require Import HaskWeakTypes.
+Require Import HaskWeakVars.
 Require Import HaskLiteralsAndTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskProof.
@@ -24,6 +27,7 @@ Require Import HaskStrong.
 Require Import HaskProof.
 Require Import HaskStrongToProof.
 Require Import HaskProofToStrong.
+Require Import HaskWeakToStrong.
 
 Open Scope nd_scope.
 
@@ -194,6 +198,8 @@ Section HaskFlattener.
 
   Set Printing Width 130.
 
+  Context (hetmet_flatten : WeakExprVar).
+  Context (hetmet_id      : WeakExprVar).
   Context {unitTy : forall TV, RawHaskType TV ★                                          }.
   Context {prodTy : forall TV, RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
   Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
@@ -900,7 +906,16 @@ Section HaskFlattener.
       simpl.
       rename l into g.
       rename σ into l.
-      destruct l as [|ec lev]; simpl; [ apply nd_rule; rewrite globals_do_not_have_code_types; apply RGlobal; auto | idtac ].
+      destruct l as [|ec lev]; simpl. 
+        destruct (eqd_dec (g:CoreVar) (hetmet_flatten:CoreVar)).
+          set (garrowfy_code_types (g wev)) as t.
+          set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
+          simpl in q.
+          apply nd_rule.
+          apply q.
+          apply INil.
+        apply nd_rule; rewrite globals_do_not_have_code_types.
+          apply RGlobal.
       apply (Prelude_error "found RGlobal at depth >0").
 
     destruct case_RLam.
