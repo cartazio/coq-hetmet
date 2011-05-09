@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-unused-matches -fno-warn-unused-binds #-}
+{-# OPTIONS_GHC -fno-warn-unused-matches -fno-warn-unused-binds -fno-warn-unused-imports #-}
 module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
 import qualified Unique
@@ -29,11 +29,9 @@ import qualified Data.List
 import qualified Data.Ord
 import qualified Data.Typeable
 import Data.Bits ((.&.), shiftL, (.|.))
-import Prelude ( (++), (+), (==), Show, show, Char, (.), ($) )
+import Prelude ( (++), (+), (==), Show, show, (.), ($) )
 import qualified Prelude
-import qualified Debug.Trace
 import qualified GHC.Base
-import qualified System.IO
 import qualified System.IO.Unsafe
 
 getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]
@@ -60,6 +58,7 @@ coreVarToWeakVar v | Var.isCoVar v = WCoerVar (WeakCoerVar v (Prelude.error "FIX
 coreVarToWeakVar _                 =
    Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
 
+errOrFail :: OrError t -> t
 errOrFail (OK x)    = x
 errOrFail (Error s) = Prelude.error s
 
@@ -179,17 +178,19 @@ weakCoercionToCoreCoercion :: CoreCoercion -> Type.Type
 | WCoUnsafe  t1 t2                   => (t1,t2)
 -}
 
+{-# NOINLINE trace #-}
+trace :: Prelude.String -> a -> a
+trace msg x = x
 
 --trace = Debug.Trace.trace
 --trace msg x = x
-trace msg x = System.IO.Unsafe.unsafePerformIO $ Prelude.return x
-{-
-trace s x = x
-trace msg x = System.IO.Unsafe.unsafePerformIO $
-                (Prelude.>>=) (System.IO.hPutStrLn System.IO.stdout msg) (\_ -> Prelude.return x)
-trace msg x = System.IO.Unsafe.unsafePerformIO $
-                (Prelude.>>=) (System.IO.hPutStr System.IO.stdout " ") (\_ -> Prelude.return x)
--}
+--trace msg x = System.IO.Unsafe.unsafePerformIO $ Prelude.return x
+--trace s x = x
+--trace msg x = System.IO.Unsafe.unsafePerformIO $
+--                (Prelude.>>=) (System.IO.hPutStrLn System.IO.stdout msg) (\_ -> Prelude.return x)
+--trace msg x = System.IO.Unsafe.unsafePerformIO $
+--                (Prelude.>>=) (System.IO.hPutStr System.IO.stdout " ") (\_ -> Prelude.return x)
+
 
 {-  -- used for extracting strings WITHOUT the patch for Coq
 bin2ascii =
