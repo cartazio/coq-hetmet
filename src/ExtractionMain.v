@@ -219,46 +219,6 @@ Section core2proof.
       exact O.
       apply t.
       Defined.
-(*
-    Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
-      addErrorMessage ("input CoreSyn: " +++ toString ce)
-      (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
-        coreExprToWeakExpr ce >>= fun we =>
-          addErrorMessage ("WeakExpr: " +++ toString we)
-            ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
-              ((weakTypeOfWeakExpr we) >>= fun t =>
-                (addErrorMessage ("WeakType: " +++ toString t)
-                  ((weakTypeToTypeOfKind φ t ★) >>= fun τ =>
-
-                    ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
-
-                      (addErrorMessage ("HaskStrong...")
-                        (let haskProof := (*flatten_proof'*) (@expr2proof _ _ _ _ _ _ e)
-                         in (* insert HaskProof-to-HaskProof manipulations here *)
-                         OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
-                         >>= fun e' =>
-                           (snd e') >>= fun e'' =>
-                         strongExprToWeakExpr hetmet_brak hetmet_esc mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
-                           (projT2 e'') INil
-                         >>= fun q =>
-                           OK (weakExprToCoreExpr q)
-                    )))))))))).
-
-    Definition coreToCoreExpr (ce:@CoreExpr CoreVar) : (@CoreExpr CoreVar) :=
-      match coreToCoreExpr' ce with
-        | OK x    => x
-        | Error s => Prelude_error s
-      end.
-  
-    Definition coreToCoreBind (binds:@CoreBind CoreVar) : @CoreBind CoreVar :=
-      match binds with
-        | CoreNonRec v e => CoreNonRec v (coreToCoreExpr e)
-        | CoreRec    lbe => CoreRec (map (fun ve => match ve with (v,e) => (v,coreToCoreExpr e) end) lbe)
-      end.
-
-    Definition coqPassCoreToCore' (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=
-      map coreToCoreBind lbinds.
-  *)
 
   End CoreToCore.
 
@@ -461,11 +421,21 @@ Section core2proof.
         | OK x    => x
         | Error s => Prelude_error s
       end.
-  
+
     Definition coreToCoreBind (binds:@CoreBind CoreVar) : @CoreBind CoreVar :=
       match binds with
-        | CoreNonRec v e => CoreNonRec v (coreToCoreExpr e)
+        | CoreNonRec v e => let e' := coreToCoreExpr e in CoreNonRec (setVarType v (coreTypeOfCoreExpr e')) e'
+
         | CoreRec    lbe => CoreRec (map (fun ve => match ve with (v,e) => (v,coreToCoreExpr e) end) lbe)
+                            (* FIXME: doesn't deal with the case where top level recursive binds change type *)
+(*
+          match coreToCoreExpr (CoreELet lbe) (CoreELit HaskMachNullAddr) with
+            | CoreELet (CoreRec lbe') => lbe'
+            | x                       => Prelude_error
+                                            ("coreToCoreExpr was given a letrec, " +++
+                                             "but returned something that wasn't a letrec: " +++ toString x)
+          end
+*)
       end.
 
     Definition coqPassCoreToCore' (lbinds:list (@CoreBind CoreVar)) : list (@CoreBind CoreVar) :=

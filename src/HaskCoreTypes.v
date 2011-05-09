@@ -38,6 +38,7 @@ Variable coreCoercionToString  : CoreCoercion -> string.    Extract Inlined Cons
 Variable coreCoercionKind : CoreCoercion -> CoreType*CoreType. Extract Inlined Constant coreCoercionKind => "Coercion.coercionKind".
 Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Coercion.typeKind)".
 Variable coreTypeToString : CoreType -> string. Extract Inlined Constant coreTypeToString => "(outputableToString . coreViewDeep)".
+Variable setVarType       : CoreVar -> CoreType -> CoreVar. Extract Inlined Constant setVarType       => "Var.setVarType".
 
 (* GHC provides decision procedures for equality on its primitive types; we tell Coq to blindly trust them *)
 Variable coreTyCon_eq         : EqDecider CoreTyCon.       Extract Inlined Constant coreTyCon_eq          => "(==)".
