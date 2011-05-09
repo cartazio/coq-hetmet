@@ -38,7 +38,7 @@ Notation "'★'"   := KindStar.
 Notation "a ⇛ b" := (KindArrow a b).
 
 (* the kind of environment classifiers *)
-Definition ECKind := ★ .  
+Definition ECKind := ★ ⇛ ★ ⇛ ★.  
 Opaque ECKind.
 
 Fixpoint kindToLatexMath (k:Kind) : LatexMath :=
