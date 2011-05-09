@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -XModalTypes -XMultiParamTypeClasses -XNoMonoPatBinds -XKindSignatures -XGADTs -XFlexibleContexts -XFlexibleInstances -XTypeOperators -XUndecidableInstances #-}
---module GArrowTikZ
---where
+module GArrowTikZ (tikz, GArrowTikZ(..))
+where
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
 import GHC.HetMet.GArrow
@@ -75,6 +75,7 @@ runU (UyM f) = (f (uvarSupply,emptyUnifier,[]))
 
 data GArrowTikZ :: * -> * -> *
  where
+  TikZ_const     ::                             Int ->  GArrowTikZ () Int
   TikZ_id        ::                                     GArrowTikZ x x
   TikZ_comp      :: GArrowTikZ y z -> GArrowTikZ x y -> GArrowTikZ x z
   TikZ_first     :: GArrowTikZ x y                   -> GArrowTikZ (x**z)  (y**z)
@@ -127,8 +128,12 @@ instance GArrowLoop GArrowTikZ (**) () where
   ga_loopl     = TikZ_loopl
   ga_loopr     = TikZ_loopr
 
+instance GArrowSTKC GArrowTikZ (,) ()
+
+
 name :: GArrowTikZ a b -> String
 name TikZ_id              = "id"
+name (TikZ_const i)       = "const " ++ show i
 name (TikZ_comp      _ _) = "comp"
 name (TikZ_first     _  ) = "first"
 name (TikZ_second    _  ) = "second"
@@ -192,7 +197,7 @@ fresh5 = do { x1 <- freshU
 
 
 
-example = ga_first ga_drop >>> ga_cancell >>> ga_first id >>> ga_swap >>> ga_first id >>> TikZ_merge
+--example = ga_first ga_drop >>> ga_cancell >>> ga_first id >>> ga_swap >>> ga_first id >>> TikZ_merge
 --example :: forall x y z. forall g. (GArrow g (,) (), GArrowCopy g (,) (), GArrowSwap g (,) ()) => g x ((x,x),x)
 --example = ga_copy >>> ga_second ga_copy >>> ga_second (ga_first id) >>> ga_unassoc >>> ga_first ga_swap
 --example = ga_copy >>> ga_second ga_copy >>> ga_second (ga_second id) >>> ga_unassoc >>> ga_first id >>> ga_first ga_swap
@@ -240,23 +245,24 @@ ga2diag (TikZ_comp      g f) = do { f' <- ga2diag f
                                   ; g' <- ga2diag g
                                   ; unifyM (getOut f') (getIn g')
                                   ; return $ DiagramComp f' g' }
-ga2diag (TikZ_first  f)=do { x <- fresh1; f' <- ga2diag f ; constrainBot f' 1 x  ; return $ DiagramBypassBot f' x  }
-ga2diag (TikZ_second f)=do { x <- fresh1; f' <- ga2diag f ; constrainTop x  1 f' ; return $ DiagramBypassTop x f'  }
-ga2diag TikZ_cancell  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancell" top (UVVal [x,y]) y bot defren }
-ga2diag TikZ_cancelr  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancelr" top (UVVal [x,y]) x bot defren }
-ga2diag TikZ_uncancell= do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancell" top y (UVVal [x,y]) bot defren }
-ga2diag TikZ_uncancelr= do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancelr" top x (UVVal [x,y]) bot defren }
-ga2diag TikZ_drop     = do { (top,x    ,bot) <- fresh3  ; return $ DiagramPrim      "drop" top x x bot defren }
-ga2diag TikZ_copy     = do { (top,x,y,z,bot) <- fresh5
-                           ; return $ DiagramPrim      "copy" top y (UVVal [x,z]) bot defren }
-ga2diag TikZ_merge    = do { (top,x,y,z,bot) <- fresh5
-                           ; return $ DiagramPrim      "merge" top (UVVal [x,z]) y bot defren }
-ga2diag TikZ_swap     = do { (top,x,y  ,bot) <- fresh4
-                           ; return $ DiagramPrim      "swap" top (UVVal [x,y]) (UVVal [x,y]) bot defren }
-ga2diag TikZ_assoc    = do { (top,x,y,z,bot) <- fresh5
-                           ; return $ DiagramPrim  "assoc" top (UVVal [UVVal [x,y],z])(UVVal [x,UVVal [y,z]]) bot defren }
-ga2diag TikZ_unassoc  = do { (top,x,y,z,bot) <- fresh5
-                           ; return $ DiagramPrim "unassoc" top (UVVal [x,UVVal [y,z]])(UVVal [UVVal [x,y],z]) bot defren }
+ga2diag (TikZ_first  f) = do { x <- fresh1; f' <- ga2diag f ; constrainBot f' 1 x  ; return $ DiagramBypassBot f' x  }
+ga2diag (TikZ_second f) = do { x <- fresh1; f' <- ga2diag f ; constrainTop x  1 f' ; return $ DiagramBypassTop x f'  }
+ga2diag TikZ_cancell    = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancell" top (UVVal [x,y]) y bot defren }
+ga2diag TikZ_cancelr    = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancelr" top (UVVal [x,y]) x bot defren }
+ga2diag TikZ_uncancell  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancell" top y (UVVal [x,y]) bot defren }
+ga2diag TikZ_uncancelr  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancelr" top x (UVVal [x,y]) bot defren }
+ga2diag TikZ_drop       = do { (top,x    ,bot) <- fresh3  ; return $ DiagramPrim      "drop" top x x bot defren }
+ga2diag (TikZ_const i)  = do { (top,x    ,bot) <- fresh3  ; return $ DiagramPrim  ("const " ++ show i) top x x bot defren }
+ga2diag TikZ_copy       = do { (top,x,y,z,bot) <- fresh5
+                             ; return $ DiagramPrim      "copy" top y (UVVal [x,z]) bot defren }
+ga2diag TikZ_merge      = do { (top,x,y,z,bot) <- fresh5
+                             ; return $ DiagramPrim      "merge" top (UVVal [x,z]) y bot defren }
+ga2diag TikZ_swap       = do { (top,x,y  ,bot) <- fresh4
+                             ; return $ DiagramPrim      "swap" top (UVVal [x,y]) (UVVal [x,y]) bot defren }
+ga2diag TikZ_assoc      = do { (top,x,y,z,bot) <- fresh5
+                             ; return $ DiagramPrim  "assoc" top (UVVal [UVVal [x,y],z])(UVVal [x,UVVal [y,z]]) bot defren }
+ga2diag TikZ_unassoc    = do { (top,x,y,z,bot) <- fresh5
+                             ; return $ DiagramPrim "unassoc" top (UVVal [x,UVVal [y,z]])(UVVal [UVVal [x,y],z]) bot defren }
 ga2diag (TikZ_loopl f) = error "not implemented"
 ga2diag (TikZ_loopr f) = error "not implemented"
 
@@ -414,7 +420,8 @@ toTikZ' g = foldr (\x y -> x++"\\\\\n"++y) [] (map foo s)
                s = sortit (strip k)
                m = valuatit empty s
 
-main = do putStrLn "\\documentclass{article}"
+tikz example
+     = do putStrLn "\\documentclass{article}"
           putStrLn "\\usepackage[landscape,paperheight=20in,textwidth=19in]{geometry}"
           putStrLn "\\usepackage{tikz}"
           putStrLn "\\usepackage{amsmath}"
