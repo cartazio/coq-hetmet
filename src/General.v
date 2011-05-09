@@ -89,6 +89,13 @@ Fixpoint treeReduce {T:Type}{R:Type}(mapLeaf:T->R)(mergeBranches:R->R->R) (t:Tre
 Definition treeDecomposition {D T:Type} (mapLeaf:T->D) (mergeBranches:D->D->D) :=
   forall d:D, { tt:Tree T & d = treeReduce mapLeaf mergeBranches tt }.
 
+Fixpoint reduceTree {T}(unit:T)(merge:T -> T -> T)(tt:Tree ??T) : T :=
+  match tt with
+    | T_Leaf None     => unit
+    | T_Leaf (Some x) => x
+    | T_Branch b1 b2  => merge (reduceTree unit merge b1) (reduceTree unit merge b2)
+  end.
+
 Lemma tree_dec_eq :
    forall {Q}(t1 t2:Tree ??Q),
      (forall q1 q2:Q, sumbool (q1=q2) (not (q1=q2))) ->
@@ -445,6 +452,55 @@ Instance EqDecidableList {T:Type}(eqd:EqDecidable T) : EqDecidable (list T).
   Defined.
 
 (*******************************************************************************)
+(* Tree Flags                                                                  *)
+
+(* TreeFlags is effectively a tree of booleans whose shape matches that of another tree *)
+Inductive TreeFlags {T:Type} : Tree T -> Type :=
+| tf_leaf_true  : forall x, TreeFlags (T_Leaf x)
+| tf_leaf_false : forall x, TreeFlags (T_Leaf x)
+| tf_branch     : forall b1 b2, TreeFlags b1 -> TreeFlags b2 -> TreeFlags (b1,,b2).
+
+(* If flags are calculated using a local condition, this will build the flags *)
+Fixpoint mkFlags {T}(f:T -> bool)(t:Tree T) : TreeFlags t :=
+  match t as T return TreeFlags T with
+    | T_Leaf x => if f x then tf_leaf_true x else tf_leaf_false x
+    | T_Branch b1 b2 => tf_branch _ _ (mkFlags f b1) (mkFlags f b2)
+  end.
+
+(* takeT and dropT are not exact inverses! *)
+
+(* drop replaces each leaf where the flag is set with a [] *)
+Fixpoint dropT {T}{Σ:Tree ??T}(tf:TreeFlags Σ) : Tree ??T :=
+  match tf with
+    | tf_leaf_true  x         => []
+    | tf_leaf_false x         => Σ
+    | tf_branch b1 b2 tb1 tb2 => (dropT tb1),,(dropT tb2)
+  end.
+
+(* takeT returns only those leaves for which the flag is set; all others are omitted entirely from the tree *)
+Fixpoint takeT {T}{Σ:Tree T}(tf:TreeFlags Σ) : ??(Tree T) :=
+  match tf with
+    | tf_leaf_true  x         => Some Σ
+    | tf_leaf_false x         => None
+    | tf_branch b1 b2 tb1 tb2 =>
+      match takeT tb1 with
+        | None     => takeT tb2
+        | Some b1' => match takeT tb2 with
+                        | None     => Some b1'
+                        | Some b2' => Some (b1',,b2')
+                      end
+      end
+  end.
+
+(* lift a function T->bool to a function (option T)->bool by yielding (None |-> b) *)
+Definition liftBoolFunc {T}(b:bool)(f:T -> bool) : ??T -> bool :=
+  fun t =>
+    match t with
+      | None   => b
+      | Some x => f x
+    end.
+
+(*******************************************************************************)
 (* Length-Indexed Lists                                                        *)
 
 Inductive vec (A:Type) : nat -> Type :=
@@ -739,6 +795,8 @@ Lemma extensionality_composes : forall t1 t2 t3 (f f':t1->t2) (g g':t2->t3),
 
 Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 
+(* boolean "not" *)
+Definition bnot (b:bool) : bool := if b then false else true.
 
 (* string stuff *)
 Variable eol : string.

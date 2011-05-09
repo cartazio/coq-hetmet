@@ -169,4 +169,40 @@ Lemma systemfc_all_rules_one_conclusion : forall h c1 c2 (r:Rule h (c1,,c2)), Fa
   auto.
   Qed.
 
+(* "Arrange" objects are parametric in the type of the leaves of the tree *)
+Definition arrangeMap :
+  forall {T} (Σ₁ Σ₂:Tree ??T) {R} (f:T -> R),
+    Arrange Σ₁ Σ₂ ->
+    Arrange (mapOptionTree f Σ₁) (mapOptionTree f Σ₂).
+  intros.
+  induction X; simpl.
+  apply RCanL.
+  apply RCanR.
+  apply RuCanL.
+  apply RuCanR.
+  apply RAssoc.
+  apply RCossa.
+  apply RExch.
+  apply RWeak.
+  apply RCont.
+  apply RLeft; auto.
+  apply RRight; auto.
+  eapply RComp; [ apply IHX1 | apply IHX2 ].
+  Defined.
 
+(* a frequently-used Arrange *)
+Definition arrangeSwapMiddle {T} (a b c d:Tree ??T) :
+  Arrange ((a,,b),,(c,,d)) ((a,,c),,(b,,d)).
+  eapply RComp.
+  apply RCossa.
+  eapply RComp.
+  eapply RLeft.
+  eapply RComp.
+  eapply RAssoc.
+  eapply RRight.
+  apply RExch.
+  eapply RComp.
+  eapply RLeft.
+  eapply RCossa.
+  eapply RAssoc.
+  Defined.

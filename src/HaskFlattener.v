@@ -31,6 +31,7 @@ Require Import HaskProofToStrong.
 Require Import HaskWeakToStrong.
 
 Open Scope nd_scope.
+Set Printing Width 130.
 
 (*
  *  The flattening transformation.  Currently only TWO-level languages are
@@ -42,97 +43,9 @@ Open Scope nd_scope.
  *)
 Section HaskFlattener.
 
-  Inductive TreeFlags {T:Type} : Tree T -> Type :=
-  | tf_leaf_true  : forall x, TreeFlags (T_Leaf x)
-  | tf_leaf_false : forall x, TreeFlags (T_Leaf x)
-  | tf_branch     : forall b1 b2, TreeFlags b1 -> TreeFlags b2 -> TreeFlags (b1,,b2).
-
-  Fixpoint mkFlags {T}(f:T -> bool)(t:Tree T) : TreeFlags t :=
-    match t as T return TreeFlags T with
-      | T_Leaf x => if f x then tf_leaf_true x else tf_leaf_false x
-      | T_Branch b1 b2 => tf_branch _ _ (mkFlags f b1) (mkFlags f b2)
-    end.
-
-  (* take and drop are not exact inverses *)
-
-  (* drop replaces each leaf where the flag is set with a [] *)
-  Fixpoint drop {T}{Σ:Tree ??T}(tf:TreeFlags Σ) : Tree ??T :=
-    match tf with
-      | tf_leaf_true  x         => []
-      | tf_leaf_false x         => Σ
-      | tf_branch b1 b2 tb1 tb2 => (drop tb1),,(drop tb2)
-    end.
-
-  (* take returns only those leaves for which the flag is set; all others are omitted entirely from the tree *)
-  Fixpoint take {T}{Σ:Tree T}(tf:TreeFlags Σ) : ??(Tree T) :=
-    match tf with
-      | tf_leaf_true  x         => Some Σ
-      | tf_leaf_false x         => None
-      | tf_branch b1 b2 tb1 tb2 =>
-        match take tb1 with
-          | None     => take tb2
-          | Some b1' => match take tb2 with
-                          | None     => Some b1'
-                          | Some b2' => Some (b1',,b2')
-                        end
-        end
-    end.
-
-  Definition maybeTree {T}(t:??(Tree ??T)) : Tree ??T :=
-    match t with
-      | None => []
-      | Some x => x
-    end.
-
-  Definition setNone {T}(b:bool)(f:T -> bool) : ??T -> bool :=
-    fun t =>
-      match t with
-        | None => b
-        | Some x => f x
-      end.
-
-  (* "Arrange" objects are parametric in the type of the leaves of the tree *)
-  Definition arrangeMap :
-    forall {T} (Σ₁ Σ₂:Tree ??T) {R} (f:T -> R),
-      Arrange Σ₁ Σ₂ ->
-      Arrange (mapOptionTree f Σ₁) (mapOptionTree f Σ₂).
-    intros.
-    induction X; simpl.
-    apply RCanL.
-    apply RCanR.
-    apply RuCanL.
-    apply RuCanR.
-    apply RAssoc.
-    apply RCossa.
-    apply RExch.
-    apply RWeak.
-    apply RCont.
-    apply RLeft; auto.
-    apply RRight; auto.
-    eapply RComp; [ apply IHX1 | apply IHX2 ].
-    Defined.
-
-  Definition bnot (b:bool) : bool := if b then false else true.
-
-  Definition swapMiddle {T} (a b c d:Tree ??T) :
-    Arrange ((a,,b),,(c,,d)) ((a,,c),,(b,,d)).
-    eapply RComp.
-    apply RCossa.
-    eapply RComp.
-    eapply RLeft.
-    eapply RComp.
-    eapply RAssoc.
-    eapply RRight.
-    apply RExch.
-    eapply RComp.
-    eapply RLeft.
-    eapply RCossa.
-    eapply RAssoc.
-    Defined.
-
   Definition arrange :
     forall {T} (Σ:Tree ??T) (f:T -> bool),
-      Arrange Σ (drop (mkFlags (setNone false f) Σ),,( (drop (mkFlags (setNone false (bnot ○ f)) Σ)))).
+      Arrange Σ (dropT (mkFlags (liftBoolFunc false f) Σ),,( (dropT (mkFlags (liftBoolFunc false (bnot ○ f)) Σ)))).
     intros.
     induction Σ.
       simpl.
@@ -144,7 +57,7 @@ Section HaskFlattener.
       simpl.
       apply RuCanL.
       simpl in *.
-      eapply RComp; [ idtac | apply swapMiddle ].
+      eapply RComp; [ idtac | apply arrangeSwapMiddle ].
       eapply RComp.
       eapply RLeft.
       apply IHΣ2.
@@ -154,7 +67,7 @@ Section HaskFlattener.
 
   Definition arrange' :
     forall {T} (Σ:Tree ??T) (f:T -> bool),
-      Arrange (drop (mkFlags (setNone false f) Σ),,( (drop (mkFlags (setNone false (bnot ○ f)) Σ)))) Σ.
+      Arrange (dropT (mkFlags (liftBoolFunc false f) Σ),,( (dropT (mkFlags (liftBoolFunc false (bnot ○ f)) Σ)))) Σ.
     intros.
     induction Σ.
       simpl.
@@ -166,7 +79,7 @@ Section HaskFlattener.
       simpl.
       apply RCanL.
       simpl in *.
-      eapply RComp; [ apply swapMiddle | idtac ].
+      eapply RComp; [ apply arrangeSwapMiddle | idtac ].
       eapply RComp.
       eapply RLeft.
       apply IHΣ2.
@@ -174,30 +87,12 @@ Section HaskFlattener.
       apply IHΣ1.
       Defined.
 
-  Definition minus' n m :=
-    match m with
-      | 0 => n
-      | _ => match n with
-               | 0 => 0
-               | _ => n - m
-             end
-    end.
-
   Ltac eqd_dec_refl' :=
     match goal with
       | [ |- context[@eqd_dec ?T ?V ?X ?X] ] =>
         destruct (@eqd_dec T V X X) as [eqd_dec1 | eqd_dec2];
           [ clear eqd_dec1 | set (eqd_dec2 (refl_equal _)) as eqd_dec2'; inversion eqd_dec2' ]
   end.
-
-  Fixpoint reduceTree {T}(unit:T)(merge:T -> T -> T)(tt:Tree ??T) : T :=
-    match tt with
-      | T_Leaf None     => unit
-      | T_Leaf (Some x) => x
-      | T_Branch b1 b2  => merge (reduceTree unit merge b1) (reduceTree unit merge b2)
-    end.
-
-  Set Printing Width 130.
 
   Context (hetmet_flatten : WeakExprVar).
   Context (hetmet_unflatten : WeakExprVar).
@@ -284,25 +179,31 @@ Section HaskFlattener.
 
   (* In a tree of types, replace any type at depth "lev" or greater None *)
   Definition mkDropFlags {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : TreeFlags tt :=
-    mkFlags (setNone false (levelMatch lev)) tt.
+    mkFlags (liftBoolFunc false (levelMatch lev)) tt.
 
   Definition drop_lev {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : Tree ??(LeveledHaskType Γ ★) :=
-    drop (mkDropFlags lev tt).
+    dropT (mkDropFlags lev tt).
 
   (* The opposite: replace any type which is NOT at level "lev" with None *)
   Definition mkTakeFlags {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : TreeFlags tt :=
-    mkFlags (setNone true (bnot ○ levelMatch lev)) tt.
+    mkFlags (liftBoolFunc true (bnot ○ levelMatch lev)) tt.
 
   Definition take_lev {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : Tree ??(HaskType Γ ★) :=
-    mapOptionTree (fun x => garrowfy_code_types (unlev x)) (drop (mkTakeFlags lev tt)).
+    mapOptionTree (fun x => garrowfy_code_types (unlev x)) (dropT (mkTakeFlags lev tt)).
 (*
     mapOptionTree (fun x => garrowfy_code_types (unlev x))
-    (maybeTree (take tt (mkFlags (
+    (maybeTree (takeT tt (mkFlags (
       fun t => match t with
                  | Some (ttype @@ tlev) => if eqd_dec tlev lev then true else false
                  | _                    => true
                end
     ) tt))).
+
+  Definition maybeTree {T}(t:??(Tree ??T)) : Tree ??T :=
+    match t with
+      | None   => []
+      | Some x => x
+    end.
 *)
 
   Lemma drop_lev_lemma : forall Γ (lev:HaskLevel Γ) x, drop_lev lev [x @@  lev] = [].
@@ -361,10 +262,32 @@ Section HaskFlattener.
       change (@take_lev G N (T_Leaf (@None (LeveledHaskType G ★)))) with (T_Leaf (@None (LeveledHaskType G ★)))
     end.
 
+  (* AXIOMS *)
+
   Axiom literal_types_unchanged : forall Γ l, garrowfy_code_types (literalType l) = literalType(Γ:=Γ) l.
 
   Axiom flatten_coercion : forall Γ Δ κ (σ τ:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ ∼∼∼ τ)),
     HaskCoercion Γ Δ (garrowfy_code_types σ ∼∼∼ garrowfy_code_types τ).
+
+  Axiom garrowfy_commutes_with_substT :
+    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★) (τ:HaskType Γ κ),
+    garrowfy_code_types  (substT σ τ) = substT (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))
+      (garrowfy_code_types  τ).
+
+  Axiom garrowfy_commutes_with_HaskTAll :
+    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
+    garrowfy_code_types  (HaskTAll κ σ) = HaskTAll κ (fun TV ite v => garrowfy_raw_codetypes (σ TV ite v)).
+
+  Axiom garrowfy_commutes_with_HaskTApp :
+    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
+    garrowfy_code_types  (HaskTApp (weakF σ) (FreshHaskTyVar κ)) =
+    HaskTApp (weakF (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))) (FreshHaskTyVar κ).
+
+  Axiom garrowfy_commutes_with_weakLT : forall (Γ:TypeEnv) κ  t,
+    garrowfy_leveled_code_types  (weakLT(Γ:=Γ)(κ:=κ) t) = weakLT(Γ:=Γ)(κ:=κ) (garrowfy_leveled_code_types  t).
+
+  Axiom globals_do_not_have_code_types : forall (Γ:TypeEnv) (g:Global Γ) v,
+    garrowfy_code_types (g v) = g v.
 
   (* This tries to assign a single level to the entire succedent of a judgment.  If the succedent has types from different
    * levels (should not happen) it just picks one; if the succedent has no non-None leaves (also should not happen) it
@@ -510,11 +433,12 @@ Section HaskFlattener.
     apply q.
     Defined.
 
-(*
+  (* useful for cutting down on the pretty-printed noise
+  
   Notation "`  x" := (take_lev _ x) (at level 20).
   Notation "`` x" := (mapOptionTree unlev x) (at level 20).
   Notation "``` x" := (drop_lev _ x) (at level 20).
-*)
+  *)
   Definition garrowfy_arrangement' :
     forall Γ (Δ:CoercionEnv Γ)
       (ec:HaskTyVar Γ ECKind) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2),
@@ -533,7 +457,7 @@ Section HaskFlattener.
           | RAssoc a b c         => let case_RAssoc := tt in ga_assoc _ _ _ _ _ _ _
           | RCossa a b c         => let case_RCossa := tt in ga_unassoc _ _ _ _ _ _ _
           | RExch  a b           => let case_RExch := tt  in ga_swap  _ _ _ _ _ _
-          | RWeak  a             => let case_RWeak := tt  in ga_drop  _ _ _ _ _ 
+          | RWeak  a             => let case_RWeak := tt  in ga_drop _ _ _ _ _ 
           | RCont  a             => let case_RCont := tt  in ga_copy  _ _ _ _ _ 
           | RLeft  a b c r'      => let case_RLeft := tt  in garrowfy _ _ r' ;; boost _ _ _ _ _ (ga_second _ _ _ _ _ _ _)
           | RRight a b c r'      => let case_RRight := tt in garrowfy _ _ r' ;; boost _ _ _ _ _ (ga_first  _ _ _ _ _ _ _)
@@ -746,26 +670,6 @@ Section HaskFlattener.
       mapOptionTree f (a,,b) = (mapOptionTree f a),,(mapOptionTree f b).
     reflexivity.
     Qed.
-
-  Axiom garrowfy_commutes_with_substT :
-    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★) (τ:HaskType Γ κ),
-    garrowfy_code_types  (substT σ τ) = substT (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))
-      (garrowfy_code_types  τ).
-
-  Axiom garrowfy_commutes_with_HaskTAll :
-    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
-    garrowfy_code_types  (HaskTAll κ σ) = HaskTAll κ (fun TV ite v => garrowfy_raw_codetypes (σ TV ite v)).
-
-  Axiom garrowfy_commutes_with_HaskTApp :
-    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
-    garrowfy_code_types  (HaskTApp (weakF σ) (FreshHaskTyVar κ)) =
-    HaskTApp (weakF (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))) (FreshHaskTyVar κ).
-
-  Axiom garrowfy_commutes_with_weakLT : forall (Γ:TypeEnv) κ  t,
-    garrowfy_leveled_code_types  (weakLT(Γ:=Γ)(κ:=κ) t) = weakLT(Γ:=Γ)(κ:=κ) (garrowfy_leveled_code_types  t).
-
-  Axiom globals_do_not_have_code_types : forall (Γ:TypeEnv) (g:Global Γ) v,
-    garrowfy_code_types (g v) = g v.
 
   Definition decide_tree_empty : forall {T:Type}(t:Tree ??T),
     sum { q:Tree unit & t = mapTree (fun _ => None) q } unit.
