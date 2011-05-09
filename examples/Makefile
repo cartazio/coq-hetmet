@@ -5,8 +5,8 @@ all:
 		RegexMatcher.hs Unify.hs GArrowTikZ.hs
 
 tikz:
-	mkdir .build
-	../../../inplace/bin/ghc-stage2 -odir .build -hidir .build GArrowTikZ.hs Unify.hs
-	./GArrowTikZ > .build/test.tex
+	mkdir -p .build
+	../../../inplace/bin/ghc-stage2 -odir .build -hidir .build GArrowTikZ.hs Unify.hs test.hs
+	./test > .build/test.tex
 	cd .build; pdflatex test.tex
 	open .build/test.pdf
