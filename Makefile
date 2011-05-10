@@ -1,6 +1,7 @@
 coqc     := coqc -noglob -opt
 coqfiles := $(shell find src -name \*.v  | grep -v \\\#)
 allfiles := $(coqfiles) $(shell find src -name \*.hs | grep -v \\\#)
+coq_version := 8.3pl2-tracer
 
 default: all
 
@@ -9,6 +10,7 @@ all: $(allfiles)
 	cd build; $(MAKE) -f Makefile.coq OPT="-opt -dont-load-proofs" All.vo
 
 build/CoqPass.hs: $(allfiles)
+	$(coqc) -v | grep 'version $(coq_version)' || (echo;echo "You need Coq version $(coq_version) to proceed";echo; false)
 	make build/Makefile.coq
 	cd build; $(MAKE) -f Makefile.coq OPT="-opt -dont-load-proofs" ExtractionMain.vo
 	cd build; $(MAKE) -f Makefile.coq Extraction.vo
@@ -44,7 +46,8 @@ examples/doc/index.html:
 merged:
 	mkdir -p .temp
 	cd src; for A in *.v; do cat $$A  | grep -v '^Require Import' > ../.temp/`echo $$A | sed s_\\\\.v_._`; done
-	cd src/categories/src; for A in *.v; do cat $$A  | grep -v '^Require Import' > ../../../.temp/`echo $$A | sed s_\\\\.v_._`; done
+	cd src/categories/src; for A in *.v; do cat $$A | \
+	   grep -v '^Require Import' > ../../../.temp/`echo $$A | sed s_\\\\.v_._`; done
 	cp src/Banner.v .temp/GArrows.v
 	cd .temp; grep '^Require Import ' ../src/All.v | sed 's_Require Import _echo;echo;echo;echo;echo;cat _' | bash >> GArrows.v
 	cd .temp; time $(coqc) -dont-load-proofs -verbose GArrows.v
