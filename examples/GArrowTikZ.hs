@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -XModalTypes -XMultiParamTypeClasses -XNoMonoPatBinds -XKindSignatures -XGADTs -XFlexibleContexts -XFlexibleInstances -XTypeOperators -XUndecidableInstances #-}
-module GArrowTikZ (tikz, GArrowTikZ(..))
+{-# OPTIONS_GHC -XModalTypes -XMultiParamTypeClasses -XNoMonoPatBinds -XKindSignatures -XGADTs -XFlexibleContexts -XFlexibleInstances -XTypeOperators -XUndecidableInstances -XTypeFamilies #-}
+module GArrowTikZ (tikz, tikz', GArrowTikZ(..))
 where
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
@@ -7,7 +7,7 @@ import GHC.HetMet.GArrow
 import Data.List hiding (lookup, insert)
 import Data.Map hiding (map, (!))
 import Unify
-
+import GHC.HetMet.Private
 
 {-
 TO DO:
@@ -128,7 +128,11 @@ instance GArrowLoop GArrowTikZ (**) () where
   ga_loopl     = TikZ_loopl
   ga_loopr     = TikZ_loopr
 
-instance GArrowSTKC GArrowTikZ (,) ()
+type instance GArrowTensor      GArrowTikZ = (,)
+type instance GArrowUnit        GArrowTikZ = ()
+type instance GArrowExponent    GArrowTikZ = (->)
+
+instance GArrowSTKC GArrowTikZ
 
 
 name :: GArrowTikZ a b -> String
@@ -420,6 +424,9 @@ toTikZ' g = foldr (\x y -> x++"\\\\\n"++y) [] (map foo s)
                s = sortit (strip k)
                m = valuatit empty s
 
+tikz' :: (forall g a . PGArrow g (GArrowUnit g) a -> PGArrow g (GArrowUnit g) a) -> IO ()
+tikz' x = tikz $ unG (x (PGArrowD { unG = TikZ_const 12 }))
+main = do putStrLn "hello"
 tikz example
      = do putStrLn "\\documentclass{article}"
           putStrLn "\\usepackage[landscape,paperheight=20in,textwidth=19in]{geometry}"

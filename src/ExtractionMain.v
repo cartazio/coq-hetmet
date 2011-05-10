@@ -161,7 +161,7 @@ Section core2proof.
     Definition mkWeakTypeVar (u:Unique)(k:Kind)                 : WeakTypeVar :=
       weakTypeVar (mkTyVar (mkSystemName u "tv" O) k) k.
     Definition mkWeakCoerVar (u:Unique)(k:Kind)(t1 t2:WeakType) : WeakCoerVar :=
-      weakCoerVar (mkCoVar (mkSystemName u "cv" O) (weakTypeToCoreType t1) (weakTypeToCoreType t2)) k t1 t2.
+      weakCoerVar (mkCoVar (mkSystemName u "cv" O) (weakTypeToCoreType t1) (weakTypeToCoreType t2)) t1 t2.
     Definition mkWeakExprVar (u:Unique)(t:WeakType)             : WeakExprVar :=
       weakExprVar (mkExVar (mkSystemName u "ev" O) (weakTypeToCoreType t)) t.
 
@@ -280,6 +280,9 @@ Section core2proof.
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
+    (hetmet_PGArrow_unit_TyCon : TyFun)
+    (hetmet_PGArrow_tensor_TyCon : TyFun)
+    (hetmet_PGArrow_exponent_TyCon : TyFun)
     (hetmet_pga_id : CoreVar)
     (hetmet_pga_comp : CoreVar)
     (hetmet_pga_first : CoreVar)
@@ -299,9 +302,11 @@ Section core2proof.
     (hetmet_pga_curryr : CoreVar)
     .
 
-    Definition ga_unit TV : RawHaskType TV ★ := @TyFunApp TV UnitTyCon nil         ★ TyFunApp_nil.
-    Definition ga_prod TV (a b:RawHaskType TV ★) : RawHaskType TV ★  :=
-      TApp (TApp (@TyFunApp TV PairTyCon nil _ TyFunApp_nil) a) b.
+
+    Definition ga_unit TV (ec:RawHaskType TV ECKind) : RawHaskType TV ★ :=
+      @TyFunApp TV hetmet_PGArrow_unit_TyCon (ECKind::nil) ★ (TyFunApp_cons _ _ ec TyFunApp_nil).
+    Definition ga_prod TV (ec:RawHaskType TV ECKind) (a b:RawHaskType TV ★) : RawHaskType TV ★  :=
+      TApp (TApp (@TyFunApp TV hetmet_PGArrow_tensor_TyCon (ECKind::nil) _ (TyFunApp_cons _ _ ec TyFunApp_nil)) a) b.
     Definition ga_type {TV}(a:RawHaskType TV ECKind)(b c:RawHaskType TV ★) : RawHaskType TV ★ :=
       TApp (TApp (TApp (@TyFunApp TV 
         hetmet_PGArrowTyCon
@@ -370,22 +375,22 @@ Section core2proof.
           |} (ICons _ _ x (ICons _ _ y (ICons _ _ z (ICons _ _ q INil))))).
       Defined.
 
-    Definition gat {Γ}(x:Tree ??(HaskType Γ ★))  := @ga_mk_tree ga_unit ga_prod _ x.
+    Definition gat {Γ} ec (x:Tree ??(HaskType Γ ★))  := @ga_mk_tree ga_unit ga_prod _ ec x.
 
     Instance my_ga : garrow ga_unit ga_prod (@ga_type) :=
-    { ga_id        := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_id        (fun ec a => ga_type' ec a a) ec (gat a)
-    ; ga_cancelr   := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_cancelr   (fun ec a => ga_type' ec _ a) ec (gat a)
-    ; ga_cancell   := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_cancell   (fun ec a => ga_type' ec _ a) ec (gat a)
-    ; ga_uncancelr := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_uncancelr (fun ec a => ga_type' ec a _) ec (gat a)
-    ; ga_uncancell := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_uncancell (fun ec a => ga_type' ec a _) ec (gat a)
-    ; ga_assoc     := fun Γ Δ ec l a b c => mkGlob4 hetmet_pga_assoc     (fun ec a b c => ga_type' ec _ _) ec (gat a) (gat b) (gat c)
-    ; ga_unassoc   := fun Γ Δ ec l a b c => mkGlob4 hetmet_pga_unassoc   (fun ec a b c => ga_type' ec _ _) ec (gat a) (gat b) (gat c)
-    ; ga_swap      := fun Γ Δ ec l a b   => mkGlob3 hetmet_pga_swap      (fun ec a b => ga_type' ec _ _) ec (gat a) (gat b)
-    ; ga_drop      := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_drop      (fun ec a => ga_type' ec _ _) ec (gat a)
-    ; ga_copy      := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_copy      (fun ec a => ga_type' ec _ _) ec (gat a)
-    ; ga_first     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_first (fun ec a b c => _) ec (gat a) (gat b) (gat x))
-    ; ga_second    := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_second (fun ec a b c => _) ec (gat a) (gat b) (gat x))
-    ; ga_comp      := fun Γ Δ ec l a b c => fToC2 (mkGlob4 hetmet_pga_comp (fun ec a b c => _) ec (gat a) (gat b) (gat c))
+    { ga_id        := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_id        (fun ec a => ga_type' ec a a) ec (gat ec a)
+    ; ga_cancelr   := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_cancelr   (fun ec a => ga_type' ec _ a) ec (gat ec a)
+    ; ga_cancell   := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_cancell   (fun ec a => ga_type' ec _ a) ec (gat ec a)
+    ; ga_uncancelr := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_uncancelr (fun ec a => ga_type' ec a _) ec (gat ec a)
+    ; ga_uncancell := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_uncancell (fun ec a => ga_type' ec a _) ec (gat ec a)
+    ; ga_assoc     := fun Γ Δ ec l a b c => mkGlob4 hetmet_pga_assoc     (fun ec a b c => ga_type' ec _ _) ec (gat ec a) (gat ec b) (gat ec c)
+    ; ga_unassoc   := fun Γ Δ ec l a b c => mkGlob4 hetmet_pga_unassoc   (fun ec a b c => ga_type' ec _ _) ec (gat ec a) (gat ec b) (gat ec c)
+    ; ga_swap      := fun Γ Δ ec l a b   => mkGlob3 hetmet_pga_swap      (fun ec a b => ga_type' ec _ _) ec (gat ec a) (gat ec b)
+    ; ga_drop      := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_drop      (fun ec a => ga_type' ec _ _) ec (gat ec a)
+    ; ga_copy      := fun Γ Δ ec l a     => mkGlob2 hetmet_pga_copy      (fun ec a => ga_type' ec _ _) ec (gat ec a)
+    ; ga_first     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_first (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
+    ; ga_second    := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_second (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
+    ; ga_comp      := fun Γ Δ ec l a b c => fToC2 (mkGlob4 hetmet_pga_comp (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec c))
 (*  ; ga_lit       := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_lit))*)
 (*  ; ga_curry     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_curry))*)
 (*  ; ga_apply     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_apply))*)
@@ -464,6 +469,9 @@ Section core2proof.
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
+    (hetmet_PGArrow_unit_TyCon : TyFun)
+    (hetmet_PGArrow_tensor_TyCon : TyFun)
+    (hetmet_PGArrow_exponent_TyCon : TyFun)
     (hetmet_pga_id : CoreVar)
     (hetmet_pga_comp : CoreVar)
     (hetmet_pga_first : CoreVar)
@@ -489,6 +497,9 @@ Section core2proof.
        hetmet_flattened_id
        uniqueSupply 
        hetmet_PGArrowTyCon
+       hetmet_PGArrow_unit_TyCon
+       hetmet_PGArrow_tensor_TyCon
+(*       hetmet_PGArrow_exponent_TyCon*)
        hetmet_pga_id 
        hetmet_pga_comp 
        hetmet_pga_first 

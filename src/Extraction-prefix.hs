@@ -53,8 +53,10 @@ sortAlts x = Data.List.sortBy (\a b -> if a `CoreSyn.ltAlt` b then Data.Ord.LT e
 coreVarToWeakVar :: Var.Var -> WeakVar
 coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
 coreVarToWeakVar v | Var.isTyVar v = WTypeVar (WeakTypeVar v (coreKindToKind (Var.varType v)))
-coreVarToWeakVar v | Var.isCoVar v = WCoerVar (WeakCoerVar v (Prelude.error "FIXME") 
-                                                             (Prelude.error "FIXME") (Prelude.error "FIXME"))
+coreVarToWeakVar v | Var.isCoVar v
+  = WCoerVar (WeakCoerVar v
+                          (errOrFail (coreTypeToWeakType (Prelude.fst (Coercion.coercionKind (Var.varType v)))))
+                          (errOrFail (coreTypeToWeakType (Prelude.snd (Coercion.coercionKind (Var.varType v))))))
 coreVarToWeakVar _                 =
    Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
 
@@ -87,8 +89,9 @@ sanitizeForLatex (c:x)   = c:(sanitizeForLatex x)
 kindToCoreKind :: Kind -> TypeRep.Kind
 kindToCoreKind KindStar          = TypeRep.liftedTypeKind
 kindToCoreKind (KindArrow k1 k2) = Coercion.mkArrowKind (kindToCoreKind k1) (kindToCoreKind k2)
-kindToCoreKind _                 = Prelude.error "kindToCoreKind does not know how to handle that"
-
+kindToCoreKind k                 = Prelude.error ((Prelude.++)
+                                                    "kindToCoreKind does not know how to handle kind "
+                                                                               (kindToString k))
 coreKindToKind :: TypeRep.Kind -> Kind
 coreKindToKind k =
   case Coercion.splitKindFunTy_maybe k of

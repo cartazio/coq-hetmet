@@ -32,9 +32,9 @@ Definition weakTypeVarToKind (tv:WeakTypeVar) : Kind :=
 
 Definition weakVarToCoreVar (wv:WeakVar) : CoreVar :=
   match wv with
-  | WExprVar (weakExprVar v _    ) => v
-  | WTypeVar (weakTypeVar v _    ) => v
-  | WCoerVar (weakCoerVar v _ _ _) => v
+  | WExprVar (weakExprVar v _  ) => v
+  | WTypeVar (weakTypeVar v _  ) => v
+  | WCoerVar (weakCoerVar v _ _) => v
  end.
  Coercion weakVarToCoreVar : WeakVar >-> CoreVar.
 

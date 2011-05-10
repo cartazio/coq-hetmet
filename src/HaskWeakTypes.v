@@ -47,7 +47,7 @@ Instance WeakTypeVarEqDecidable : EqDecidable WeakTypeVar.
     Defined.
 
 (* a WeakCoerVar just wraps a CoreVar and tags it with the pair of types amongst which it coerces *)
-Inductive WeakCoerVar := weakCoerVar : CoreVar -> Kind -> WeakType -> WeakType -> WeakCoerVar.
+Inductive WeakCoerVar := weakCoerVar : CoreVar -> WeakType -> WeakType -> WeakCoerVar.
 
 Inductive WeakCoercion : Type :=
 | WCoVar          : WeakCoerVar                                   -> WeakCoercion (* g      *)
@@ -66,7 +66,7 @@ Inductive WeakCoercion : Type :=
 
 Fixpoint weakCoercionTypes (wc:WeakCoercion) : WeakType * WeakType :=
 match wc with
-| WCoVar     (weakCoerVar _ _ t1 t2) => (t1,t2)
+| WCoVar     (weakCoerVar _ t1 t2)   => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
 | WCoType    t                       => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
 | WCoApp     c1 c2                   => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)
 | WCoAppT    c t                     => (WFunTyCon,WFunTyCon)   (* FIXME!!! *)

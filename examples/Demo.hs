@@ -5,6 +5,5 @@ import GHC.HetMet.Private
 import GArrowTikZ
 
 foo x = <[ ~~x ]>
-foo' = unG . pga_flatten . foo . pga_unflatten
---foo x z = <[ let y = ~~x in ~~z y y ]>
-main = tikz (foo' (PGArrowD { unG = TikZ_const 12 }))
+
+main = tikz' $ pga_flatten . foo . pga_unflatten

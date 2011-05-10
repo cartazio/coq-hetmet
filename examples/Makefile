@@ -6,7 +6,7 @@ all:
 
 tikz:
 	mkdir -p .build
-	../../../inplace/bin/ghc-stage2 -odir .build -hidir .build GArrowTikZ.hs Unify.hs test.hs
-	./test > .build/test.tex
+	../../../inplace/bin/ghc-stage2 -odir .build -hidir .build GArrowTikZ.hs Unify.hs Demo.hs -o .build/demo
+	./.build/demo > .build/test.tex
 	cd .build; pdflatex test.tex
 	open .build/test.pdf

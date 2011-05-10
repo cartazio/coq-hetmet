@@ -97,15 +97,15 @@ Section HaskFlattener.
   Context (hetmet_flatten : WeakExprVar).
   Context (hetmet_unflatten : WeakExprVar).
   Context (hetmet_id      : WeakExprVar).
-  Context {unitTy : forall TV, RawHaskType TV ★                                          }.
-  Context {prodTy : forall TV, RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
+  Context {unitTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★                                          }.
+  Context {prodTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
   Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
 
-  Definition ga_mk_tree {Γ} (tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => reduceTree (unitTy TV) (prodTy TV) (mapOptionTree (fun x => x TV ite) tr).
+  Definition ga_mk_tree {Γ}(ec:HaskType Γ ECKind)(tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
+    fun TV ite => reduceTree (unitTy TV (ec TV ite)) (prodTy TV (ec TV ite)) (mapOptionTree (fun x => x TV ite) tr).
 
   Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ant TV ite) (ga_mk_tree suc TV ite).
+    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ec ant TV ite) (ga_mk_tree ec suc TV ite).
 
   Class garrow :=
   { ga_id        : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a a @@ l] ]
@@ -148,7 +148,7 @@ Section HaskFlattener.
     | TCoerc _ t1 t2 t      => TCoerc    (garrowfy_raw_codetypes t1) (garrowfy_raw_codetypes t2)
                                          (garrowfy_raw_codetypes t)
     | TArrow                => TArrow
-    | TCode      v e        => gaTy TV v (unitTy TV) (garrowfy_raw_codetypes e)
+    | TCode      v e        => gaTy TV v (unitTy TV v) (garrowfy_raw_codetypes e)
     | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (garrowfy_raw_codetypes_list _ lt)
     end
     with garrowfy_raw_codetypes_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=

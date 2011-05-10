@@ -36,7 +36,8 @@ Extract Inductive PredType =>
 
 Variable coreNameToString      : CoreName     -> string.    Extract Inlined Constant coreNameToString       => "outputableToString".
 Variable coreCoercionToString  : CoreCoercion -> string.    Extract Inlined Constant coreCoercionToString   => "outputableToString".
-Variable coreCoercionKind : CoreCoercion -> CoreType*CoreType. Extract Inlined Constant coreCoercionKind => "Coercion.coercionKind".
+Variable coreCoercionKind : Kind -> CoreType*CoreType.
+  Extract Inlined Constant coreCoercionKind => "(Coercion.coercionKind . kindToCoreKind)".
 Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Coercion.typeKind)".
 Variable coreTypeToString : CoreType -> string. Extract Inlined Constant coreTypeToString => "(outputableToString . coreViewDeep)".
 Variable setVarType       : CoreVar -> CoreType -> CoreVar. Extract Inlined Constant setVarType       => "Var.setVarType".

@@ -72,7 +72,7 @@ Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   | WENote  n e                          => CoreENote n  (weakExprToCoreExpr e )
   | WELam   (weakExprVar ev _  ) e       => CoreELam  ev (weakExprToCoreExpr e )
   | WETyLam (weakTypeVar tv _  ) e       => CoreELam  tv (weakExprToCoreExpr e )
-  | WECoLam (weakCoerVar cv _ _ _) e     => CoreELam  cv (weakExprToCoreExpr e )
+  | WECoLam (weakCoerVar cv   _ _) e     => CoreELam  cv (weakExprToCoreExpr e )
   | WECast  e co                         => CoreECast    (weakExprToCoreExpr e ) (weakCoercionToCoreCoercion co)
   | WEBrak  v (weakTypeVar ec _) e t     => fold_left CoreEApp
                                                    ((CoreEType (TyVarTy ec))::

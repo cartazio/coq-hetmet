@@ -69,9 +69,11 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                                 coreTypeToWeakType' t2 >>= fun t2' => 
                                   OK (WAppTy (WAppTy WFunTyCon t1') t2')
   | ForAllTy cv t            => match coreVarToWeakVar cv with
-                                  | WExprVar _  => Error "encountered expression variable in a type"
+                                  | WExprVar _  => Error "encountered expression variable in a type abstraction"
                                   | WTypeVar tv => coreTypeToWeakType' t >>= fun t' => OK (WForAllTy tv t')
-                                  | WCoerVar _  => Error "encountered coercion variable in a type"
+                                  | WCoerVar (weakCoerVar v t1' t2') => 
+                                        coreTypeToWeakType' t >>= fun t3' => 
+                                          OK (WCoFunTy t1' t2' t3')
                                 end
   | PredTy (ClassP  cl lct) => ((fix rec tl := match tl with 
                                                   | nil => OK nil
@@ -82,7 +84,8 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   | PredTy (EqPred _ _)   => Error "hit a bare EqPred"
   end.
 
-Fixpoint coreTypeToWeakType t := addErrorMessage "coreTypeToWeakType" (coreTypeToWeakType' (coreViewDeep t)).
+Definition coreTypeToWeakType t :=
+  addErrorMessage ("during coreTypeToWeakType on " +++ toString t +++ eol) (coreTypeToWeakType' (coreViewDeep t)).
 
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=

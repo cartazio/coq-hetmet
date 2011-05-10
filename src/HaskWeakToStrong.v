@@ -19,6 +19,7 @@ Require Import HaskWeakToCore.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskCoreVars.
+Require Import HaskCoreTypes.
 
 Open Scope string_scope.
 Definition TyVarResolver Γ   := forall wt:WeakTypeVar, ???(HaskTyVar Γ wt).
@@ -416,7 +417,7 @@ Definition castExpr (we:WeakExpr)(err_msg:string) {Γ} {Δ} {ξ} {τ} τ' (e:@Ex
   Defined.
 
 Definition coVarKind (wcv:WeakCoerVar) : Kind :=
-  match wcv with weakCoerVar _ κ _ _ => κ end.
+  match wcv with weakCoerVar _ t _ => (kindOfCoreType (weakTypeToCoreType t)) end.
   Coercion coVarKind : WeakCoerVar >-> Kind.
 
 Definition weakTypeToTypeOfKind : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)(κ:Kind), ???(HaskType Γ κ).
@@ -631,7 +632,7 @@ Definition weakExprToStrongExpr : forall
                                              | _                 => Error ("weakTypeToType: WECoApp body with type "+++toString te)
                                            end
 
-    | WECoLam cv e                      => let (_,_,t1,t2) := cv in
+    | WECoLam cv e                      => let (_,t1,t2) := cv in
                                            weakTypeOfWeakExpr e >>= fun te =>
                                              weakTypeToTypeOfKind φ te ★ >>= fun te' =>
                                                weakTypeToTypeOfKind φ t1 cv >>= fun t1' =>
