@@ -346,7 +346,8 @@ Section HaskFlattener.
      ND Rule [] [ Γ > Δ > Σ,,[@ga_mk Γ ec b c @@ lev] |- [@ga_mk Γ ec a c @@ lev] ].
      intros.
      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
-     eapply nd_comp; [ idtac | eapply nd_rule; apply (@RLet Γ Δ [@ga_mk _ ec b c @@lev] Σ (@ga_mk _ ec a c) (@ga_mk _ ec a b) lev) ].
+     eapply nd_comp; [ idtac
+       | eapply nd_rule; apply (@RLet Γ Δ [@ga_mk _ ec b c @@lev] Σ (@ga_mk _ ec a c) (@ga_mk _ ec a b) lev) ].
      eapply nd_comp; [ apply nd_llecnac | idtac ].
      apply nd_prod.
      apply X.
@@ -354,16 +355,31 @@ Section HaskFlattener.
      apply ga_comp.
      Defined.
 
+  Definition precompose Γ Δ ec : forall a x y z lev,
+    ND Rule
+      [ Γ > Δ > a                           |- [@ga_mk _ ec y z @@ lev] ]
+      [ Γ > Δ > a,,[@ga_mk _ ec x y @@ lev] |- [@ga_mk _ ec x z @@ lev] ].
+    intros.
+    eapply nd_comp.
+    apply nd_rlecnac.
+    eapply nd_comp.
+    eapply nd_prod.
+    apply nd_id.
+    eapply ga_comp.
+
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RExch ].
+
+    apply nd_rule.
+    apply RLet.
+    Defined.
+
   Definition precompose' : ∀ Γ Δ ec lev a b c Σ,
-     ND Rule [] [ Γ > Δ > Σ                        |- [@ga_mk Γ ec b c @@ lev] ] ->
+     ND Rule [] [ Γ > Δ > Σ                           |- [@ga_mk Γ ec b c @@ lev] ] ->
      ND Rule [] [ Γ > Δ > Σ,,[@ga_mk Γ ec a b @@ lev] |- [@ga_mk Γ ec a c @@ lev] ].
      intros.
-     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
-     eapply nd_comp; [ idtac | eapply nd_rule; apply (@RLet Γ Δ [@ga_mk _ ec a b @@lev] Σ (@ga_mk _ ec a c) (@ga_mk _ ec b c) lev) ].
-     eapply nd_comp; [ apply nd_llecnac | idtac ].
-     apply nd_prod.
+     eapply nd_comp.
      apply X.
-     apply ga_comp.
+     apply precompose.
      Defined.
 
   Definition postcompose : ∀ Γ Δ ec lev a b c,
@@ -697,7 +713,6 @@ Section HaskFlattener.
     right; auto.
     Defined.
 
-   
   Definition flatten_proof :
     forall  {h}{c},
       ND Rule h c ->
@@ -741,7 +756,7 @@ Section HaskFlattener.
       refine (ga_unkappa Γ Δ (v2t ec) nil (take_lev (ec::nil) succ) _
         (mapOptionTree (garrowfy_leveled_code_types) (drop_lev (ec::nil) succ)) ;; _ ).
       apply arrange_brak.
-      apply (Prelude_error "found Brak at depth >0 (a)").
+      apply (Prelude_error "found Brak at depth >0 indicating 3-level code; only two-level code is currently supported").
 
     destruct case_REsc.
       simpl.
@@ -773,7 +788,7 @@ Section HaskFlattener.
 
       (* environment has non-empty leaves *)
       apply (ga_kappa Γ Δ (v2t ec) nil (take_lev (ec::nil) succ) _ _).
-      apply (Prelude_error "found Esc at depth >0 (a)").
+      apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
       
     destruct case_RNote.
       simpl.
@@ -829,7 +844,7 @@ Section HaskFlattener.
           apply INil.
         apply nd_rule; rewrite globals_do_not_have_code_types.
           apply RGlobal.
-      apply (Prelude_error "found RGlobal at depth >0").
+      apply (Prelude_error "found RGlobal at depth >0; globals should never appear inside code brackets unless escaped").
 
     destruct case_RLam.
       Opaque drop_lev.
@@ -850,16 +865,13 @@ Section HaskFlattener.
       simpl.
       destruct lev as [|ec lev]; simpl; [ apply nd_rule; apply RCast; auto | idtac ].
       apply flatten_coercion; auto.
-      apply (Prelude_error "RCast at level >0").
+      apply (Prelude_error "RCast at level >0; casting inside of code brackets is currently not supported").
 
     destruct case_RJoin.
       simpl.
-      destruct (getjlev x); destruct (getjlev q).
-      apply nd_rule.
-      apply RJoin.
-      apply (Prelude_error "RJoin at depth >0").
-      apply (Prelude_error "RJoin at depth >0").
-      apply (Prelude_error "RJoin at depth >0").
+      destruct (getjlev x); destruct (getjlev q);
+        [ apply nd_rule; apply RJoin | idtac | idtac | idtac ];
+        apply (Prelude_error "RJoin at depth >0").
 
     destruct case_RApp.
       simpl.
@@ -879,71 +891,39 @@ Section HaskFlattener.
           replace (garrowfy_code_types  (tx ---> te)) with ((garrowfy_code_types  tx) ---> (garrowfy_code_types  te)).
           apply (Prelude_error "FIXME: ga_apply").
           reflexivity.
+
 (*
-  Notation "`  x" := (take_lev _ x) (at level 20).
+  Notation "`  x" := (take_lev _ x).
   Notation "`` x" := (mapOptionTree unlev x) (at level 20).
   Notation "``` x" := ((drop_lev _ x)) (at level 20).
   Notation "!<[]> x" := (garrowfy_code_types _ x) (at level 1).
-  Notation "!<[@]>" := (garrowfy_leveled_code_types _) (at level 1).
+  Notation "!<[@]> x" := (mapOptionTree garrowfy_leveled_code_types x) (at level 1).
 *)
+
     destruct case_RLet.
-      apply (Prelude_error "FIXME: RLet").
-(*
       simpl.
       destruct lev as [|ec lev]; simpl; [ apply nd_rule; apply RLet; auto | idtac ].
-      destruct (Peano_dec.eq_nat_dec (Datatypes.length lev) n); [ idtac | apply nd_rule; apply RLet; auto ]; simpl.
       repeat drop_simplify.
       repeat take_simplify.
-      rename σ₁ into a.
-      rename σ₂ into b.
-      rewrite mapOptionTree_distributes.
-      rewrite mapOptionTree_distributes.
-      set (mapOptionTree (garrowfy_leveled_code_types (S n)) (drop_lev (ec :: lev) Σ₁)) as A.
-      set (take_lev (ec :: lev) Σ₁) as A'.
-      set (mapOptionTree (garrowfy_leveled_code_types (S n)) (drop_lev (ec :: lev) Σ₂)) as B.
-      set (take_lev (ec :: lev) Σ₂) as B'.
       simpl.
 
       eapply nd_comp.
-      Focus 2.
-      eapply nd_rule.
-      eapply RLet.
-
-      apply nd_prod.
-
-      apply boost.
+      eapply nd_prod; [ idtac | apply nd_id ].
+      eapply boost.
       apply ga_second.
 
       eapply nd_comp.
-      Focus 2.
-      eapply boost.
-      apply ga_comp.
-
-      eapply nd_comp.
-      eapply nd_rule.
-      eapply RArrange.
-      eapply RCanR.
-
-      eapply nd_comp.
-      Focus 2.
-      eapply nd_rule.
-      eapply RArrange.
-      eapply RExch.
-      idtac.
-
-      eapply nd_comp.
-      apply nd_llecnac.
-      eapply nd_comp.
-      Focus 2.
-      eapply nd_rule.
-      apply RJoin.
-      apply nd_prod.
-
-      eapply nd_rule.
-      eapply RVar.
-
+      eapply nd_prod.
       apply nd_id.
-*)
+      eapply nd_comp.
+      eapply nd_rule.
+      eapply RArrange.
+      apply RCanR.
+      eapply precompose.
+
+      apply nd_rule.
+      apply RLet.
+
     destruct case_RVoid.
       simpl.
       apply nd_rule.
@@ -957,7 +937,7 @@ Section HaskFlattener.
       apply RAppT.
       apply Δ.
       apply Δ.
-      apply (Prelude_error "ga_apply").
+      apply (Prelude_error "found type application at level >0; this is not supported").
 
     destruct case_RAbsT.
       simpl. destruct lev; simpl.
@@ -985,7 +965,7 @@ Section HaskFlattener.
       apply nd_id.
       apply Δ.
       apply Δ.
-      apply (Prelude_error "AbsT at depth>0").
+      apply (Prelude_error "found type abstraction at level >0; this is not supported").
 
     destruct case_RAppCo.
       simpl. destruct lev; simpl.
@@ -995,22 +975,23 @@ Section HaskFlattener.
       apply RAppCo.
       apply flatten_coercion.
       apply γ.
-      apply (Prelude_error "AppCo at depth>0").
+      apply (Prelude_error "found coercion application at level >0; this is not supported").
 
     destruct case_RAbsCo.
       simpl. destruct lev; simpl.
       unfold garrowfy_code_types.
       simpl.
       apply (Prelude_error "AbsCo not supported (FIXME)").
-      apply (Prelude_error "AbsCo at depth>0").
+      apply (Prelude_error "found coercion abstraction at level >0; this is not supported").
 
     destruct case_RLetRec.
       rename t into lev.
+      simpl.
       apply (Prelude_error "LetRec not supported (FIXME)").
 
     destruct case_RCase.
       simpl.
-      apply (Prelude_error "Case not supported (FIXME)").
+      apply (Prelude_error "Case not supported (BIG FIXME)").
       Defined.
 
 
