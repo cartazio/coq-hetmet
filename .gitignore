@@ -3,3 +3,4 @@ examples/tutorial.tex
 examples/tutorial.pdf
 build/
 build/**
+examples/.build
