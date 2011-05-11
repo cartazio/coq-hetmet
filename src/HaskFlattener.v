@@ -94,85 +94,7 @@ Section HaskFlattener.
           [ clear eqd_dec1 | set (eqd_dec2 (refl_equal _)) as eqd_dec2'; inversion eqd_dec2' ]
   end.
 
-  Context (hetmet_flatten : WeakExprVar).
-  Context (hetmet_unflatten : WeakExprVar).
-  Context (hetmet_id      : WeakExprVar).
-  Context {unitTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★                                          }.
-  Context {prodTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
-  Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
-
-  Definition ga_mk_tree {Γ}(ec:HaskType Γ ECKind)(tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => reduceTree (unitTy TV (ec TV ite)) (prodTy TV (ec TV ite)) (mapOptionTree (fun x => x TV ite) tr).
-
-  Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ec ant TV ite) (ga_mk_tree ec suc TV ite).
-
-  Class garrow :=
-  { ga_id        : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a a @@ l] ]
-  ; ga_cancelr   : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec (a,,[]) a @@ l] ]
-  ; ga_cancell   : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec ([],,a) a @@ l] ]
-  ; ga_uncancelr : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a (a,,[]) @@ l] ]
-  ; ga_uncancell : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a ([],,a) @@ l] ]
-  ; ga_assoc     : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec ((a,,b),,c) (a,,(b,,c)) @@ l] ]
-  ; ga_unassoc   : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec (a,,(b,,c)) ((a,,b),,c) @@ l] ]
-  ; ga_swap      : ∀ Γ Δ ec l a b  , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec (a,,b) (b,,a) @@ l] ]
-  ; ga_drop      : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a [] @@ l] ]
-  ; ga_copy      : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec a (a,,a) @@ l] ]
-  ; ga_first     : ∀ Γ Δ ec l a b x, ND Rule [] [Γ > Δ >          [@ga_mk Γ ec a b @@ l] |- [@ga_mk Γ ec (a,,x) (b,,x) @@ l] ]
-  ; ga_second    : ∀ Γ Δ ec l a b x, ND Rule [] [Γ > Δ >          [@ga_mk Γ ec a b @@ l] |- [@ga_mk Γ ec (x,,a) (x,,b) @@ l] ]
-  ; ga_lit       : ∀ Γ Δ ec l lit  , ND Rule [] [Γ > Δ >                           [] |- [@ga_mk Γ ec [] [literalType lit] @@ l] ]
-  ; ga_curry     : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec (a,,[b]) [c] @@ l] |- [@ga_mk Γ ec a [b ---> c] @@ l] ]
-  ; ga_comp      : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec a b @@ l],,[@ga_mk Γ ec b c @@ l] |- [@ga_mk Γ ec a c @@ l] ] 
-  ; ga_apply     : ∀ Γ Δ ec l a a' b c, ND Rule []
-                                  [Γ > Δ > [@ga_mk Γ ec a [b ---> c] @@ l],,[@ga_mk Γ ec a' [b] @@ l] |- [@ga_mk Γ ec (a,,a') [c] @@ l] ]
-  ; ga_kappa     : ∀ Γ Δ ec l a b Σ, ND Rule
-  [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec [] b @@ l] ]
-  [Γ > Δ > Σ          |- [@ga_mk Γ ec a  b @@ l] ]
-  }.
-  Context `(gar:garrow).
-
-  Notation "a ~~~~> b" := (@ga_mk _ _ a b) (at level 20).
-
-  (*
-   *  The story:
-   *    - code types <[t]>@c                                                become garrows  c () t 
-   *    - free variables of type t at a level lev deeper than the succedent become garrows  c () t
-   *    - free variables at the level of the succedent become 
-   *)
-  Fixpoint garrowfy_raw_codetypes {TV}{κ}(exp: RawHaskType TV κ) : RawHaskType TV κ :=
-    match exp with
-    | TVar    _  x          => TVar x
-    | TAll     _ y          => TAll   _  (fun v => garrowfy_raw_codetypes (y v))
-    | TApp   _ _ x y        => TApp      (garrowfy_raw_codetypes x) (garrowfy_raw_codetypes y)
-    | TCon       tc         => TCon      tc
-    | TCoerc _ t1 t2 t      => TCoerc    (garrowfy_raw_codetypes t1) (garrowfy_raw_codetypes t2)
-                                         (garrowfy_raw_codetypes t)
-    | TArrow                => TArrow
-    | TCode      v e        => gaTy TV v (unitTy TV v) (garrowfy_raw_codetypes e)
-    | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (garrowfy_raw_codetypes_list _ lt)
-    end
-    with garrowfy_raw_codetypes_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=
-    match exp in @RawHaskTypeList _ LK return @RawHaskTypeList TV LK with
-    | TyFunApp_nil               => TyFunApp_nil
-    | TyFunApp_cons  κ kl t rest => TyFunApp_cons _ _ (garrowfy_raw_codetypes t) (garrowfy_raw_codetypes_list _ rest)
-    end.
-  Definition garrowfy_code_types {Γ}{κ}(ht:HaskType Γ κ) : HaskType Γ κ :=
-    fun TV ite =>
-      garrowfy_raw_codetypes (ht TV ite).
-
-  Definition v2t {Γ}(ec:HaskTyVar Γ ECKind) := fun TV ite => TVar (ec TV ite).
-
-  Fixpoint garrowfy_leveled_code_types' {Γ}(ht:HaskType Γ ★)(lev:HaskLevel Γ) : HaskType Γ ★ :=
-    match lev with
-      | nil      => garrowfy_code_types ht
-      | ec::lev' => @ga_mk _ (v2t ec) [] [garrowfy_leveled_code_types' ht lev']
-    end.
-
-  Definition garrowfy_leveled_code_types {Γ}(ht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
-    match ht with
-      htt @@ lev =>
-      garrowfy_leveled_code_types' htt lev @@ nil
-    end.
+  Definition v2t {Γ}(ec:HaskTyVar Γ ECKind) : HaskType Γ ECKind := fun TV ite => TVar (ec TV ite).
 
   Definition levelMatch {Γ}(lev:HaskLevel Γ) : LeveledHaskType Γ ★ -> bool :=
     fun t => match t with ttype@@tlev => if eqd_dec tlev lev then true else false end.
@@ -188,10 +110,10 @@ Section HaskFlattener.
   Definition mkTakeFlags {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : TreeFlags tt :=
     mkFlags (liftBoolFunc true (bnot ○ levelMatch lev)) tt.
 
-  Definition take_lev {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : Tree ??(HaskType Γ ★) :=
-    mapOptionTree (fun x => garrowfy_code_types (unlev x)) (dropT (mkTakeFlags lev tt)).
+  Definition take_lev {Γ}(lev:HaskLevel Γ)(tt:Tree ??(LeveledHaskType Γ ★)) : Tree ??(LeveledHaskType Γ ★) :=
+    dropT (mkTakeFlags lev tt).
 (*
-    mapOptionTree (fun x => garrowfy_code_types (unlev x))
+    mapOptionTree (fun x => flatten_type (unlev x))
     (maybeTree (takeT tt (mkFlags (
       fun t => match t with
                  | Some (ttype @@ tlev) => if eqd_dec tlev lev then true else false
@@ -229,7 +151,7 @@ Section HaskFlattener.
     auto.
     Qed.
 
-  Lemma take_lemma : forall Γ (lev:HaskLevel Γ) x, take_lev lev [x @@  lev] = [garrowfy_code_types x].
+  Lemma take_lemma : forall Γ (lev:HaskLevel Γ) x, take_lev lev [x @@  lev] = [x @@ lev].
     intros; simpl.
     Opaque eqd_dec.
     unfold take_lev.
@@ -262,32 +184,88 @@ Section HaskFlattener.
       change (@take_lev G N (T_Leaf (@None (LeveledHaskType G ★)))) with (T_Leaf (@None (LeveledHaskType G ★)))
     end.
 
+
+  (*******************************************************************************)
+
+
+  Context (hetmet_flatten : WeakExprVar).
+  Context (hetmet_unflatten : WeakExprVar).
+  Context (hetmet_id      : WeakExprVar).
+  Context {unitTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★                                          }.
+  Context {prodTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
+  Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
+
+  Definition ga_mk_tree {Γ}(ec:HaskType Γ ECKind)(tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
+    fun TV ite => reduceTree (unitTy TV (ec TV ite)) (prodTy TV (ec TV ite)) (mapOptionTree (fun x => x TV ite) tr).
+
+  Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
+    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ec ant TV ite) (ga_mk_tree ec suc TV ite).
+
+  (*
+   *  The story:
+   *    - code types <[t]>@c                                                become garrows  c () t 
+   *    - free variables of type t at a level lev deeper than the succedent become garrows  c () t
+   *    - free variables at the level of the succedent become 
+   *)
+  Fixpoint flatten_rawtype {TV}{κ}(exp: RawHaskType TV κ) : RawHaskType TV κ :=
+    match exp with
+    | TVar    _  x          => TVar x
+    | TAll     _ y          => TAll   _  (fun v => flatten_rawtype (y v))
+    | TApp   _ _ x y        => TApp      (flatten_rawtype x) (flatten_rawtype y)
+    | TCon       tc         => TCon      tc
+    | TCoerc _ t1 t2 t      => TCoerc    (flatten_rawtype t1) (flatten_rawtype t2) (flatten_rawtype t)
+    | TArrow                => TArrow
+    | TCode      v e        => gaTy TV v (unitTy TV v) (flatten_rawtype e)
+    | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (flatten_rawtype_list _ lt)
+    end
+    with flatten_rawtype_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=
+    match exp in @RawHaskTypeList _ LK return @RawHaskTypeList TV LK with
+    | TyFunApp_nil               => TyFunApp_nil
+    | TyFunApp_cons  κ kl t rest => TyFunApp_cons _ _ (flatten_rawtype t) (flatten_rawtype_list _ rest)
+    end.
+
+  Definition flatten_type {Γ}{κ}(ht:HaskType Γ κ) : HaskType Γ κ :=
+    fun TV ite =>
+      flatten_rawtype (ht TV ite).
+
+  Fixpoint flatten_leveled_type' {Γ}(ht:HaskType Γ ★)(lev:HaskLevel Γ) : HaskType Γ ★ :=
+    match lev with
+      | nil      => flatten_type ht
+      | ec::lev' => @ga_mk _ (v2t ec) [] [flatten_leveled_type' ht lev']
+    end.
+
+  Definition flatten_leveled_type {Γ}(ht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
+    match ht with
+      htt @@ lev =>
+      flatten_leveled_type' htt lev @@ nil
+    end.
+
   (* AXIOMS *)
 
-  Axiom literal_types_unchanged : forall Γ l, garrowfy_code_types (literalType l) = literalType(Γ:=Γ) l.
+  Axiom literal_types_unchanged : forall Γ l, flatten_type (literalType l) = literalType(Γ:=Γ) l.
 
   Axiom flatten_coercion : forall Γ Δ κ (σ τ:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ ∼∼∼ τ)),
-    HaskCoercion Γ Δ (garrowfy_code_types σ ∼∼∼ garrowfy_code_types τ).
+    HaskCoercion Γ Δ (flatten_type σ ∼∼∼ flatten_type τ).
 
-  Axiom garrowfy_commutes_with_substT :
+  Axiom flatten_commutes_with_substT :
     forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★) (τ:HaskType Γ κ),
-    garrowfy_code_types  (substT σ τ) = substT (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))
-      (garrowfy_code_types  τ).
+    flatten_type  (substT σ τ) = substT (fun TV ite v => flatten_rawtype  (σ TV ite v))
+      (flatten_type  τ).
 
-  Axiom garrowfy_commutes_with_HaskTAll :
+  Axiom flatten_commutes_with_HaskTAll :
     forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
-    garrowfy_code_types  (HaskTAll κ σ) = HaskTAll κ (fun TV ite v => garrowfy_raw_codetypes (σ TV ite v)).
+    flatten_type  (HaskTAll κ σ) = HaskTAll κ (fun TV ite v => flatten_rawtype (σ TV ite v)).
 
-  Axiom garrowfy_commutes_with_HaskTApp :
+  Axiom flatten_commutes_with_HaskTApp :
     forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
-    garrowfy_code_types  (HaskTApp (weakF σ) (FreshHaskTyVar κ)) =
-    HaskTApp (weakF (fun TV ite v => garrowfy_raw_codetypes  (σ TV ite v))) (FreshHaskTyVar κ).
+    flatten_type  (HaskTApp (weakF σ) (FreshHaskTyVar κ)) =
+    HaskTApp (weakF (fun TV ite v => flatten_rawtype  (σ TV ite v))) (FreshHaskTyVar κ).
 
-  Axiom garrowfy_commutes_with_weakLT : forall (Γ:TypeEnv) κ  t,
-    garrowfy_leveled_code_types  (weakLT(Γ:=Γ)(κ:=κ) t) = weakLT(Γ:=Γ)(κ:=κ) (garrowfy_leveled_code_types  t).
+  Axiom flatten_commutes_with_weakLT : forall (Γ:TypeEnv) κ  t,
+    flatten_leveled_type  (weakLT(Γ:=Γ)(κ:=κ) t) = weakLT(Γ:=Γ)(κ:=κ) (flatten_leveled_type  t).
 
   Axiom globals_do_not_have_code_types : forall (Γ:TypeEnv) (g:Global Γ) v,
-    garrowfy_code_types (g v) = g v.
+    flatten_type (g v) = g v.
 
   (* This tries to assign a single level to the entire succedent of a judgment.  If the succedent has types from different
    * levels (should not happen) it just picks one; if the succedent has no non-None leaves (also should not happen) it
@@ -306,24 +284,47 @@ Section HaskFlattener.
         end
     end.
 
-  Definition unlev' {Γ} (x:LeveledHaskType Γ ★) :=
-    garrowfy_code_types (unlev x).
-
   (* "n" is the maximum depth remaining AFTER flattening *)
   Definition flatten_judgment (j:Judg) :=
     match j as J return Judg with
       Γ > Δ > ant |- suc =>
         match getjlev suc with
-          | nil        => Γ > Δ > mapOptionTree garrowfy_leveled_code_types ant
-                               |- mapOptionTree garrowfy_leveled_code_types suc
+          | nil        => Γ > Δ > mapOptionTree flatten_leveled_type ant
+                               |- mapOptionTree flatten_leveled_type suc
 
-          | (ec::lev') => Γ > Δ > mapOptionTree garrowfy_leveled_code_types (drop_lev (ec::lev') ant)
+          | (ec::lev') => Γ > Δ > mapOptionTree flatten_leveled_type (drop_lev (ec::lev') ant)
                                |- [ga_mk (v2t ec)
-                                         (take_lev (ec::lev') ant)
-                                         (mapOptionTree unlev' suc)  (* we know the level of all of suc *)
-                                         @@ nil]
+                                         (mapOptionTree (flatten_type ○ unlev) (take_lev (ec::lev') ant))
+                                         (mapOptionTree (flatten_type ○ unlev)                      suc )
+                                         @@ nil]  (* we know the level of all of suc *)
         end
     end.
+
+  Class garrow :=
+  { ga_id        : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec a a @@ l] ]
+  ; ga_cancelr   : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec (a,,[]) a @@ l] ]
+  ; ga_cancell   : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec ([],,a) a @@ l] ]
+  ; ga_uncancelr : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec a (a,,[]) @@ l] ]
+  ; ga_uncancell : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec a ([],,a) @@ l] ]
+  ; ga_assoc     : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec ((a,,b),,c) (a,,(b,,c)) @@ l] ]
+  ; ga_unassoc   : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec (a,,(b,,c)) ((a,,b),,c) @@ l] ]
+  ; ga_swap      : ∀ Γ Δ ec l a b  , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec (a,,b) (b,,a) @@ l] ]
+  ; ga_drop      : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec a [] @@ l] ]
+  ; ga_copy      : ∀ Γ Δ ec l a    , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec a (a,,a) @@ l] ]
+  ; ga_first     : ∀ Γ Δ ec l a b x, ND Rule [] [Γ > Δ >      [@ga_mk Γ ec a b @@ l] |- [@ga_mk Γ ec (a,,x) (b,,x) @@ l] ]
+  ; ga_second    : ∀ Γ Δ ec l a b x, ND Rule [] [Γ > Δ >      [@ga_mk Γ ec a b @@ l] |- [@ga_mk Γ ec (x,,a) (x,,b) @@ l] ]
+  ; ga_lit       : ∀ Γ Δ ec l lit  , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec [] [literalType lit] @@ l] ]
+  ; ga_curry     : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec (a,,[b]) [c] @@ l] |- [@ga_mk Γ ec a [b ---> c] @@ l] ]
+  ; ga_comp      : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec a b @@ l],,[@ga_mk Γ ec b c @@ l] |- [@ga_mk Γ ec a c @@ l] ] 
+  ; ga_apply     : ∀ Γ Δ ec l a a' b c,
+                 ND Rule [] [Γ > Δ > [@ga_mk Γ ec a [b ---> c] @@ l],,[@ga_mk Γ ec a' [b] @@ l] |- [@ga_mk Γ ec (a,,a') [c] @@ l] ]
+  ; ga_kappa     : ∀ Γ Δ ec l a b Σ, ND Rule
+  [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec [] b @@ l] ]
+  [Γ > Δ > Σ          |- [@ga_mk Γ ec a  b @@ l] ]
+  }.
+  Context `(gar:garrow).
+
+  Notation "a ~~~~> b" := (@ga_mk _ _ a b) (at level 20).
 
   Definition boost : forall Γ Δ ant x y {lev},
     ND Rule []                          [ Γ > Δ > [x@@lev] |- [y@@lev] ] ->
@@ -455,16 +456,21 @@ Section HaskFlattener.
   Notation "`` x" := (mapOptionTree unlev x) (at level 20).
   Notation "``` x" := (drop_lev _ x) (at level 20).
   *)
-  Definition garrowfy_arrangement' :
+  Definition flatten_arrangement' :
     forall Γ (Δ:CoercionEnv Γ)
       (ec:HaskTyVar Γ ECKind) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2),
-      ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant2) (take_lev (ec :: lev) ant1) @@ nil] ].
+      ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec) (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant2))
+        (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant1)) @@ nil] ].
 
       intros Γ Δ ec lev.
-      refine (fix garrowfy ant1 ant2 (r:Arrange ant1 ant2):
-           ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant2) (take_lev (ec :: lev) ant1) @@ nil]] :=
+      refine (fix flatten ant1 ant2 (r:Arrange ant1 ant2):
+           ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec)
+             (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant2))
+             (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant1)) @@ nil]] :=
         match r as R in Arrange A B return
-          ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) B) (take_lev (ec :: lev) A) @@ nil]]
+          ND Rule [] [Γ > Δ > [] |- [@ga_mk _ (v2t ec)
+            (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) B))
+            (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) A)) @@ nil]]
           with
           | RCanL  a             => let case_RCanL := tt  in ga_uncancell _ _ _ _ _
           | RCanR  a             => let case_RCanR := tt  in ga_uncancelr _ _ _ _ _
@@ -475,15 +481,15 @@ Section HaskFlattener.
           | RExch  a b           => let case_RExch := tt  in ga_swap  _ _ _ _ _ _
           | RWeak  a             => let case_RWeak := tt  in ga_drop _ _ _ _ _ 
           | RCont  a             => let case_RCont := tt  in ga_copy  _ _ _ _ _ 
-          | RLeft  a b c r'      => let case_RLeft := tt  in garrowfy _ _ r' ;; boost _ _ _ _ _ (ga_second _ _ _ _ _ _ _)
-          | RRight a b c r'      => let case_RRight := tt in garrowfy _ _ r' ;; boost _ _ _ _ _ (ga_first  _ _ _ _ _ _ _)
-          | RComp  c b a r1 r2   => let case_RComp := tt  in (fun r1' r2' => _) (garrowfy _ _ r1) (garrowfy _ _ r2)
-        end); clear garrowfy; repeat take_simplify; repeat drop_simplify; intros.
+          | RLeft  a b c r'      => let case_RLeft := tt  in flatten _ _ r' ;; boost _ _ _ _ _ (ga_second _ _ _ _ _ _ _)
+          | RRight a b c r'      => let case_RRight := tt in flatten _ _ r' ;; boost _ _ _ _ _ (ga_first  _ _ _ _ _ _ _)
+          | RComp  c b a r1 r2   => let case_RComp := tt  in (fun r1' r2' => _) (flatten _ _ r1) (flatten _ _ r2)
+        end); clear flatten; repeat take_simplify; repeat drop_simplify; intros.
 
         destruct case_RComp.
-          set (take_lev (ec :: lev) a) as a' in *.
-          set (take_lev (ec :: lev) b) as b' in *.
-          set (take_lev (ec :: lev) c) as c' in *.
+          set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) a)) as a' in *.
+          set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) b)) as b' in *.
+          set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) c)) as c' in *.
           eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanL ].
           eapply nd_comp; [ idtac | eapply nd_rule; apply
              (@RLet Γ Δ [] [] (@ga_mk _ (v2t ec) a' c') (@ga_mk _ (v2t ec) a' b')) ].
@@ -500,22 +506,26 @@ Section HaskFlattener.
           apply ga_comp.
           Defined.
 
-  Definition garrowfy_arrangement :
+  Definition flatten_arrangement :
     forall Γ (Δ:CoercionEnv Γ) n
       (ec:HaskTyVar Γ ECKind) (lev:HaskLevel Γ) (ant1 ant2:Tree ??(LeveledHaskType Γ ★)) (r:Arrange ant1 ant2) succ,
       ND Rule
-      [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) (drop_lev n ant1)
-        |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant1) (mapOptionTree (unlev' ) succ) @@ nil]]
-      [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) (drop_lev n ant2)
-        |- [@ga_mk _ (v2t ec) (take_lev (ec :: lev) ant2) (mapOptionTree (unlev' ) succ) @@ nil]].
+      [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev n ant1)
+        |- [@ga_mk _ (v2t ec)
+          (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant1))
+          (mapOptionTree (flatten_type ○ unlev) succ) @@ nil]]
+      [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev n ant2)
+        |- [@ga_mk _ (v2t ec)
+          (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) ant2))
+          (mapOptionTree (flatten_type ○ unlev) succ) @@ nil]].
       intros.
-      refine ( _ ;; (boost _ _ _ _ _ (postcompose _ _ _ _ _ _ _ (garrowfy_arrangement' Γ Δ ec lev ant1 ant2 r)))).
+      refine ( _ ;; (boost _ _ _ _ _ (postcompose _ _ _ _ _ _ _ (flatten_arrangement' Γ Δ ec lev ant1 ant2 r)))).
       apply nd_rule.
       apply RArrange.
-      refine ((fix garrowfy ant1 ant2 (r:Arrange ant1 ant2) :=
+      refine ((fix flatten ant1 ant2 (r:Arrange ant1 ant2) :=
         match r as R in Arrange A B return
-          Arrange (mapOptionTree (garrowfy_leveled_code_types ) (drop_lev _ A))
-          (mapOptionTree (garrowfy_leveled_code_types ) (drop_lev _ B)) with
+          Arrange (mapOptionTree (flatten_leveled_type ) (drop_lev _ A))
+          (mapOptionTree (flatten_leveled_type ) (drop_lev _ B)) with
           | RCanL  a             => let case_RCanL := tt  in RCanL _
           | RCanR  a             => let case_RCanR := tt  in RCanR _
           | RuCanL a             => let case_RuCanL := tt in RuCanL _
@@ -525,13 +535,13 @@ Section HaskFlattener.
           | RExch  a b           => let case_RExch := tt  in RExch _ _
           | RWeak  a             => let case_RWeak := tt  in RWeak _
           | RCont  a             => let case_RCont := tt  in RCont _
-          | RLeft  a b c r'      => let case_RLeft := tt  in RLeft  _ (garrowfy _ _ r')
-          | RRight a b c r'      => let case_RRight := tt in RRight _ (garrowfy _ _ r')
-          | RComp  a b c r1 r2   => let case_RComp := tt  in RComp    (garrowfy _ _ r1) (garrowfy _ _ r2)
-        end) ant1 ant2 r); clear garrowfy; repeat take_simplify; repeat drop_simplify; intros.
+          | RLeft  a b c r'      => let case_RLeft := tt  in RLeft  _ (flatten _ _ r')
+          | RRight a b c r'      => let case_RRight := tt in RRight _ (flatten _ _ r')
+          | RComp  a b c r1 r2   => let case_RComp := tt  in RComp    (flatten _ _ r1) (flatten _ _ r2)
+        end) ant1 ant2 r); clear flatten; repeat take_simplify; repeat drop_simplify; intros.
         Defined.
 
-  Definition flatten_arrangement :
+  Definition flatten_arrangement'' :
     forall  Γ Δ ant1 ant2 succ (r:Arrange ant1 ant2),
       ND Rule (mapOptionTree (flatten_judgment ) [Γ > Δ > ant1 |- succ])
       (mapOptionTree (flatten_judgment ) [Γ > Δ > ant2 |- succ]).
@@ -558,7 +568,7 @@ Section HaskFlattener.
         apply RRight; auto.
         eapply RComp; [ apply IHr1 | apply IHr2 ].
 
-      apply garrowfy_arrangement.
+      apply flatten_arrangement.
         apply r.
         Defined.
 
@@ -589,13 +599,15 @@ Section HaskFlattener.
 
   Definition arrange_brak : forall Γ Δ ec succ t,
    ND Rule
-     [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) (drop_lev (ec :: nil) succ),,
-      [(@ga_mk _ (v2t ec) [] (take_lev (ec :: nil) succ)) @@  nil] |- [(@ga_mk _ (v2t ec) [] [garrowfy_code_types  t]) @@  nil]]
-     [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) succ |- [(@ga_mk _ (v2t ec) [] [garrowfy_code_types  t]) @@  nil]].
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
+      [(@ga_mk _ (v2t ec) []
+        (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ)))
+      @@  nil] |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]]
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]].
     intros.
     unfold drop_lev.
     set (@arrange' _ succ (levelMatch (ec::nil))) as q.
-    set (arrangeMap _ _ garrowfy_leveled_code_types q) as y.
+    set (arrangeMap _ _ flatten_leveled_type q) as y.
     eapply nd_comp.
     Focus 2.
     eapply nd_rule.
@@ -639,13 +651,15 @@ Section HaskFlattener.
 
   Definition arrange_esc : forall Γ Δ ec succ t,
    ND Rule
-     [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) succ |- [(@ga_mk _ (v2t ec) [] [garrowfy_code_types  t]) @@  nil]]
-     [Γ > Δ > mapOptionTree (garrowfy_leveled_code_types ) (drop_lev (ec :: nil) succ),,
-      [(@ga_mk _ (v2t ec) [] (take_lev (ec :: nil) succ)) @@  nil] |- [(@ga_mk _ (v2t ec) [] [garrowfy_code_types  t]) @@  nil]].
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]]
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
+      [(@ga_mk _ (v2t ec) []
+        (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil]
+      |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]].
     intros.
     unfold drop_lev.
     set (@arrange _ succ (levelMatch (ec::nil))) as q.
-    set (arrangeMap _ _ garrowfy_leveled_code_types q) as y.
+    set (arrangeMap _ _ flatten_leveled_type q) as y.
     eapply nd_comp.
     eapply nd_rule.
     eapply RArrange.
@@ -663,7 +677,7 @@ Section HaskFlattener.
       simpl.
       destruct (General.list_eq_dec h0 (ec :: nil)).
         simpl.
-        unfold garrowfy_leveled_code_types'.
+        unfold flatten_leveled_type'.
         rewrite e.
         apply nd_id.
         simpl.
@@ -746,15 +760,15 @@ Section HaskFlattener.
       end); clear X h c.
 
     destruct case_RArrange.
-      apply (flatten_arrangement  Γ Δ a b x d).
+      apply (flatten_arrangement''  Γ Δ a b x d).
 
     destruct case_RBrak.
       simpl.
       destruct lev.
-      change ([garrowfy_code_types  (<[ ec |- t ]>) @@  nil])
-        with ([ga_mk (v2t ec) [] [garrowfy_code_types  t] @@  nil]).
-      refine (ga_unkappa Γ Δ (v2t ec) nil (take_lev (ec::nil) succ) _
-        (mapOptionTree (garrowfy_leveled_code_types) (drop_lev (ec::nil) succ)) ;; _ ).
+      change ([flatten_type  (<[ ec |- t ]>) @@  nil])
+        with ([ga_mk (v2t ec) [] [flatten_type  t] @@  nil]).
+      refine (ga_unkappa Γ Δ (v2t ec) nil (mapOptionTree (flatten_type ○ unlev) (take_lev (ec::nil) succ)) _
+        (mapOptionTree (flatten_leveled_type) (drop_lev (ec::nil) succ)) ;; _ ).
       apply arrange_brak.
       apply (Prelude_error "found Brak at depth >0 indicating 3-level code; only two-level code is currently supported").
 
@@ -762,8 +776,8 @@ Section HaskFlattener.
       simpl.
       destruct lev.
       simpl.
-      change ([garrowfy_code_types (<[ ec |- t ]>) @@  nil])
-        with ([ga_mk (v2t ec) [] [garrowfy_code_types  t] @@  nil]).
+      change ([flatten_type (<[ ec |- t ]>) @@  nil])
+        with ([ga_mk (v2t ec) [] [flatten_type  t] @@  nil]).
       eapply nd_comp; [ apply arrange_esc | idtac ].
       set (decide_tree_empty (take_lev (ec :: nil) succ)) as q'.
       destruct q'.
@@ -778,16 +792,16 @@ Section HaskFlattener.
       induction x.
       apply ga_id.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+      simpl.
       apply ga_join.
       apply IHx1.
       apply IHx2.
-      unfold unlev'.
       simpl.
       apply postcompose.
       apply ga_drop.
 
       (* environment has non-empty leaves *)
-      apply (ga_kappa Γ Δ (v2t ec) nil (take_lev (ec::nil) succ) _ _).
+      apply (ga_kappa Γ Δ (v2t ec) nil (mapOptionTree (flatten_type ○ unlev) (take_lev (ec::nil) succ)) _ _).
       apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
       
     destruct case_RNote.
@@ -803,7 +817,6 @@ Section HaskFlattener.
           apply nd_rule; apply RLit.
         unfold take_lev; simpl.
         unfold drop_lev; simpl.
-        unfold unlev'.
         simpl.
         rewrite literal_types_unchanged.
         apply ga_lit.
@@ -818,7 +831,6 @@ Section HaskFlattener.
       destruct lev.
       apply nd_rule. apply RVar.
       repeat drop_simplify.      
-      unfold unlev'.
       repeat take_simplify.
       simpl.
       apply ga_id.      
@@ -829,14 +841,14 @@ Section HaskFlattener.
       rename σ into l.
       destruct l as [|ec lev]; simpl. 
         destruct (eqd_dec (g:CoreVar) (hetmet_flatten:CoreVar)).
-          set (garrowfy_code_types (g wev)) as t.
+          set (flatten_type (g wev)) as t.
           set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
           simpl in q.
           apply nd_rule.
           apply q.
           apply INil.
         destruct (eqd_dec (g:CoreVar) (hetmet_unflatten:CoreVar)).
-          set (garrowfy_code_types (g wev)) as t.
+          set (flatten_type (g wev)) as t.
           set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
           simpl in q.
           apply nd_rule.
@@ -859,6 +871,7 @@ Section HaskFlattener.
         simpl.
         apply RCanR.
       apply boost.
+      simpl.
       apply ga_curry.
 
     destruct case_RCast.
@@ -877,18 +890,18 @@ Section HaskFlattener.
       simpl.
 
       destruct lev as [|ec lev]. simpl. apply nd_rule.
-        replace (garrowfy_code_types  (tx ---> te)) with ((garrowfy_code_types  tx) ---> (garrowfy_code_types  te)).
+        replace (flatten_type  (tx ---> te)) with ((flatten_type  tx) ---> (flatten_type  te)).
         apply RApp.
         reflexivity.
 
         repeat drop_simplify.
           repeat take_simplify.
           rewrite mapOptionTree_distributes.
-          set (mapOptionTree (garrowfy_leveled_code_types ) (drop_lev (ec :: lev) Σ₁)) as Σ₁'.
-          set (mapOptionTree (garrowfy_leveled_code_types ) (drop_lev (ec :: lev) Σ₂)) as Σ₂'.
+          set (mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: lev) Σ₁)) as Σ₁'.
+          set (mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: lev) Σ₂)) as Σ₂'.
           set (take_lev (ec :: lev) Σ₁) as Σ₁''.
           set (take_lev (ec :: lev) Σ₂) as Σ₂''.
-          replace (garrowfy_code_types  (tx ---> te)) with ((garrowfy_code_types  tx) ---> (garrowfy_code_types  te)).
+          replace (flatten_type  (tx ---> te)) with ((flatten_type  tx) ---> (flatten_type  te)).
           apply (Prelude_error "FIXME: ga_apply").
           reflexivity.
 
@@ -896,8 +909,8 @@ Section HaskFlattener.
   Notation "`  x" := (take_lev _ x).
   Notation "`` x" := (mapOptionTree unlev x) (at level 20).
   Notation "``` x" := ((drop_lev _ x)) (at level 20).
-  Notation "!<[]> x" := (garrowfy_code_types _ x) (at level 1).
-  Notation "!<[@]> x" := (mapOptionTree garrowfy_leveled_code_types x) (at level 1).
+  Notation "!<[]> x" := (flatten_type _ x) (at level 1).
+  Notation "!<[@]> x" := (mapOptionTree flatten_leveled_type x) (at level 1).
 *)
 
     destruct case_RLet.
@@ -931,8 +944,8 @@ Section HaskFlattener.
         
     destruct case_RAppT.
       simpl. destruct lev; simpl.
-      rewrite garrowfy_commutes_with_HaskTAll.
-      rewrite garrowfy_commutes_with_substT.
+      rewrite flatten_commutes_with_HaskTAll.
+      rewrite flatten_commutes_with_substT.
       apply nd_rule.
       apply RAppT.
       apply Δ.
@@ -941,12 +954,12 @@ Section HaskFlattener.
 
     destruct case_RAbsT.
       simpl. destruct lev; simpl.
-      rewrite garrowfy_commutes_with_HaskTAll.
-      rewrite garrowfy_commutes_with_HaskTApp.
+      rewrite flatten_commutes_with_HaskTAll.
+      rewrite flatten_commutes_with_HaskTApp.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RAbsT ].
       simpl.
-      set (mapOptionTree (garrowfy_leveled_code_types ) (mapOptionTree (weakLT(κ:=κ)) Σ)) as a.
-      set (mapOptionTree (weakLT(κ:=κ)) (mapOptionTree (garrowfy_leveled_code_types ) Σ)) as q'.
+      set (mapOptionTree (flatten_leveled_type ) (mapOptionTree (weakLT(κ:=κ)) Σ)) as a.
+      set (mapOptionTree (weakLT(κ:=κ)) (mapOptionTree (flatten_leveled_type ) Σ)) as q'.
       assert (a=q').
         unfold a.
         unfold q'.
@@ -954,7 +967,7 @@ Section HaskFlattener.
         induction Σ.
           destruct a.
           simpl.
-          rewrite garrowfy_commutes_with_weakLT.
+          rewrite flatten_commutes_with_weakLT.
           reflexivity.
           reflexivity.
           simpl.
@@ -969,7 +982,7 @@ Section HaskFlattener.
 
     destruct case_RAppCo.
       simpl. destruct lev; simpl.
-      unfold garrowfy_code_types.
+      unfold flatten_type.
       simpl.
       apply nd_rule.
       apply RAppCo.
@@ -979,7 +992,7 @@ Section HaskFlattener.
 
     destruct case_RAbsCo.
       simpl. destruct lev; simpl.
-      unfold garrowfy_code_types.
+      unfold flatten_type.
       simpl.
       apply (Prelude_error "AbsCo not supported (FIXME)").
       apply (Prelude_error "found coercion abstraction at level >0; this is not supported").
