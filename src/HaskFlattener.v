@@ -204,8 +204,11 @@ Section HaskFlattener.
   Definition ga_mk_tree {Γ}(ec:HaskType Γ ECKind)(tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
     fun TV ite => ga_mk_tree' (ec TV ite) (mapOptionTree (fun x => x TV ite) tr).
 
+  Definition ga_mk_raw {TV}(ec:RawHaskType TV ECKind )(ant suc:Tree ??(RawHaskType TV ★)) : RawHaskType TV ★ :=
+    gaTy TV ec (ga_mk_tree' ec ant) (ga_mk_tree' ec suc).
+
   Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ec ant TV ite) (ga_mk_tree ec suc TV ite).
+    fun TV ite => ga_mk_raw (ec TV ite) (mapOptionTree (fun x => x TV ite) ant) (mapOptionTree (fun x => x TV ite) suc).
 
   (*
    *  The story:
@@ -221,11 +224,7 @@ Section HaskFlattener.
     | TCon       tc         => TCon      tc
     | TCoerc _ t1 t2 t      => TCoerc    (flatten_rawtype t1) (flatten_rawtype t2) (flatten_rawtype t)
     | TArrow                => TArrow
-    | TCode     ec e        => let     e'   := flatten_rawtype e
-                               (* in let args := take_arg_types e'
-                                in let t    := drop_arg_types e'
-                                in     gaTy TV ec (ga_mk_tree' ec (unleaves args)) t*)
-                                in gaTy TV ec (unitTy TV ec) e'
+    | TCode     ec e        => ga_mk_raw ec [] [flatten_rawtype e]
     | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (flatten_rawtype_list _ lt)
     end
     with flatten_rawtype_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=
