@@ -236,12 +236,13 @@ Section core2proof.
     ND Rule 
        [ Γ > Δ > Σ             |- [a ---> s @@ lev ] ]
        [ Γ > Δ > Σ,,[a @@ lev] |-       [ s @@ lev ] ].
-    eapply nd_comp; [ idtac | eapply nd_rule; apply (@RApp Γ Δ Σ [a@@lev] a s lev) ].
-    eapply nd_comp; [ apply nd_rlecnac | idtac ].
-    apply nd_prod.    
-    apply nd_id.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; apply (@RApp Γ Δ [a@@lev] Σ a s lev) ].
+    eapply nd_comp; [ apply nd_llecnac | idtac ].
+    apply nd_prod.
     apply nd_rule.
     apply RVar.
+    apply nd_id.
     Defined.
 
   Definition fToC1 {Γ}{Δ}{a}{s}{lev} :

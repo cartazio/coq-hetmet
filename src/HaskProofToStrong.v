@@ -632,7 +632,7 @@ Section HaskProofToStrong.
     apply ileaf in q1'.
     apply ileaf in q2'.
     simpl in *.
-    apply (EApp _ _ _ _ _ _ q1' q2').
+    apply (EApp _ _ _ _ _ _ q2' q1').
 
   destruct case_RLet.
     apply ILeaf.

@@ -522,7 +522,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | EGlobal  Γ Δ ξ _ _ _                          => []
   | EVar     Γ Δ ξ ev                             => [ev]
   | ELit     Γ Δ ξ lit lev                        => []
-  | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e1),,(expr2antecedent e2)
+  | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e2),,(expr2antecedent e1)
   | ELam     Γ Δ ξ t1 t2 lev v    e               => stripOutVars (v::nil) (expr2antecedent e)
   | ELet     Γ Δ ξ tv t  lev v ev ebody           => ((stripOutVars (v::nil) (expr2antecedent ebody)),,(expr2antecedent ev))
   | EEsc     Γ Δ ξ ec t lev e                     => expr2antecedent e
@@ -997,11 +997,11 @@ Definition expr2proof  :
 
     destruct case_EApp.
       unfold mapOptionTree; simpl; fold (mapOptionTree ξ).
-      eapply nd_comp; [ idtac | eapply nd_rule; apply RApp ].
+      eapply nd_comp; [ idtac
+        | eapply nd_rule;
+          apply (@RApp _ _ _ _ t2 t1) ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod; auto.
-      apply e1'.
-      apply e2'.
 
     destruct case_ELam; intros.
       unfold mapOptionTree; simpl; fold (mapOptionTree ξ).
