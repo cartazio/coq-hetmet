@@ -210,6 +210,51 @@ Structure Global Γ :=
 Coercion glob_tf : Global >-> Funclass.
 Coercion glob_wv : Global >-> WeakExprVar.
 
+(* From (t1->(t2->(t3-> ... t))), return t1::t2::t3::...nil *)
+(* this is a billion times uglier than it needs to be as a result of how primitive Coq's termiation checker is *)
+Definition take_arg_types : forall {TV}{κ}(exp: RawHaskType TV κ), list (RawHaskType TV κ).
+refine (fix take_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : list (RawHaskType TV κ) :=
+  match exp as E in RawHaskType _ K return κ=K -> list (RawHaskType _ K) with
+  | TApp   κ₁ κ₂ x y      =>
+    fun eqpf =>
+      ((fun q:list (RawHaskType TV κ₂) =>
+        match x as X in RawHaskType _ KX return κ₂ ⇛ κ₁ = KX -> list (RawHaskType _ _) with
+          | TApp   κ₁' κ₂' x' y'      =>
+            fun eqpf' => match x' in RawHaskType _ KX' return (κ₂' ⇛ κ₁') = KX' -> _ with
+                           | TArrow => fun eqpf'' => _
+                           | _      => fun _      => nil
+                         end (refl_equal _)
+          | _                         => fun _ => nil
+        end (refl_equal _))
+      (take_arg_types TV _ y))
+    | _                     => fun _ => nil
+  end (refl_equal _)).
+  subst; inversion eqpf''; subst.
+  apply (y'::q).
+  Defined.
+
+(* From (t1->(t2->(t3-> ... t))), return t *)
+(* this is a billion times uglier than it needs to be as a result of how primitive Coq's termiation checker is *)
+Definition drop_arg_types : forall {TV}{κ}(exp: RawHaskType TV κ), RawHaskType TV κ.
+refine (fix drop_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : RawHaskType TV κ :=
+  match exp as E in RawHaskType _ K return κ=K -> RawHaskType _ K with
+  | TApp   κ₁ κ₂ x y      =>
+    fun eqpf =>
+      ((fun q:RawHaskType TV κ₂ =>
+        match x as X in RawHaskType _ KX return κ₂ ⇛ κ₁ = KX -> RawHaskType _ _ with
+          | TApp   κ₁' κ₂' x' y'      =>
+            fun eqpf' => match x' in RawHaskType _ KX' return (κ₂' ⇛ κ₁') = KX' -> _ with
+                           | TArrow => fun eqpf'' => _
+                           | z      => fun _      => TApp x y
+                         end (refl_equal _)
+          | z                         => fun _ => TApp x y
+        end (refl_equal _))
+      (drop_arg_types TV _ y))
+    | z                     => fun _ => z
+  end (refl_equal _)).
+  subst; inversion eqpf''; subst.
+  apply q.
+  Defined.
 
 
 
