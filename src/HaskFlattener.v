@@ -204,8 +204,10 @@ Section HaskFlattener.
   Definition ga_mk_tree {Γ}(ec:HaskType Γ ECKind)(tr:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
     fun TV ite => ga_mk_tree' (ec TV ite) (mapOptionTree (fun x => x TV ite) tr).
 
-  Definition ga_mk_raw {TV}(ec:RawHaskType TV ECKind )(ant suc:Tree ??(RawHaskType TV ★)) : RawHaskType TV ★ :=
-    gaTy TV ec (ga_mk_tree' ec ant) (ga_mk_tree' ec suc).
+  Definition ga_mk_raw {TV}(ec:RawHaskType TV ECKind)(ant suc:Tree ??(RawHaskType TV ★)) : RawHaskType TV ★ :=
+    gaTy TV ec
+    (ga_mk_tree' ec (ant,,(mapOptionTreeAndFlatten (unleaves ○ take_arg_types) suc)))
+    (ga_mk_tree' ec (      mapOptionTree                       drop_arg_types  suc) ).
 
   Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
     fun TV ite => ga_mk_raw (ec TV ite) (mapOptionTree (fun x => x TV ite) ant) (mapOptionTree (fun x => x TV ite) suc).
