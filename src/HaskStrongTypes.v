@@ -212,49 +212,65 @@ Coercion glob_wv : Global >-> WeakExprVar.
 
 (* From (t1->(t2->(t3-> ... t))), return t1::t2::t3::...nil *)
 (* this is a billion times uglier than it needs to be as a result of how primitive Coq's termiation checker is *)
-Definition take_arg_types : forall {TV}{κ}(exp: RawHaskType TV κ), list (RawHaskType TV κ).
-refine (fix take_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : list (RawHaskType TV κ) :=
-  match exp as E in RawHaskType _ K return κ=K -> list (RawHaskType _ K) with
-  | TApp   κ₁ κ₂ x y      =>
-    fun eqpf =>
-      ((fun q:list (RawHaskType TV κ₂) =>
-        match x as X in RawHaskType _ KX return κ₂ ⇛ κ₁ = KX -> list (RawHaskType _ _) with
-          | TApp   κ₁' κ₂' x' y'      =>
-            fun eqpf' => match x' in RawHaskType _ KX' return (κ₂' ⇛ κ₁') = KX' -> _ with
-                           | TArrow => fun eqpf'' => _
-                           | _      => fun _      => nil
-                         end (refl_equal _)
-          | _                         => fun _ => nil
-        end (refl_equal _))
-      (take_arg_types TV _ y))
-    | _                     => fun _ => nil
-  end (refl_equal _)).
-  subst; inversion eqpf''; subst.
-  apply (y'::q).
-  Defined.
+Fixpoint take_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : list (RawHaskType TV κ) :=
+  match exp as E in RawHaskType _ K return list (RawHaskType _ K) with
+    | TApp   κ₁ κ₂ x y      =>
+      (match κ₁ as K1 return RawHaskType TV (κ₂ ⇛ K1) -> list (RawHaskType TV κ₂) -> list (RawHaskType _ K1) with
+         | KindStar =>
+           match κ₂ as K2 return RawHaskType TV (K2 ⇛ KindStar) -> list (RawHaskType TV K2) -> list (RawHaskType _ KindStar) with
+             | KindStar => fun x' =>
+               match x' return list (RawHaskType TV KindStar) -> list (RawHaskType _ KindStar) with
+                 | TApp κ₁'' κ₂'' w'' x'' =>
+                   match κ₂'' as K2'' return RawHaskType TV K2'' -> list (RawHaskType TV KindStar) ->
+                                                                    list (RawHaskType _ KindStar) with
+                     | KindStar     =>
+                       match w'' with
+                         | TArrow => fun a b => a::b
+                         | _      => fun _ _ => nil
+                       end
+                     | _ => fun _ _ => nil
+                   end x''
+                 | _                      => fun _  => nil
+               end
+             | _        => fun _ _ => nil
+           end
+         | _ => fun _ _ => nil
+       end) x (take_arg_types y)
+    | _                     => nil
+  end.
 
 (* From (t1->(t2->(t3-> ... t))), return t *)
 (* this is a billion times uglier than it needs to be as a result of how primitive Coq's termiation checker is *)
-Definition drop_arg_types : forall {TV}{κ}(exp: RawHaskType TV κ), RawHaskType TV κ.
-refine (fix drop_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : RawHaskType TV κ :=
-  match exp as E in RawHaskType _ K return κ=K -> RawHaskType _ K with
-  | TApp   κ₁ κ₂ x y      =>
-    fun eqpf =>
-      ((fun q:RawHaskType TV κ₂ =>
-        match x as X in RawHaskType _ KX return κ₂ ⇛ κ₁ = KX -> RawHaskType _ _ with
-          | TApp   κ₁' κ₂' x' y'      =>
-            fun eqpf' => match x' in RawHaskType _ KX' return (κ₂' ⇛ κ₁') = KX' -> _ with
-                           | TArrow => fun eqpf'' => _
-                           | z      => fun _      => TApp x y
-                         end (refl_equal _)
-          | z                         => fun _ => TApp x y
-        end (refl_equal _))
-      (drop_arg_types TV _ y))
-    | z                     => fun _ => z
-  end (refl_equal _)).
-  subst; inversion eqpf''; subst.
-  apply q.
-  Defined.
+Fixpoint drop_arg_types {TV}{κ}(exp: RawHaskType TV κ) : RawHaskType TV κ :=
+  match exp as E in RawHaskType _ K return RawHaskType _ K with
+    | TApp   κ₁ κ₂ x y      =>
+      let q :=
+      (match κ₁ as K1 return RawHaskType TV (κ₂ ⇛ K1) -> (RawHaskType TV κ₂) -> ??(RawHaskType _ K1) with
+         | KindStar =>
+           match κ₂ as K2 return RawHaskType TV (K2 ⇛ KindStar) -> (RawHaskType TV K2) -> ??(RawHaskType _ KindStar) with
+             | KindStar => fun x' =>
+               match x' return  (RawHaskType TV KindStar) -> ??(RawHaskType _ KindStar) with
+                 | TApp κ₁'' κ₂'' w'' x'' =>
+                   match κ₂'' as K2'' return RawHaskType TV K2'' ->  (RawHaskType TV KindStar) -> ??(RawHaskType _ KindStar) with
+                     | KindStar     =>
+                       match w'' with
+                         | TArrow => fun _ b => Some b
+                         | _      => fun _ b => None
+                       end
+                     | _ => fun _ b => None
+                   end x''
+                 | _       => fun _ => None
+               end
+             | _        => fun _ _ => None
+           end
+         | _ => fun _ _ => None
+       end) x (drop_arg_types y)
+      in match q with
+           | None   => TApp x y
+           | Some y => y
+         end
+    | b                     => b
+  end.
 
 
 
