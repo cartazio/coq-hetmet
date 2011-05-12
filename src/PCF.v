@@ -61,9 +61,9 @@ Section PCF.
   Context {ndr_systemfc:@ND_Relation _ Rule}.
   Context Γ (Δ:CoercionEnv Γ).
 
-  Definition PCFJudg (ec:HaskTyVar Γ ★) :=
+  Definition PCFJudg (ec:HaskTyVar Γ ECKind) :=
     @prod (Tree ??(HaskType Γ ★)) (Tree ??(HaskType Γ ★)).
-  Definition pcfjudg (ec:HaskTyVar Γ ★) :=
+  Definition pcfjudg (ec:HaskTyVar Γ ECKind) :=
     @pair (Tree ??(HaskType Γ ★)) (Tree ??(HaskType Γ ★)).
 
   (* given an PCFJudg at depth (ec::depth) we can turn it into an PCFJudg
@@ -74,7 +74,7 @@ Section PCF.
       (Σ,τ) => Γ > Δ > (Σ@@@(ec::nil)) |- (mapOptionTree (fun t => HaskBrak ec t) τ @@@ nil)
       end.
 
-  Definition pcf_vars {Γ}(ec:HaskTyVar Γ ★)(t:Tree ??(LeveledHaskType Γ ★)) : Tree ??(HaskType Γ ★)
+  Definition pcf_vars {Γ}(ec:HaskTyVar Γ ECKind)(t:Tree ??(LeveledHaskType Γ ★)) : Tree ??(HaskType Γ ★)
     := mapOptionTreeAndFlatten (fun lt =>
       match lt with t @@ l => match l with
                                 | ec'::nil => if eqd_dec ec ec' then [t] else []
@@ -97,7 +97,7 @@ Section PCF.
   (* Rules allowed in PCF; i.e. rules we know how to turn into GArrows     *)
   (* Rule_PCF consists of the rules allowed in flat PCF: everything except *)
   (* AppT, AbsT, AppC, AbsC, Cast, Global, and some Case statements        *)
-  Inductive Rule_PCF (ec:HaskTyVar Γ ★)
+  Inductive Rule_PCF (ec:HaskTyVar Γ ECKind)
     : forall (h c:Tree ??(PCFJudg ec)), Rule (mapOptionTree (pcfjudg2judg ec) h) (mapOptionTree (pcfjudg2judg ec) c) -> Type :=
   | PCF_RArrange    : ∀ x y t     a,  Rule_PCF ec [(_, _)] [(_, _)] (RArrange Γ Δ (x@@@(ec::nil)) (y@@@(ec::nil)) (t@@@(ec::nil)) a)
   | PCF_RLit        : ∀ lit        ,  Rule_PCF ec [           ] [ ([],[_]) ] (RLit   Γ Δ  lit (ec::nil))
