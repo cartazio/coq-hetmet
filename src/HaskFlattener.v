@@ -30,6 +30,8 @@ Require Import HaskStrongToProof.
 Require Import HaskProofToStrong.
 Require Import HaskWeakToStrong.
 
+Require Import HaskSkolemizer.
+
 Open Scope nd_scope.
 Set Printing Width 130.
 
@@ -165,10 +167,39 @@ Section HaskFlattener.
     auto.
     Qed.
 
+  Lemma take_lemma' : forall Γ (lev:HaskLevel Γ) x, take_lev lev (x @@@ lev) = x @@@ lev.
+    intros.
+    induction x.
+    destruct a; simpl; try reflexivity.
+    apply take_lemma.
+    simpl.
+    rewrite <- IHx1 at 2.
+    rewrite <- IHx2 at 2.
+    reflexivity.
+    Qed.
+(*
+  Lemma drop_lev_lemma' : forall Γ (lev:HaskLevel Γ) x, drop_lev lev (x @@@ lev) = [].
+    intros.
+    induction x.
+    destruct a; simpl; try reflexivity.
+    apply drop_lev_lemma.
+    simpl.
+    change (@drop_lev _ lev (x1 @@@ lev ,, x2 @@@ lev))
+      with ((@drop_lev _ lev (x1 @@@ lev)) ,, (@drop_lev _ lev (x2 @@@ lev))).
+    simpl.
+    rewrite IHx1.
+    rewrite IHx2.
+    reflexivity.
+    Qed.
+*)
   Ltac drop_simplify :=
     match goal with
       | [ |- context[@drop_lev ?G ?L [ ?X @@ ?L ] ] ] =>
         rewrite (drop_lev_lemma G L X)
+(*
+      | [ |- context[@drop_lev ?G ?L [ ?X @@@ ?L ] ] ] =>
+        rewrite (drop_lev_lemma' G L X)
+*)
       | [ |- context[@drop_lev ?G (?E :: ?L) [ ?X @@ (?E :: ?L) ] ] ] =>
         rewrite (drop_lev_lemma_s G L E X)
       | [ |- context[@drop_lev ?G ?N (?A,,?B)] ] =>
@@ -181,6 +212,8 @@ Section HaskFlattener.
     match goal with
       | [ |- context[@take_lev ?G ?L [ ?X @@ ?L ] ] ] =>
         rewrite (take_lemma G L X)
+      | [ |- context[@take_lev ?G ?L [ ?X @@@ ?L ] ] ] =>
+        rewrite (take_lemma' G L X)
       | [ |- context[@take_lev ?G ?N (?A,,?B)] ] =>
       change (@take_lev G N (A,,B)) with ((@take_lev G N A),,(@take_lev G N B))
       | [ |- context[@take_lev ?G ?N (T_Leaf None)] ] =>
@@ -226,7 +259,8 @@ Section HaskFlattener.
     | TCon       tc         => TCon      tc
     | TCoerc _ t1 t2 t      => TCoerc    (flatten_rawtype t1) (flatten_rawtype t2) (flatten_rawtype t)
     | TArrow                => TArrow
-    | TCode     ec e        => ga_mk_raw ec [] [flatten_rawtype e]
+    | TCode     ec e        => let e' := flatten_rawtype e
+                               in  ga_mk_raw ec (unleaves' (take_arg_types e')) [drop_arg_types e']
     | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (flatten_rawtype_list _ lt)
     end
     with flatten_rawtype_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=
@@ -240,12 +274,12 @@ Section HaskFlattener.
 
   Fixpoint levels_to_tcode {Γ}(ht:HaskType Γ ★)(lev:HaskLevel Γ) : HaskType Γ ★ :=
     match lev with
-      | nil      => ht
-      | ec::lev' => fun TV ite => TCode (v2t ec TV ite) (levels_to_tcode ht lev' TV ite)
+      | nil      => flatten_type ht
+      | ec::lev' => @ga_mk _ (v2t ec) [] [levels_to_tcode ht lev']
     end.
 
   Definition flatten_leveled_type {Γ}(ht:LeveledHaskType Γ ★) : LeveledHaskType Γ ★ :=
-    flatten_type (levels_to_tcode (unlev ht) (getlev ht)) @@ nil.
+    levels_to_tcode (unlev ht) (getlev ht) @@ nil.
 
   (* AXIOMS *)
 
@@ -428,15 +462,15 @@ Section HaskFlattener.
     apply ga_second.
     Defined.
 
-  Lemma ga_unkappa     : ∀ Γ Δ ec l a b Σ,
+  Lemma ga_unkappa     : ∀ Γ Δ ec l z a b Σ,
     ND Rule
-    [Γ > Δ > Σ |- [@ga_mk Γ ec a  b @@ l] ] 
-    [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec [] b @@ l] ].
+    [Γ > Δ > Σ                         |- [@ga_mk Γ ec a b @@ l] ] 
+    [Γ > Δ > Σ,,[@ga_mk Γ ec z a @@ l] |- [@ga_mk Γ ec z b @@ l] ].
     intros.
-    set (ga_comp Γ Δ ec l [] a b) as q.
+    set (ga_comp Γ Δ ec l z a b) as q.
 
     set (@RLet Γ Δ) as q'.
-    set (@RLet Γ Δ [@ga_mk _ ec [] a @@ l] Σ (@ga_mk _ ec [] b) (@ga_mk _ ec a b) l) as q''.
+    set (@RLet Γ Δ [@ga_mk _ ec z a @@ l] Σ (@ga_mk _ ec z b) (@ga_mk _ ec a b) l) as q''.
     eapply nd_comp.
     Focus 2.
     eapply nd_rule.
@@ -455,6 +489,31 @@ Section HaskFlattener.
     apply nd_prod.
     apply nd_id.
     apply q.
+    Defined.
+
+  Lemma ga_unkappa'     : ∀ Γ Δ ec l a b Σ x,
+    ND Rule
+    [Γ > Δ > Σ                          |- [@ga_mk Γ ec (a,,x)  b @@ l] ] 
+    [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec x       b @@ l] ].
+    intros.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ apply nd_llecnac | idtac ].
+    apply nd_prod.
+    apply ga_first.
+
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ apply nd_llecnac | idtac ].
+    apply nd_prod.
+    apply postcompose.
+    apply ga_uncancell.
+    apply precompose.
+    Defined.
+
+  Lemma ga_kappa'     : ∀ Γ Δ ec l a b Σ x,
+    ND Rule
+    [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec x b @@ l] ]
+    [Γ > Δ > Σ                          |- [@ga_mk Γ ec (a,,x)  b @@ l] ].
+    apply (Prelude_error "ga_kappa not supported yet (BIG FIXME)").
     Defined.
 
   (* useful for cutting down on the pretty-printed noise
@@ -607,10 +666,8 @@ Section HaskFlattener.
   Definition arrange_brak : forall Γ Δ ec succ t,
    ND Rule
      [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
-      [(@ga_mk _ (v2t ec) []
-        (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ)))
-      @@  nil] |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]]
-     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]].
+      [(@ga_mk _ (v2t ec) [] (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil] |- [t @@ nil]]
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [t @@  nil]].
     intros.
     unfold drop_lev.
     set (@arrange' _ succ (levelMatch (ec::nil))) as q.
@@ -648,6 +705,9 @@ Section HaskFlattener.
     unfold flatten_leveled_type.
     simpl.
     unfold flatten_type.
+    simpl.
+    unfold ga_mk.
+    simpl.
     apply RVar.
     simpl.
     apply ga_id.
@@ -661,11 +721,9 @@ Section HaskFlattener.
 
   Definition arrange_esc : forall Γ Δ ec succ t,
    ND Rule
-     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]]
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [t @@  nil]]
      [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
-      [(@ga_mk _ (v2t ec) []
-        (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil]
-      |- [(@ga_mk _ (v2t ec) [] [flatten_type  t]) @@  nil]].
+      [(@ga_mk _ (v2t ec) [] (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil] |- [t @@  nil]].
     intros.
     unfold drop_lev.
     set (@arrange _ succ (levelMatch (ec::nil))) as q.
@@ -736,17 +794,97 @@ Section HaskFlattener.
     right; auto.
     Defined.
 
+  Lemma unlev_relev : forall {Γ}(t:Tree ??(HaskType Γ ★)) lev, mapOptionTree unlev (t @@@ lev) = t.
+    intros.
+    induction t.
+    destruct a; reflexivity.
+    rewrite <- IHt1 at 2.
+    rewrite <- IHt2 at 2.
+    reflexivity.
+    Qed.
+
+  Lemma tree_of_nothing : forall Γ ec t a,
+    Arrange (a,,mapOptionTree flatten_leveled_type (drop_lev(Γ:=Γ) (ec :: nil) (t @@@ (ec :: nil)))) a.
+    intros.
+    induction t; try destruct o; try destruct a0.
+    simpl.
+    drop_simplify.
+    simpl.
+    apply RCanR.
+    simpl.
+    apply RCanR.
+    Opaque drop_lev.
+    simpl.
+    Transparent drop_lev.
+    drop_simplify.
+    simpl.
+    eapply RComp.
+    eapply RComp.
+    eapply RAssoc.
+    eapply RRight.
+    apply IHt1.
+    apply IHt2.
+    Defined.
+
+  Lemma tree_of_nothing' : forall Γ ec t a,
+    Arrange a (a,,mapOptionTree flatten_leveled_type (drop_lev(Γ:=Γ) (ec :: nil) (t @@@ (ec :: nil)))).
+    intros.
+    induction t; try destruct o; try destruct a0.
+    simpl.
+    drop_simplify.
+    simpl.
+    apply RuCanR.
+    simpl.
+    apply RuCanR.
+    Opaque drop_lev.
+    simpl.
+    Transparent drop_lev.
+    drop_simplify.
+    simpl.
+    eapply RComp.
+    Focus 2.
+    eapply RComp.
+    Focus 2.
+    eapply RCossa.
+    Focus 2.
+    eapply RRight.
+    apply IHt1.
+    apply IHt2.
+    Defined.
+
+  Lemma krunk : forall Γ (ec:HaskTyVar Γ ECKind) t,
+    flatten_type (<[ ec |- t ]>)
+    = @ga_mk Γ (v2t ec)
+    (mapOptionTree flatten_type (take_arg_types_as_tree Γ t))
+    [ flatten_type (drop_arg_types_as_tree   t)].
+
+    intros.
+    unfold flatten_type at 1.
+    simpl.
+    unfold ga_mk.
+    unfold v2t.
+    admit. (* BIG HUGE CHEAT FIXME *)
+    Qed.
+
   Definition flatten_proof :
     forall  {h}{c},
-      ND Rule h c ->
-      ND Rule (mapOptionTree (flatten_judgment ) h) (mapOptionTree (flatten_judgment ) c).
+      ND SRule h c ->
+      ND  Rule (mapOptionTree (flatten_judgment ) h) (mapOptionTree (flatten_judgment ) c).
     intros.
     eapply nd_map'; [ idtac | apply X ].
     clear h c X.
     intros.
     simpl in *.
 
-    refine (match X as R in Rule H C with
+    refine 
+      (match X as R in SRule H C with
+      | SBrak    Γ Δ t ec succ lev           => let case_SBrak := tt         in _
+      | SEsc     Γ Δ t ec succ lev           => let case_SEsc := tt          in _
+      | SFlat    h c r                       => let case_SFlat := tt         in _
+      end).
+
+    destruct case_SFlat.
+    refine (match r as R in Rule H C with
       | RArrange Γ Δ a b x d           => let case_RArrange := tt      in _
       | RNote    Γ Δ Σ τ l n           => let case_RNote := tt         in _
       | RLit     Γ Δ l     _           => let case_RLit := tt          in _
@@ -772,46 +910,10 @@ Section HaskFlattener.
       apply (flatten_arrangement''  Γ Δ a b x d).
 
     destruct case_RBrak.
-      simpl.
-      destruct lev.
-      change ([flatten_type  (<[ ec |- t ]>) @@  nil])
-        with ([ga_mk (v2t ec) [] [flatten_type  t] @@  nil]).
-      refine (ga_unkappa Γ Δ (v2t ec) nil (mapOptionTree (flatten_type ○ unlev) (take_lev (ec::nil) succ)) _
-        (mapOptionTree (flatten_leveled_type) (drop_lev (ec::nil) succ)) ;; _ ).
-      apply arrange_brak.
-      apply (Prelude_error "found Brak at depth >0 indicating 3-level code; only two-level code is currently supported").
+      apply (Prelude_error "found unskolemized Brak rule; this shouldn't happen").
 
     destruct case_REsc.
-      simpl.
-      destruct lev.
-      simpl.
-      change ([flatten_leveled_type (<[ ec |- t ]> @@  nil)])
-        with ([ga_mk (v2t ec) [] [flatten_type  t] @@  nil]).
-      eapply nd_comp; [ apply arrange_esc | idtac ].
-      set (decide_tree_empty (take_lev (ec :: nil) succ)) as q'.
-      destruct q'.
-      destruct s.
-      rewrite e.
-      clear e.
-
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
-      eapply nd_comp; [ apply nd_llecnac | idtac ].
-      apply nd_prod; [ idtac | eapply boost ].
-      induction x.
-      apply ga_id.
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
-      simpl.
-      apply ga_join.
-      apply IHx1.
-      apply IHx2.
-      simpl.
-      apply postcompose.
-      apply ga_drop.
-
-      (* environment has non-empty leaves *)
-      apply (ga_kappa Γ Δ (v2t ec) nil (mapOptionTree (flatten_type ○ unlev) (take_lev (ec::nil) succ)) _ _).
-      apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
+      apply (Prelude_error "found unskolemized Esc rule; this shouldn't happen").
       
     destruct case_RNote.
       simpl.
@@ -889,6 +991,7 @@ Section HaskFlattener.
     destruct case_RCast.
       simpl.
       destruct lev as [|ec lev]; simpl; [ apply nd_rule; apply RCast; auto | idtac ].
+      simpl.
       apply flatten_coercion; auto.
       apply (Prelude_error "RCast at level >0; casting inside of code brackets is currently not supported").
 
@@ -1028,6 +1131,95 @@ Section HaskFlattener.
     destruct case_RCase.
       simpl.
       apply (Prelude_error "Case not supported (BIG FIXME)").
+
+    destruct case_SBrak.
+      simpl.
+      destruct lev.
+      drop_simplify.
+      set (drop_lev (ec :: nil) (take_arg_types_as_tree Γ t @@@ (ec :: nil))) as empty_tree.
+      take_simplify.
+      rewrite take_lemma'.
+      simpl.
+      rewrite mapOptionTree_compose.
+      rewrite mapOptionTree_compose.
+      rewrite unlev_relev.
+      rewrite <- mapOptionTree_compose.
+      unfold flatten_leveled_type at 4.
+      simpl.
+      rewrite krunk.
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)) as succ_host.
+      set (mapOptionTree (flatten_type ○ unlev)(take_lev (ec :: nil) succ)) as succ_guest.
+      set (mapOptionTree flatten_type (take_arg_types_as_tree Γ t)) as succ_args.
+      unfold empty_tree.
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; apply tree_of_nothing | idtac ].
+      refine (ga_unkappa' Γ Δ (v2t ec) nil _ _ _ _ ;; _).
+      unfold succ_host.
+      unfold succ_guest.
+      apply arrange_brak.
+      apply (Prelude_error "found Brak at depth >0 indicating 3-level code; only two-level code is currently supported").
+
+    destruct case_SEsc.
+      simpl.
+      destruct lev.
+      simpl.
+      unfold flatten_leveled_type at 2.
+      simpl.
+      rewrite krunk.
+      rewrite mapOptionTree_compose.
+      take_simplify.
+      drop_simplify.
+      simpl.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply tree_of_nothing' ].
+      simpl.
+      rewrite take_lemma'.
+      rewrite unlev_relev.
+      rewrite <- mapOptionTree_compose.
+      eapply nd_comp; [ apply (arrange_esc _ _ ec) | idtac ].
+
+      set (decide_tree_empty (take_lev (ec :: nil) succ)) as q'.
+      destruct q'.
+      destruct s.
+      rewrite e.
+      clear e.
+
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)) as succ_host.
+      set (mapOptionTree flatten_type (take_arg_types_as_tree Γ t)) as succ_args.
+
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanR ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply nd_prod; [ idtac | eapply boost ].
+      induction x.
+        apply ga_id.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+        simpl.
+        apply ga_join.
+          apply IHx1.
+          apply IHx2.
+          simpl.
+          apply postcompose.
+
+      refine ( _ ;; (boost _ _ _ _ _ (postcompose _ _ _ _ _ _ _ _))).
+      apply ga_cancell.
+      apply firstify.
+
+      induction x.
+        destruct a; simpl.
+        apply ga_id.
+        simpl.
+        refine ( _ ;; (boost _ _ _ _ _ (postcompose _ _ _ _ _ _ _ _))).
+        apply ga_cancell.
+        refine ( _ ;; (boost _ _ _ _ _ (postcompose _ _ _ _ _ _ _ _))).
+        eapply firstify.
+        apply IHx1.
+        apply secondify.
+        apply IHx2.
+
+      (* environment has non-empty leaves *)
+      apply ga_kappa'.
+
+      (* nesting too deep *)
+      apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
       Defined.
 
 
