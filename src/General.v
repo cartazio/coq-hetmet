@@ -20,6 +20,24 @@ Class EqDecidable (T:Type) :=
 }.
 Coercion eqd_type : EqDecidable >-> Sortclass.
 
+Instance EqDecidableOption (T:Type)(EQDT:EqDecidable T) : EqDecidable ??T.
+  apply Build_EqDecidable.
+  intros.
+  destruct v1;
+  destruct v2.
+  destruct (eqd_dec t t0).
+  subst.
+  left; auto.
+  right.
+  unfold not; intros.
+  inversion H.
+  subst.
+  apply n.
+  auto.
+  right; unfold not; intro; inversion H.
+  right; unfold not; intro; inversion H.
+  left; auto.
+  Defined.
 
 Class ToString (T:Type) := { toString : T -> string }.
 Instance StringToString : ToString string := { toString := fun x => x }.
@@ -499,6 +517,47 @@ Definition liftBoolFunc {T}(b:bool)(f:T -> bool) : ??T -> bool :=
       | None   => b
       | Some x => f x
     end.
+
+(* decidable quality on a tree of elements which have decidable equality *)
+Definition tree_eq_dec : forall {T:Type}(l1 l2:Tree T)(dec:forall t1 t2:T, sumbool (eq t1 t2) (not (eq t1 t2))),
+  sumbool (eq l1 l2) (not (eq l1 l2)).
+  intro T.
+  intro l1.
+  induction l1; intros.
+    destruct l2.
+    destruct (dec a t).
+    subst.
+    left; auto.
+    right; unfold not; intro; apply n; inversion H; auto.
+  right.
+    unfold not; intro.
+    inversion H.
+
+  destruct l2.
+    right; unfold not; intro; inversion H.
+    destruct (IHl1_1 l2_1 dec);
+    destruct (IHl1_2 l2_2 dec); subst.
+    left; auto.
+    right.
+      unfold not; intro.
+      inversion H; subst.
+      apply n; auto.
+    right.
+      unfold not; intro.
+      inversion H; subst.
+      apply n; auto.
+    right.
+      unfold not; intro.
+      inversion H; subst.
+      apply n; auto.
+      Defined.
+
+Instance EqDecidableTree {T:Type}(eqd:EqDecidable T) : EqDecidable (Tree T).
+  apply Build_EqDecidable.
+  intros.
+  apply tree_eq_dec.
+  apply eqd_dec.
+  Defined.
 
 (*******************************************************************************)
 (* Length-Indexed Lists                                                        *)
