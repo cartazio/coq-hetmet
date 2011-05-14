@@ -424,8 +424,12 @@ toTikZ' g = foldr (\x y -> x++"\\\\\n"++y) [] (map foo s)
                s = sortit (strip k)
                m = valuatit empty s
 
-tikz' :: (forall g a . PGArrow g (GArrowUnit g) a -> PGArrow g (GArrowUnit g) a) -> IO ()
-tikz' x = tikz $ unG (x (PGArrowD { unG = TikZ_const 12 }))
+tikz' :: (forall g a .
+                 PGArrow g (GArrowUnit g) a ->
+                 (
+                   forall b . PGArrow g (GArrowTensor g b b) b) ->
+                     PGArrow g (GArrowUnit g) a) -> IO ()
+tikz' x = tikz $ unG (x (PGArrowD { unG = TikZ_const 12 }) (PGArrowD { unG = TikZ_merge }) )
 main = do putStrLn "hello"
 tikz example
      = do putStrLn "\\documentclass{article}"
