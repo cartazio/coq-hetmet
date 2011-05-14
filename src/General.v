@@ -478,6 +478,7 @@ Fixpoint listToString {T:Type}{tst:ToString T}(l:list T) : string :=
 Instance ListToString {T:Type}{tst:ToString T} : ToString (list T) :=
   { toString := @listToString _ _ }.
 
+
 (*******************************************************************************)
 (* Tree Flags                                                                  *)
 
@@ -951,6 +952,16 @@ Lemma list2vecOrFail {T}(l:list T)(n:nat)(error_message:nat->nat->string) : ???(
     rewrite e in v; apply OK; apply v.
     apply (Error (error_message (length l) n)).
     Defined.
+
+(* this makes a type function application, ensuring not to oversaturate it (though if it was undersaturated we can't fix that) *)
+Fixpoint split_list {T}(l:list T)(n:nat) : ???(list T * list T) :=
+  match n with
+    | O    => OK (nil , l)
+    | S n' => match l with
+                | nil  => Error "take_list failed"
+                | h::t => split_list t n' >>= fun t' => let (t1,t2) := t' in OK ((h::t1),t2)
+              end
+    end.
 
 (* Uniques *)
 Variable UniqSupply      : Type.                   Extract Inlined Constant UniqSupply     => "UniqSupply.UniqSupply".
