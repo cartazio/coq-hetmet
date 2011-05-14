@@ -239,11 +239,11 @@ Section HaskFlattener.
 
   Definition ga_mk_raw {TV}(ec:RawHaskType TV ECKind)(ant suc:Tree ??(RawHaskType TV ★)) : RawHaskType TV ★ :=
     gaTy TV ec
-    (ga_mk_tree' ec (ant,,(mapOptionTreeAndFlatten (unleaves ○ take_arg_types) suc)))
-    (ga_mk_tree' ec (      mapOptionTree                       drop_arg_types  suc) ).
+    (ga_mk_tree' ec ant)
+    (ga_mk_tree' ec suc).
 
-  Definition ga_mk {Γ}(ec:HaskType Γ ECKind )(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
-    fun TV ite => ga_mk_raw (ec TV ite) (mapOptionTree (fun x => x TV ite) ant) (mapOptionTree (fun x => x TV ite) suc).
+  Definition ga_mk {Γ}(ec:HaskType Γ ECKind)(ant suc:Tree ??(HaskType Γ ★)) : HaskType Γ ★ :=
+    fun TV ite => gaTy TV (ec TV ite) (ga_mk_tree ec ant TV ite) (ga_mk_tree ec suc TV ite).
 
   (*
    *  The story:
@@ -855,7 +855,7 @@ Section HaskFlattener.
   Lemma krunk : forall Γ (ec:HaskTyVar Γ ECKind) t,
     flatten_type (<[ ec |- t ]>)
     = @ga_mk Γ (v2t ec)
-    (mapOptionTree flatten_type (take_arg_types_as_tree Γ t))
+    (mapOptionTree flatten_type (take_arg_types_as_tree t))
     [ flatten_type (drop_arg_types_as_tree   t)].
 
     intros.
@@ -1136,7 +1136,7 @@ Section HaskFlattener.
       simpl.
       destruct lev.
       drop_simplify.
-      set (drop_lev (ec :: nil) (take_arg_types_as_tree Γ t @@@ (ec :: nil))) as empty_tree.
+      set (drop_lev (ec :: nil) (take_arg_types_as_tree t @@@ (ec :: nil))) as empty_tree.
       take_simplify.
       rewrite take_lemma'.
       simpl.
@@ -1149,7 +1149,7 @@ Section HaskFlattener.
       rewrite krunk.
       set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)) as succ_host.
       set (mapOptionTree (flatten_type ○ unlev)(take_lev (ec :: nil) succ)) as succ_guest.
-      set (mapOptionTree flatten_type (take_arg_types_as_tree Γ t)) as succ_args.
+      set (mapOptionTree flatten_type (take_arg_types_as_tree t)) as succ_args.
       unfold empty_tree.
       eapply nd_comp; [ eapply nd_rule; eapply RArrange; apply tree_of_nothing | idtac ].
       refine (ga_unkappa' Γ Δ (v2t ec) nil _ _ _ _ ;; _).
@@ -1183,7 +1183,7 @@ Section HaskFlattener.
       clear e.
 
       set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)) as succ_host.
-      set (mapOptionTree flatten_type (take_arg_types_as_tree Γ t)) as succ_args.
+      set (mapOptionTree flatten_type (take_arg_types_as_tree t)) as succ_args.
 
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanR ].
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
@@ -1221,6 +1221,20 @@ Section HaskFlattener.
       (* nesting too deep *)
       apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
       Defined.
+
+  Definition skolemize_and_flatten_proof :
+    forall  {h}{c},
+      ND  Rule h c ->
+      ND  Rule
+           (mapOptionTree (flatten_judgment ○ skolemize_judgment) h)
+           (mapOptionTree (flatten_judgment ○ skolemize_judgment) c).
+    intros.
+    rewrite mapOptionTree_compose.
+    rewrite mapOptionTree_compose.
+    apply flatten_proof.
+    apply skolemize_proof.
+    apply X.
+    Defined.
 
 
   (* to do: establish some metric on judgments (max length of level of any succedent type, probably), show how to

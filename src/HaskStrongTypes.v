@@ -239,6 +239,48 @@ Fixpoint take_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : list (Ra
     | _                     => nil
   end.
 
+Fixpoint count_arg_types {TV}{κ}(exp: RawHaskType TV κ) {struct exp} : nat :=
+  match exp as E in RawHaskType _ K return nat with
+    | TApp   κ₁ κ₂ x y      =>
+      (match κ₁ as K1 return RawHaskType TV (κ₂ ⇛ K1) -> nat -> nat with
+         | KindStar =>
+           match κ₂ as K2 return RawHaskType TV (K2 ⇛ KindStar) -> nat -> nat with
+             | KindStar => fun x' =>
+               match x' return nat -> nat with
+                 | TApp κ₁'' κ₂'' w'' x'' =>
+                   match κ₂'' as K2'' return RawHaskType TV K2'' -> nat -> nat with
+                     | KindStar     =>
+                       match w'' with
+                         | TArrow => fun a b => S b
+                         | _      => fun _ _ => 0
+                       end
+                     | _ => fun _ _ => 0
+                   end x''
+                 | _                      => fun _  => 0
+               end
+             | _        => fun _ _ => 0
+           end
+         | _ => fun _ _ => 0
+       end) x (count_arg_types y)
+    | _                     => 0
+  end.
+
+  Definition ite_unit : ∀ Γ, InstantiatedTypeEnv (fun _ => unit) Γ.
+    intros.
+    induction Γ.
+    apply INil.
+    apply ICons; auto.
+    apply tt.
+    Defined.
+
+Definition take_arg_type {Γ}{κ}(ht:HaskType Γ κ) : (gt (count_arg_types (ht _ (ite_unit _))) 0) -> HaskType Γ κ :=
+  fun pf =>
+  fun TV ite =>
+    match take_arg_types (ht TV ite) with
+    | nil => Prelude_error "impossible"
+    | x::y => x
+    end.
+
 (* From (t1->(t2->(t3-> ... t))), return t *)
 (* this is a billion times uglier than it needs to be as a result of how primitive Coq's termiation checker is *)
 Fixpoint drop_arg_types {TV}{κ}(exp: RawHaskType TV κ) : RawHaskType TV κ :=

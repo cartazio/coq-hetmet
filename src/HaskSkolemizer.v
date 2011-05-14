@@ -87,36 +87,29 @@ Section HaskSkolemizer.
         end
     end.
 
-  Definition ite_unit : ∀ Γ, InstantiatedTypeEnv (fun _ => unit) Γ.
-    intros.
-    induction Γ.
-    apply INil.
-    apply ICons; auto.
-    apply tt.
-    Defined.
+  Fixpoint take_trustme {Γ}
+    (n:nat)
+    (l:forall TV, InstantiatedTypeEnv TV Γ -> list (RawHaskType TV ★))
+    : list (HaskType Γ ★) :=
 
-  Fixpoint grab (n:nat) {T} (l:list T) : T :=
-    match l with
-      | nil  => Prelude_error "grab failed"
-      | h::t => match n with
-                  | 0    => h
-                  | S n' => grab n' t
-                end
-    end.
-
-  Fixpoint count' (n:nat)(ln:list nat) : list nat :=
     match n with
-      | 0    => ln
-      | S n' => count' n' (n'::ln)
+      | 0    => nil
+      | S n' => (fun TV ite => match l TV ite with
+                | nil  => Prelude_error "impossible"
+                | a::b => a
+                end)
+                ::
+                take_trustme n' (fun TV ite => match l TV ite with
+                | nil  => Prelude_error "impossible"
+                | a::b => b
+                end)
     end.
-
-  Definition count (n:nat) := count' n nil.
-
-  Definition rebundle {Γ}(X:forall TV, InstantiatedTypeEnv TV Γ -> list (RawHaskType TV ★)) : list (HaskType Γ ★ ) :=
-    map (fun n => fun TV ite => grab n (X TV ite)) (count (length (X _ (ite_unit _)))).
-
-  Definition take_arg_types_as_tree Γ (ht:HaskType Γ ★) :=
-    (unleaves' (rebundle (fun TV ite => (take_arg_types (ht TV ite))))).
+                  
+  Definition take_arg_types_as_tree {Γ}(ht:HaskType Γ ★) : Tree ??(HaskType Γ ★ ) :=
+    unleaves
+    (take_trustme
+      (count_arg_types (ht _ (ite_unit _)))
+      (fun TV ite => take_arg_types (ht TV ite))).
 
   Definition drop_arg_types_as_tree {Γ} (ht:HaskType Γ ★) : HaskType Γ ★ :=
     fun TV ite => drop_arg_types (ht TV ite).
@@ -127,8 +120,8 @@ Section HaskSkolemizer.
   Lemma take_works : forall {Γ}(t1 t2:HaskType Γ ★),
     take_arg_types_as_tree (t1 ---> t2) = [t1],,(take_arg_types_as_tree t2).
     intros.
-    unfold take_arg_types_as_tree; simpl.
-    unfold rebundle at 1.
+    unfold take_arg_types_as_tree at 1. 
+    simpl.
     admit.
     Qed.
 
@@ -182,6 +175,7 @@ Section HaskSkolemizer.
     left; auto.
     Defined.
 
+  Opaque take_arg_types_as_tree.
   Definition skolemize_proof :
     forall  {h}{c},
       ND Rule  h c ->
@@ -296,17 +290,18 @@ Section HaskSkolemizer.
         apply RGlobal.
 
       destruct case_RLam.
-        simpl.
         destruct lev.
-        apply nd_rule.
-        apply SFlat.
-        apply RLam.
+          apply nd_rule.
+          apply SFlat.
+          simpl.
+          apply RLam.
+        simpl.
         rewrite take_works.
         rewrite drop_works.
         apply nd_rule.
-        apply SFlat.
-        apply RArrange.
-        apply RCossa.
+          apply SFlat.
+          apply RArrange.
+          apply RCossa.
 
       destruct case_RCast.
         simpl.
@@ -425,5 +420,6 @@ Section HaskSkolemizer.
         simpl.
         apply (Prelude_error "CASE: BIG FIXME").
         Defined.
+  Transparent take_arg_types_as_tree.
 
 End HaskSkolemizer.

@@ -306,12 +306,21 @@ Section core2proof.
 
     Definition ga_unit TV (ec:RawHaskType TV ECKind) : RawHaskType TV ★ :=
       @TyFunApp TV hetmet_PGArrow_unit_TyCon (ECKind::nil) ★ (TyFunApp_cons _ _ ec TyFunApp_nil).
+
     Definition ga_prod TV (ec:RawHaskType TV ECKind) (a b:RawHaskType TV ★) : RawHaskType TV ★  :=
-      TApp (TApp (@TyFunApp TV hetmet_PGArrow_tensor_TyCon (ECKind::nil) _ (TyFunApp_cons _ _ ec TyFunApp_nil)) a) b.
+      (@TyFunApp TV
+        hetmet_PGArrow_tensor_TyCon
+        (ECKind::★ ::★ ::nil) ★
+        (TyFunApp_cons _ _ ec
+          (TyFunApp_cons _ _ a
+            (TyFunApp_cons _ _ b
+          TyFunApp_nil)))).
+
     Definition ga_type {TV}(a:RawHaskType TV ECKind)(b c:RawHaskType TV ★) : RawHaskType TV ★ :=
       TApp (TApp (TApp (@TyFunApp TV 
         hetmet_PGArrowTyCon
         nil _ TyFunApp_nil) a) b) c.
+
     Definition ga := @ga_mk ga_unit ga_prod (@ga_type).
 
     Definition ga_type' {Γ}(a:HaskType Γ ECKind)(b c:HaskType Γ ★) : HaskType Γ ★ :=
@@ -421,7 +430,7 @@ Section core2proof.
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
 
                       (addErrorMessage ("HaskStrong...")
-                        (let haskProof := flatten_proof hetmet_flatten' hetmet_unflatten'
+                        (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
                                             hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
                          OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
@@ -520,6 +529,7 @@ Section core2proof.
        hetmet_pga_applyr 
        hetmet_pga_curryl 
        *)
+
        .
 
 End core2proof.
