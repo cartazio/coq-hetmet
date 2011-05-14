@@ -469,6 +469,15 @@ Instance EqDecidableList {T:Type}(eqd:EqDecidable T) : EqDecidable (list T).
   apply eqd_dec.
   Defined.
 
+Fixpoint listToString {T:Type}{tst:ToString T}(l:list T) : string :=
+  match l with
+    | nil  => "nil"
+    | a::b => (toString a) +++ "::" +++ listToString b
+  end.
+
+Instance ListToString {T:Type}{tst:ToString T} : ToString (list T) :=
+  { toString := @listToString _ _ }.
+
 (*******************************************************************************)
 (* Tree Flags                                                                  *)
 
