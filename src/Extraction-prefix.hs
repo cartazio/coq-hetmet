@@ -64,13 +64,21 @@ errOrFail :: OrError t -> t
 errOrFail (OK x)    = x
 errOrFail (Error s) = Prelude.error s
 
+rawTyFunKind :: TyCon.TyCon -> ( [Kind] , Kind )
+rawTyFunKind tc = ((Prelude.map coreKindToKind (Prelude.take (TyCon.tyConArity tc) argk))
+                  ,
+                   coreKindToKind (Coercion.mkArrowKinds (Prelude.drop (TyCon.tyConArity tc) argk) retk))
+                   where (argk,retk) = Coercion.splitKindFunTys (TyCon.tyConKind tc)
+
 tyConOrTyFun :: TyCon.TyCon -> Prelude.Either TyCon.TyCon TyCon.TyCon
 tyConOrTyFun n =
    if n == TysPrim.statePrimTyCon     -- special-purpose hack treat State# as a type family since it has kind *->* but no tyvars
    then Prelude.Right n
    else if TyCon.isFamInstTyCon n
         then Prelude.Right n
-        else Prelude.Left n
+        else if TyCon.isSynTyCon n
+             then Prelude.Right n
+             else Prelude.Left n
 
 nat2int :: Nat -> Prelude.Int
 nat2int O     = 0

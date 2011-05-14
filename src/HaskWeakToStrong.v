@@ -142,7 +142,11 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
                       end
           | tx::lt' => weakTypeToType Γ φ tx >>= fun t' =>
                         match lk as LK return ???(forall TV (ite:InstantiatedTypeEnv TV Γ), @RawHaskTypeList TV LK) with
-                          | nil    => Error "WTyFunApp applied to too many types"
+                          | nil    => Error ("WTyFunApp applied to too many types"(* +++ eol +++
+                                             "  tyCon= "           +++ toString tc +++ eol +++
+                                             "  tyConKindArgs= "   +++ toString (fst (tyFunKind tc)) +++ eol +++
+                                             "  tyConKindResult= " +++ toString (snd (tyFunKind tc)) +++ eol +++
+                                             "  types= "           +++ toString lt +++ eol*))
                           | k::lk' => weakTypeListToTypeList lk' lt' >>= fun rhtl' =>
                                         let case_weakTypeListToTypeList := tt in _
                         end
@@ -166,7 +170,7 @@ Definition weakTypeToType : forall {Γ:TypeEnv}(φ:TyVarResolver Γ)(t:WeakType)
       try (matchThings k1'1 k2' "Kind mismatch in WAppTy: ";
         subst; apply OK; apply (haskTypeOfSomeKind (fun TV env => TApp (t1' TV env) (t2' TV env))));
       apply (Error ("Kind mismatch in WAppTy: "+++err)).
-   
+
   destruct case_weakTypeListToTypeList.
     apply (addErrorMessage "case_weakTypeListToTypeList").
     destruct t' as [ k' t' ].

@@ -29,6 +29,12 @@ Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant he
 Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
 Variable hetmet_csp_name    : CoreName.              Extract Inlined Constant hetmet_csp_name  => "PrelNames.hetmet_csp_name".
 
+Definition mkTyFunApplication (tf:TyFun)(lwt:list WeakType) : ???WeakType :=
+  split_list lwt (length (fst (tyFunKind tf))) >>=
+  fun argsrest =>
+    let (args,rest) := argsrest in
+      OK (fold_left (fun x y => WAppTy x y) rest (WTyFunApp tf args)).
+
 Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   match ct with
   | TyVarTy  cv              => match coreVarToWeakVar cv with
@@ -45,7 +51,7 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                                   | a::b => coreTypeToWeakType' a >>= fun a' => rec b >>= fun b' => OK (a'::b')
                                 end) lct)
       in match tyConOrTyFun tc_ with
-           | inr tf => recurse >>= fun recurse' => OK (WTyFunApp tf recurse')
+           | inr tf => recurse >>= fun recurse' => mkTyFunApplication tf recurse'
            | inl tc => if eqd_dec tc ModalBoxTyCon
                          then match lct with
                                 | ((TyVarTy ec)::tbody::nil) =>
