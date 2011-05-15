@@ -66,10 +66,19 @@ Section HaskSkolemizer.
       | a::b => mkArrows b (a ---> t)
     end.
 
+(*
   Fixpoint unleaves_ {Γ}(t:Tree ??(LeveledHaskType Γ ★))(l:list (HaskType Γ ★)) lev : Tree ??(LeveledHaskType Γ ★) :=
     match l with
       | nil  => t
       | a::b => unleaves_ (t,,[a @@ lev]) b lev
+    end.
+*)
+  (* weak inverse of "leaves" *)
+  Fixpoint unleaves_ {A:Type}(l:list A) : Tree (option A) :=
+    match l with
+      | nil      => []
+      | (a::nil) => [a]
+      | (a::b)   => [a],,(unleaves_ b)
     end.
 
   (* rules of skolemized proofs *)
@@ -105,8 +114,11 @@ Section HaskSkolemizer.
                 end)
     end.
                   
+  Axiom phoas_extensionality : forall Γ Q (f g:forall TV, InstantiatedTypeEnv TV Γ -> Q TV),
+    (forall tv ite, f tv ite = g tv ite) -> f=g.
+
   Definition take_arg_types_as_tree {Γ}(ht:HaskType Γ ★) : Tree ??(HaskType Γ ★ ) :=
-    unleaves
+    unleaves_
     (take_trustme
       (count_arg_types (ht _ (ite_unit _)))
       (fun TV ite => take_arg_types (ht TV ite))).
@@ -117,13 +129,47 @@ Section HaskSkolemizer.
   Implicit Arguments take_arg_types_as_tree [[Γ]].
   Implicit Arguments drop_arg_types_as_tree [[Γ]].
 
-  Lemma take_works : forall {Γ}(t1 t2:HaskType Γ ★),
-    take_arg_types_as_tree (t1 ---> t2) = [t1],,(take_arg_types_as_tree t2).
+  Definition take_arrange : forall {Γ} (tx te:HaskType Γ ★) lev,
+    Arrange ([tx @@ lev],, take_arg_types_as_tree te @@@ lev)
+      (take_arg_types_as_tree (tx ---> te) @@@ lev).
     intros.
-    unfold take_arg_types_as_tree at 1. 
-    simpl.
-    admit.
-    Qed.
+    destruct (eqd_dec ([tx],, take_arg_types_as_tree te) (take_arg_types_as_tree (tx ---> te))).
+      rewrite <- e.
+      simpl.
+      apply RId.
+    unfold take_arg_types_as_tree.
+      Opaque take_arg_types_as_tree.
+      simpl.
+      destruct (count_arg_types (te (fun _ : Kind => unit) (ite_unit Γ))).
+      simpl.
+      replace (tx) with (fun (TV : Kind → Type) (ite : InstantiatedTypeEnv TV Γ) => tx TV ite).
+      apply RCanR.
+        apply phoas_extensionality.
+        reflexivity.
+    apply (Prelude_error "should not be possible").
+    Defined.
+    Transparent take_arg_types_as_tree.
+
+  Definition take_unarrange : forall {Γ} (tx te:HaskType Γ ★) lev,
+    Arrange (take_arg_types_as_tree (tx ---> te) @@@ lev)
+      ([tx @@ lev],, take_arg_types_as_tree te @@@ lev).
+    intros.
+    destruct (eqd_dec ([tx],, take_arg_types_as_tree te) (take_arg_types_as_tree (tx ---> te))).
+      rewrite <- e.
+      simpl.
+      apply RId.
+    unfold take_arg_types_as_tree.
+      Opaque take_arg_types_as_tree.
+      simpl.
+      destruct (count_arg_types (te (fun _ : Kind => unit) (ite_unit Γ))).
+      simpl.
+      replace (tx) with (fun (TV : Kind → Type) (ite : InstantiatedTypeEnv TV Γ) => tx TV ite).
+      apply RuCanR.
+        apply phoas_extensionality.
+        reflexivity.
+    apply (Prelude_error "should not be possible").
+    Defined.
+    Transparent take_arg_types_as_tree.
 
   Lemma drop_works : forall {Γ}(t1 t2:HaskType Γ ★),
     drop_arg_types_as_tree (t1 ---> t2) = (drop_arg_types_as_tree t2).
@@ -296,12 +342,14 @@ Section HaskSkolemizer.
           simpl.
           apply RLam.
         simpl.
-        rewrite take_works.
         rewrite drop_works.
         apply nd_rule.
           apply SFlat.
           apply RArrange.
+          eapply RComp.
           apply RCossa.
+          apply RLeft.
+          apply take_arrange.
 
       destruct case_RCast.
         simpl.
@@ -328,7 +376,6 @@ Section HaskSkolemizer.
         apply nd_rule.
         apply SFlat.
         apply RApp.
-        rewrite take_works.
         rewrite drop_works.
         set (check_hof tx) as hof_tx.
         destruct hof_tx; [ apply (Prelude_error "attempt tp apply a higher-order function at depth>0") | idtac ].
@@ -346,8 +393,13 @@ Section HaskSkolemizer.
         apply SFlat.
         apply RArrange.
         apply RCanR.
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply RAssoc ].
-        apply nd_rule; apply SFlat; apply RArrange; apply RLeft; eapply RExch.
+        apply nd_rule.
+          apply SFlat.
+          apply RArrange.
+          eapply RComp; [ idtac | eapply RAssoc ].
+          apply RLeft.
+          eapply RComp; [ idtac | apply RExch ].
+          apply take_unarrange.
 
       destruct case_RLet.
         simpl.
