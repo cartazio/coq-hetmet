@@ -260,7 +260,7 @@ Section HaskFlattener.
     | TCoerc _ t1 t2 t      => TCoerc    (flatten_rawtype t1) (flatten_rawtype t2) (flatten_rawtype t)
     | TArrow                => TArrow
     | TCode     ec e        => let e' := flatten_rawtype e
-                               in  ga_mk_raw ec (unleaves' (take_arg_types e')) [drop_arg_types e']
+                               in  ga_mk_raw ec (unleaves (take_arg_types e')) [drop_arg_types e']
     | TyFunApp  tfc kl k lt => TyFunApp tfc kl k (flatten_rawtype_list _ lt)
     end
     with flatten_rawtype_list {TV}(lk:list Kind)(exp:@RawHaskTypeList TV lk) : @RawHaskTypeList TV lk :=
@@ -852,18 +852,42 @@ Section HaskFlattener.
     apply IHt2.
     Defined.
 
+  Axiom extensionality : forall Γ Q (f g:forall TV, InstantiatedTypeEnv TV Γ -> Q TV),
+    (forall tv ite, f tv ite = g tv ite) -> f=g.
+
   Lemma krunk : forall Γ (ec:HaskTyVar Γ ECKind) t,
     flatten_type (<[ ec |- t ]>)
     = @ga_mk Γ (v2t ec)
     (mapOptionTree flatten_type (take_arg_types_as_tree t))
     [ flatten_type (drop_arg_types_as_tree   t)].
-
     intros.
     unfold flatten_type at 1.
     simpl.
     unfold ga_mk.
+    apply extensionality.
+    intros.
     unfold v2t.
-    admit. (* BIG HUGE CHEAT FIXME *)
+    unfold ga_mk_raw.
+    unfold ga_mk_tree.
+    rewrite <- mapOptionTree_compose.
+    unfold take_arg_types_as_tree.
+    simpl.
+    replace (flatten_type (drop_arg_types_as_tree t) tv ite)
+      with (drop_arg_types (flatten_rawtype (t tv ite))).
+    replace (unleaves (take_arg_types (flatten_rawtype (t tv ite))))
+      with ((mapOptionTree (fun x : HaskType Γ ★ => flatten_type x tv ite)
+           (unleaves
+              (take_trustme (count_arg_types (t (fun _ : Kind => unit) (ite_unit Γ)))
+                 (fun TV : Kind → Type => take_arg_types ○ t TV))))).
+    reflexivity.
+    unfold flatten_type.
+    clear hetmet_flatten.
+    clear hetmet_unflatten.
+    clear hetmet_id.
+    clear gar.
+    set (t tv ite) as x.
+    admit.
+    admit.
     Qed.
 
   Definition flatten_proof :
