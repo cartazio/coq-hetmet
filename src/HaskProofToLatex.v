@@ -161,6 +161,7 @@ Fixpoint nd_uruleToRawLatexMath {T}{h}{c}(r:@Arrange T h c) : string :=
   match r with
     | RLeft   _ _ _ r => nd_uruleToRawLatexMath r
     | RRight  _ _ _ r => nd_uruleToRawLatexMath r
+    | RId     _     => "Id"
     | RCanL   _     => "CanL"
     | RCanR   _     => "CanR"
     | RuCanL  _     => "uCanL"

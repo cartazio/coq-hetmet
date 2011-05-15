@@ -239,6 +239,7 @@ Section HaskProofToStrong.
  with
           | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ r)
           | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ r)
+          | RId     a       => let case_RId    := tt in _
           | RCanL   a       => let case_RCanL  := tt in _
           | RCanR   a       => let case_RCanR  := tt in _
           | RuCanL  a       => let case_RuCanL := tt in _
@@ -250,6 +251,9 @@ Section HaskProofToStrong.
           | RCont   a       => let case_RCont  := tt in _
           | RComp   a b c f g => let case_RComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ f) (urule2expr _ _ _ g)
           end); clear urule2expr; intros.
+
+      destruct case_RId.
+        apply X.
 
       destruct case_RCanL.
         simpl; unfold ujudg2exprType; intros.

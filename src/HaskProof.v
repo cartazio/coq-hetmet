@@ -45,6 +45,7 @@ Implicit Arguments ProofCaseBranch [ ].
 
 (* Figure 3, production $\vdash_E$, Uniform rules *)
 Inductive Arrange {T} : Tree ??T -> Tree ??T -> Type :=
+| RId     : forall a        ,                Arrange           a                  a
 | RCanL   : forall a        ,                Arrange  (    [],,a   )      (       a   )
 | RCanR   : forall a        ,                Arrange  (    a,,[]   )      (       a   )
 | RuCanL  : forall a        ,                Arrange  (       a    )      (  [],,a    )
@@ -176,6 +177,7 @@ Definition arrangeMap :
     Arrange (mapOptionTree f Σ₁) (mapOptionTree f Σ₂).
   intros.
   induction X; simpl.
+  apply RId.
   apply RCanL.
   apply RCanR.
   apply RuCanL.
