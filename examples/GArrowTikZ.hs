@@ -335,10 +335,12 @@ tikz' x = tikz $ optimize $ unG (x (PGArrowD { unG = GAS_const 12 }) (PGArrowD {
 main = do putStrLn "hello"
 tikz example
      = do putStrLn "\\documentclass{article}"
-          putStrLn "\\usepackage[landscape,paperwidth=20in,textheight=19in,paperheight=40in,textwidth=39in]{geometry}"
+          putStrLn "\\usepackage[paperwidth=\\maxdimen,paperheight=\\maxdimen]{geometry}"
           putStrLn "\\usepackage{tikz}"
           putStrLn "\\usepackage{amsmath}"
+          putStrLn "\\usepackage[tightpage,active]{preview}"
           putStrLn "\\begin{document}"
+          putStrLn "\\setlength\\PreviewBorder{5pt}"
           putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
           putStrLn (toTikZ example)
           putStrLn "\\end{tikzpicture}"
