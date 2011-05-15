@@ -1,5 +1,17 @@
-{-# OPTIONS_GHC -XModalTypes -XMultiParamTypeClasses -XNoMonoPatBinds -XKindSignatures -XGADTs -XFlexibleContexts -XFlexibleInstances -XTypeOperators -XUndecidableInstances -XTypeFamilies #-}
-module GArrowTikZ (tikz, tikz', GArrowTikZ(..))
+{-# LANGUAGE RankNTypes, MultiParamTypeClasses, GADTs, FlexibleContexts, FlexibleInstances, TypeOperators #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  GArrowTikZ
+-- Copyright   :  none
+-- License     :  public domain
+--
+-- Maintainer  :  Adam Megacz <megacz@acm.org>
+-- Stability   :  experimental
+--
+-- | Renders a @GArrowSkeleton@ using TikZ; the result is LaTeX code
+--
+
+module GArrowTikZ (tikz, tikz')
 where
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
@@ -7,38 +19,26 @@ import GHC.HetMet.GArrow
 import Data.List hiding (lookup, insert)
 import Data.Map hiding (map, (!))
 import Unify
+import GArrowSkeleton
 import GHC.HetMet.Private
 
-{-
-TO DO:
-    - have "resolve" turn a (Diagram UnifVal) into (Diagram Int)
-    - custom rendering
-    - bias right now is for all edges to be uppermost; try for bias
-      towards smallest nodes?
-    - curvy boxes (like XOR gates)
--}
+data UPort =
+   UPortVar  UVar
+ | UPortPair UPort UPort
 
-
--- a unification value is basically a LISP-ish expression
-data UVal =
-   UVVar  UVar
- | UVVal  [UVal]
-
-instance Unifiable UVal where
-  unify' (UVVal vl1) (UVVal vl2)
-      | length vl1 /= length vl2  = error "length mismatch during unification"
-      | otherwise                 = foldr mergeU emptyUnifier (map (\(x,y) -> unify x y) $ zip vl1 vl2)
-  unify' _ _                      = error "impossible"
-  inject                          = UVVar
-  project (UVVar v)               = Just v
-  project _                       = Nothing
-  occurrences (UVVar v)           = [v]
-  occurrences (UVVal vl)          = concatMap occurrences vl
+instance Unifiable UPort where
+  unify' (UPortPair vl1a vl1b) (UPortPair vl2a vl2b) = mergeU (unify vl1a vl2a) (unify vl1b vl2b)
+  unify' _ _                                         = error "impossible"
+  inject                                             = UPortVar
+  project (UPortVar v)                               = Just v
+  project _                                          = Nothing
+  occurrences (UPortVar v)                           = [v]
+  occurrences (UPortPair x y)                        = occurrences x ++ occurrences y
 
 -- | Resolves a unification variable; the answer to this query will change if subsequent unifications are performed
-getU' :: Unifier UVal -> UVal -> UVal
-getU' u (UVVal vl)    = UVVal $ map (getU' u) vl
-getU' u x@(UVVar v)   = case Unify.getU u v  of
+getU' :: Unifier UPort -> UPort -> UPort
+getU' u (UPortPair x y)  = UPortPair (getU' u x) (getU' u y)
+getU' u x@(UPortVar v)   = case Unify.getU u v  of
                                      Nothing -> x
                                      Just x' -> getU' u x'
 
@@ -49,10 +49,10 @@ getU' u x@(UVVar v)   = case Unify.getU u v  of
 -- | Render a fully-polymorphic GArrow term as a boxes-and-wires diagram using TikZ
 --
 
-type Constraints = [(UVal, Int, UVal)]
+type Constraints = [(UPort, Int, UPort)]
 
 -- the unification monad
-data UyM t a = UyM (([UVar],Unifier UVal,Constraints) -> ([UVar],Unifier UVal,Constraints,a))
+data UyM t a = UyM (([UVar],Unifier UPort,Constraints) -> ([UVar],Unifier UPort,Constraints,a))
 instance Monad (UyM t)
  where
   return x      = UyM $ \(i,u,k) -> (i,u,k,x)
@@ -62,151 +62,49 @@ instance Monad (UyM t)
 getU        = UyM $ \(i,u,k) -> (i,u,k,u)
 getM    v   = UyM $ \(i,u,k) -> (i,u,k,getU' u v)
 occursU v x = UyM $ \(i,u,k) -> (i,u,k,occurs u v x)
-unifyM :: Eq t => UVal -> UVal -> UyM t ()
+unifyM :: Eq t => UPort -> UPort -> UyM t ()
 unifyM v1 v2 = UyM $ \(i,u,k) -> (i,mergeU u (unify v1 v2),k,())
 freshU :: UyM t UVar
 freshU = UyM $ \(i:is,u,k) -> (is,u,k,i)
-constrain :: UVal -> Int -> UVal -> UyM t ()
+constrain :: UPort -> Int -> UPort -> UyM t ()
 constrain v1 d v2 = UyM $ \(i,u,k) -> (i,u,((v1,d,v2):k),())
-getK :: UyM t [(UVal, Int, UVal)]
+getK :: UyM t [(UPort, Int, UPort)]
 getK = UyM $ \(i,u,k) -> (i,u,k,k)
-runU :: UyM t a -> ([UVar],Unifier UVal,Constraints,a)
+runU :: UyM t a -> ([UVar],Unifier UPort,Constraints,a)
 runU (UyM f) = (f (uvarSupply,emptyUnifier,[]))
 
-data GArrowTikZ :: * -> * -> *
- where
-  TikZ_const     ::                             Int ->  GArrowTikZ () Int
-  TikZ_id        ::                                     GArrowTikZ x x
-  TikZ_comp      :: GArrowTikZ y z -> GArrowTikZ x y -> GArrowTikZ x z
-  TikZ_first     :: GArrowTikZ x y                   -> GArrowTikZ (x**z)  (y**z)
-  TikZ_second    :: GArrowTikZ x y                   -> GArrowTikZ (z**x)  (z**y)
-  TikZ_cancell   ::                                     GArrowTikZ (()**x) x
-  TikZ_cancelr   ::                                     GArrowTikZ (x**()) x
-  TikZ_uncancell ::                                     GArrowTikZ x (()**x)
-  TikZ_uncancelr ::                                     GArrowTikZ x (x**())
-  TikZ_assoc     ::                                     GArrowTikZ ((x**y)**z) (x**(y**z))
-  TikZ_unassoc   ::                                     GArrowTikZ (x**(y**z)) ((x**y)**z)
-  TikZ_drop      ::                                     GArrowTikZ x         ()
-  TikZ_copy      ::                                     GArrowTikZ x         (x**x)
-  TikZ_swap      ::                                     GArrowTikZ (x**y)     (y**x)
-  TikZ_merge     ::                                     GArrowTikZ (x**y)     z
-  TikZ_loopl     ::           GArrowTikZ (x**z) (y**z) -> GArrowTikZ x y
-  TikZ_loopr     ::           GArrowTikZ (z**x) (z**y) -> GArrowTikZ x y
-
---
--- Technically this instance violates the laws (and RULEs) for
--- Control.Category; the compiler might choose to optimize (f >>> id)
--- into f, and this optimization would produce a change in behavior
--- below.  In practice this means that the user must be prepared for
--- the rendered TikZ diagram to be merely *equivalent to* his/her
--- term, rather than structurally exactly equal to it.
---
-instance Category GArrowTikZ where
-  id           = TikZ_id
-  (.)          = TikZ_comp
-
-instance GArrow GArrowTikZ (**) () where
-  ga_first     = TikZ_first
-  ga_second    = TikZ_second
-  ga_cancell   = TikZ_cancell
-  ga_cancelr   = TikZ_cancelr
-  ga_uncancell = TikZ_uncancell
-  ga_uncancelr = TikZ_uncancelr
-  ga_assoc     = TikZ_assoc
-  ga_unassoc   = TikZ_unassoc
-
-instance GArrowDrop GArrowTikZ (**) () where
-  ga_drop      = TikZ_drop
-
-instance GArrowCopy GArrowTikZ (**) () where
-  ga_copy      = TikZ_copy
-
-instance GArrowSwap GArrowTikZ (**) () where
-  ga_swap      = TikZ_swap
-
-instance GArrowLoop GArrowTikZ (**) () where
-  ga_loopl     = TikZ_loopl
-  ga_loopr     = TikZ_loopr
-
-type instance GArrowTensor      GArrowTikZ = (,)
-type instance GArrowUnit        GArrowTikZ = ()
-type instance GArrowExponent    GArrowTikZ = (->)
-
-instance GArrowSTKC GArrowTikZ
 
 
-name :: GArrowTikZ a b -> String
-name TikZ_id              = "id"
-name (TikZ_const i)       = "const " ++ show i
-name (TikZ_comp      _ _) = "comp"
-name (TikZ_first     _  ) = "first"
-name (TikZ_second    _  ) = "second"
-name TikZ_cancell         = "cancell"
-name TikZ_cancelr         = "cancelr"
-name TikZ_uncancell       = "uncancell"
-name TikZ_uncancelr       = "uncancelr"
-name TikZ_drop            = "drop"
-name TikZ_copy            = "copy"
-name TikZ_swap            = "swap"
-name (TikZ_loopl     _ )  = "loopl"
-name (TikZ_loopr     _ )  = "loopr"
-name TikZ_assoc           = "assoc"
-name TikZ_unassoc         = "unassoc"
+name :: GArrowSkeleton m a b -> String
+name GAS_id              = "id"
+name (GAS_const i)       = "const " ++ show i
+name (GAS_comp      _ _) = "comp"
+name (GAS_first     _  ) = "first"
+name (GAS_second    _  ) = "second"
+name GAS_cancell         = "cancell"
+name GAS_cancelr         = "cancelr"
+name GAS_uncancell       = "uncancell"
+name GAS_uncancelr       = "uncancelr"
+name GAS_drop            = "drop"
+name GAS_copy            = "copy"
+name GAS_swap            = "swap"
+name (GAS_loopl     _ )  = "loopl"
+name (GAS_loopr     _ )  = "loopr"
+name GAS_assoc           = "assoc"
+name GAS_unassoc         = "unassoc"
+name GAS_merge           = "merge"
+name (GAS_misc _)        = "misc"
 
-fresh1 :: UyM () Ports
-fresh1 = do { x <- freshU
-            ; return $ UVVar x
-            }
-
-fresh2 :: UyM () (Ports,Ports)
-fresh2 = do { x <- freshU
-            ; y <- freshU
-            ; constrain (UVVar x) 1 (UVVar y)
-            ; return $ (UVVar x,UVVar y)
-            }
-
-fresh3 :: UyM () (Ports,Ports,Ports)
-fresh3 = do { x <- freshU
-            ; y <- freshU
-            ; z <- freshU
-            ; constrain (UVVar x) 1 (UVVar y)
-            ; constrain (UVVar y) 1 (UVVar z)
-            ; return $ (UVVar x,UVVar y,UVVar z)
-            }
-
-fresh4 :: UyM () (Ports,Ports,Ports,Ports)
-fresh4 = do { x1 <- freshU
-            ; x2 <- freshU
-            ; x3 <- freshU
-            ; x4 <- freshU
-            ; constrain (UVVar x1) 1 (UVVar x2)
-            ; constrain (UVVar x2) 1 (UVVar x3)
-            ; constrain (UVVar x3) 1 (UVVar x4)
-            ; return $ (UVVar x1,UVVar x2,UVVar x3,UVVar x4)
-            }
-
-fresh5 :: UyM () (Ports,Ports,Ports,Ports,Ports)
-fresh5 = do { x1 <- freshU
-            ; x2 <- freshU
-            ; x3 <- freshU
-            ; x4 <- freshU
-            ; x5 <- freshU
-            ; constrain (UVVar x1) 1 (UVVar x2)
-            ; constrain (UVVar x2) 1 (UVVar x3)
-            ; constrain (UVVar x3) 1 (UVVar x4)
-            ; constrain (UVVar x4) 1 (UVVar x5)
-            ; return $ (UVVar x1,UVVar x2,UVVar x3,UVVar x4,UVVar x5)
-            }
-
-
-
-
---example = ga_first ga_drop >>> ga_cancell >>> ga_first id >>> ga_swap >>> ga_first id >>> TikZ_merge
---example :: forall x y z. forall g. (GArrow g (,) (), GArrowCopy g (,) (), GArrowSwap g (,) ()) => g x ((x,x),x)
---example = ga_copy >>> ga_second ga_copy >>> ga_second (ga_first id) >>> ga_unassoc >>> ga_first ga_swap
---example = ga_copy >>> ga_second ga_copy >>> ga_second (ga_second id) >>> ga_unassoc >>> ga_first id >>> ga_first ga_swap
---example :: forall x. forall g. (GArrow g (,) (), GArrowCopy g (,) (), GArrowSwap g (,) ()) => g x x
---example = id >>> id
+fresh :: Int -> UyM () [Ports]
+fresh 0 = return []
+fresh n = do { xs <- fresh  (n-1)
+             ; x  <- freshU
+             ; case xs of
+                 []       -> return [UPortVar x]
+                 (x':xs') -> do { constrain (UPortVar x) 1 x'
+                                ; return $ (UPortVar x):x':xs'
+                                }
+             }
 
 data Diagram p = DiagramComp      (Diagram p) (Diagram p)
                | DiagramPrim      String p p p p (String -> Int -> Int -> Int -> p -> p -> Int -> String)
@@ -215,19 +113,19 @@ data Diagram p = DiagramComp      (Diagram p) (Diagram p)
                -- | DiagramLoopTop   Diagram
                -- | DiagramLoopBot   Diagram
 
-type Ports = UVal
+type Ports = UPort
 
 getOut :: Diagram Ports -> Ports
 getOut (DiagramComp f g)                     = getOut g
 getOut (DiagramPrim s ptop pin pout pbot _)  = pout
-getOut (DiagramBypassTop p f)                = UVVal [p, (getOut f)]
-getOut (DiagramBypassBot f p)                = UVVal [(getOut f), p]
+getOut (DiagramBypassTop p f)                = UPortPair p (getOut f)
+getOut (DiagramBypassBot f p)                = UPortPair (getOut f) p
 
 getIn :: Diagram Ports -> Ports
 getIn (DiagramComp f g)                      = getIn f
 getIn (DiagramPrim s ptop pin pout pbot _)   = pin
-getIn (DiagramBypassTop p f)                 = UVVal [p, (getIn f)]
-getIn (DiagramBypassBot f p)                 = UVVal [(getIn f), p]
+getIn (DiagramBypassTop p f)                 = UPortPair p (getIn f)
+getIn (DiagramBypassBot f p)                 = UPortPair (getIn f) p
 
 -- constrain that Ports is at least Int units above the topmost portion of Diagram
 constrainTop :: Ports -> Int -> Diagram Ports -> UyM () ()
@@ -243,32 +141,33 @@ constrainBot (DiagramBypassTop p d)               i v = constrainBot d (i+1) v
 constrainBot (DiagramBypassBot d p)               i v = constrain p 2 v
 constrainBot (DiagramPrim s ptop pin pout pbot _) i v = constrain pbot i v
 
-ga2diag :: GArrowTikZ a b -> UyM () (Diagram Ports)
-ga2diag (TikZ_id           ) = do { (top,x,bot) <- fresh3 ; return $ DiagramPrim "id" top x x bot defren }
-ga2diag (TikZ_comp      g f) = do { f' <- ga2diag f
+ga2diag :: GArrowSkeleton m a b -> UyM () (Diagram Ports)
+ga2diag (GAS_id           ) = do { [top,x,bot] <- fresh 3 ; return $ DiagramPrim "id" top x x bot defren }
+ga2diag (GAS_comp      f g) = do { f' <- ga2diag f
                                   ; g' <- ga2diag g
                                   ; unifyM (getOut f') (getIn g')
                                   ; return $ DiagramComp f' g' }
-ga2diag (TikZ_first  f) = do { x <- fresh1; f' <- ga2diag f ; constrainBot f' 1 x  ; return $ DiagramBypassBot f' x  }
-ga2diag (TikZ_second f) = do { x <- fresh1; f' <- ga2diag f ; constrainTop x  1 f' ; return $ DiagramBypassTop x f'  }
-ga2diag TikZ_cancell    = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancell" top (UVVal [x,y]) y bot defren }
-ga2diag TikZ_cancelr    = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim   "cancelr" top (UVVal [x,y]) x bot defren }
-ga2diag TikZ_uncancell  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancell" top y (UVVal [x,y]) bot defren }
-ga2diag TikZ_uncancelr  = do { (top,x,y  ,bot) <- fresh4  ; return $ DiagramPrim "uncancelr" top x (UVVal [x,y]) bot defren }
-ga2diag TikZ_drop       = do { (top,x    ,bot) <- fresh3  ; return $ DiagramPrim      "drop" top x x bot defren }
-ga2diag (TikZ_const i)  = do { (top,x    ,bot) <- fresh3  ; return $ DiagramPrim  ("const " ++ show i) top x x bot defren }
-ga2diag TikZ_copy       = do { (top,x,y,z,bot) <- fresh5
-                             ; return $ DiagramPrim      "copy" top y (UVVal [x,z]) bot defren }
-ga2diag TikZ_merge      = do { (top,x,y,z,bot) <- fresh5
-                             ; return $ DiagramPrim      "merge" top (UVVal [x,z]) y bot defren }
-ga2diag TikZ_swap       = do { (top,x,y  ,bot) <- fresh4
-                             ; return $ DiagramPrim      "swap" top (UVVal [x,y]) (UVVal [x,y]) bot defren }
-ga2diag TikZ_assoc      = do { (top,x,y,z,bot) <- fresh5
-                             ; return $ DiagramPrim  "assoc" top (UVVal [UVVal [x,y],z])(UVVal [x,UVVal [y,z]]) bot defren }
-ga2diag TikZ_unassoc    = do { (top,x,y,z,bot) <- fresh5
-                             ; return $ DiagramPrim "unassoc" top (UVVal [x,UVVal [y,z]])(UVVal [UVVal [x,y],z]) bot defren }
-ga2diag (TikZ_loopl f) = error "not implemented"
-ga2diag (TikZ_loopr f) = error "not implemented"
+ga2diag (GAS_first  f) = do { [x] <- fresh 1; f' <- ga2diag f ; constrainBot f' 1 x  ; return $ DiagramBypassBot f' x  }
+ga2diag (GAS_second f) = do { [x] <- fresh 1; f' <- ga2diag f ; constrainTop x  1 f' ; return $ DiagramBypassTop x f'  }
+ga2diag GAS_cancell    = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim   "cancell" top (UPortPair x y) y bot defren }
+ga2diag GAS_cancelr    = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim   "cancelr" top (UPortPair x y) x bot defren }
+ga2diag GAS_uncancell  = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim "uncancell" top y (UPortPair x y) bot defren }
+ga2diag GAS_uncancelr  = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim "uncancelr" top x (UPortPair x y) bot defren }
+ga2diag GAS_drop       = do { [top,x    ,bot] <- fresh 3  ; return $ DiagramPrim      "drop" top x x bot defren }
+ga2diag (GAS_const i)  = do { [top,x    ,bot] <- fresh 3  ; return $ DiagramPrim  ("const " ++ show i) top x x bot defren }
+ga2diag GAS_copy       = do { [top,x,y,z,bot] <- fresh 5
+                             ; return $ DiagramPrim      "copy" top y (UPortPair x z) bot defren }
+ga2diag GAS_merge      = do { [top,x,y,z,bot] <- fresh 5
+                             ; return $ DiagramPrim      "merge" top (UPortPair x z) y bot defren }
+ga2diag GAS_swap       = do { [top,x,y  ,bot] <- fresh 4
+                             ; return $ DiagramPrim      "swap" top (UPortPair x y) (UPortPair x y) bot defren }
+ga2diag GAS_assoc      = do { [top,x,y,z,bot] <- fresh 5
+                             ; return $ DiagramPrim  "assoc" top (UPortPair (UPortPair x y) z) (UPortPair x (UPortPair y z)) bot defren }
+ga2diag GAS_unassoc    = do { [top,x,y,z,bot] <- fresh 5
+                             ; return $ DiagramPrim "unassoc" top (UPortPair x (UPortPair y z)) (UPortPair (UPortPair x y) z) bot defren }
+ga2diag (GAS_loopl f) = error "not implemented"
+ga2diag (GAS_loopr f) = error "not implemented"
+ga2diag (GAS_misc f ) = error "not implemented"
 
 defren :: String -> Int -> Int -> Int -> Ports -> Ports -> Int -> String
 defren s x w top p1 p2 bot
@@ -319,35 +218,38 @@ tikZ m = tikZ'
   tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width d') bot "gray!50" "second"
-                                      ++ drawLine x (top+1) (x+width d') (top+1) "black" "->"
                                       ++ wires x (getIn d) (x+1) "black"
                                       ++ tikZ' d (x+1)
                                       ++ wires (x+1+width d) (getOut d) (x+1+width d+1) "black"
+                                      ++ wires x p (x+1+width d+1) "black"
   tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width d') bot "gray!50" "first"
-                                      ++ drawLine x (bot-1) (x+width d') (bot-1) "black" "->"
                                       ++ wires x (getIn d) (x+1) "black"
                                       ++ tikZ' d (x+1)
                                       ++ wires (x+1+width d) (getOut d) (x+1+width d+1) "black"
-  tikZ'  d@(DiagramPrim s (UVVar top) p1 p2 (UVVar bot) r)  x = r s x (width d) (m ! top) p1 p2 (m ! bot)
+                                      ++ wires x p (x+1+width d+1) "black"
+  tikZ'  d@(DiagramPrim s (UPortVar top) p1 p2 (UPortVar bot) r)  x = r s x (width d) (m ! top) p1 p2 (m ! bot)
+  tikZ'  _ _ = error "FIXME"
 
   wires :: Int -> Ports -> Int -> String -> String
-  wires x1 (UVVar v)    x2 color = drawLine x1 (m ! v) x2 (m ! v) color "->"
-                                  -- ++ textc ((x1+x2) `div` 2) (m!v) (show v) "purple"
-  wires x1 (UVVal vl) x2 color = foldr (\x y -> x ++ " " ++ y) [] (map (\v -> wires x1 v x2 color) vl)
+  wires x1 (UPortVar v)    x2 color = drawLine x1 (m ! v) x2 (m ! v) color "->"
+                                       --  ++ textc ((x1+x2) `div` 2) (m!v) (show v) "purple"
+  wires x1 (UPortPair x y) x2 color = wires x1 x x2 color ++ wires x1 y x2 color
 
   getTop :: Diagram Ports -> Int
   getTop (DiagramComp d1 d2)                = min (getTop d1) (getTop d2)
   getTop (DiagramBypassTop p d)             = (m ! getleft p) - 1
   getTop (DiagramBypassBot d p)             = getTop d - 1
-  getTop (DiagramPrim s (UVVar ptop) _ _ _ _)  = m ! ptop
+  getTop (DiagramPrim s (UPortVar ptop) _ _ _ _)  = m ! ptop
+  getTop _ = error "getTop failed"
 
   getBot :: Diagram Ports -> Int
   getBot (DiagramComp d1 d2)                = max (getBot d1) (getBot d2)
   getBot (DiagramBypassTop p d)             = getBot d + 1
   getBot (DiagramBypassBot d p)             = (m ! getright p) + 1
-  getBot (DiagramPrim s _ _ _ (UVVar pbot) _)  = m ! pbot
+  getBot (DiagramPrim s _ _ _ (UPortVar pbot) _)  = m ! pbot
+  getBot _ = error "getTop failed"
 
 resolve' (DiagramComp d1 d2)    = do { d1' <- resolve' d1 ; d2' <- resolve' d2 ; return $ DiagramComp d1' d2'    }
 resolve' (DiagramBypassTop p d) = do { p'  <- getM p     ; d'  <- resolve' d  ; return $ DiagramBypassTop p' d' }
@@ -359,11 +261,11 @@ resolve' (DiagramPrim s ptop pin pout pbot r)
          ; pout' <- getM pout
          ; return $ DiagramPrim s ptop' pin' pout' pbot' r }
 
-getleft (UVVar   v)  = v
-getleft (UVVal  vl) = getleft (head vl)
+getleft (UPortVar   v)  = v
+getleft (UPortPair a b) = getleft a
 
-getright (UVVar   v)  = v
-getright (UVVal  vl) = getright (last vl)
+getright (UPortVar   v)  = v
+getright (UPortPair a b) = getright b
 
 strip :: [(Ports,Int,Ports)] -> [(UVar,Int,UVar)]
 strip = map (\(v1,x,v2) -> (getright v1, x, getleft v2))
@@ -371,7 +273,7 @@ strip = map (\(v1,x,v2) -> (getright v1, x, getleft v2))
 
 -- must use bubblesort because the ordering isn't transitive
 sortit :: [(UVar,Int,UVar)] -> [(UVar,Int,UVar)]
-sortit x = stupidSort x []
+sortit x = let x' = stupidSort x [] in if x==x' then x else sortit x'
  where
   stupidSort []    x = x
   stupidSort (h:t) x = stupidSort t (stupidInsert h x)
@@ -407,7 +309,7 @@ resolve'k = do { k  <- getK
               ; return k'
               }
 
-toTikZ :: GArrowTikZ a b -> String
+toTikZ :: GArrowSkeleton m a b -> String
 toTikZ g = tikZ m d 0
             where
               (_,_,_,(d,k)) = runU $ do { d <- ga2diag g
@@ -416,7 +318,7 @@ toTikZ g = tikZ m d 0
                                         ; return (d',k') }
               s = sortit (strip k)
               m = valuatit empty s
-toTikZ' :: GArrowTikZ a b -> String
+toTikZ' :: GArrowSkeleton m a b -> String
 toTikZ' g = foldr (\x y -> x++"\\\\\n"++y) [] (map foo s)
              where
                (_,_,_,k) = runU $ ga2diag g >>= resolve' >>= \_ -> resolve'k
@@ -429,18 +331,19 @@ tikz' :: (forall g a .
                  (
                    forall b . PGArrow g (GArrowTensor g b b) b) ->
                      PGArrow g (GArrowUnit g) a) -> IO ()
-tikz' x = tikz $ unG (x (PGArrowD { unG = TikZ_const 12 }) (PGArrowD { unG = TikZ_merge }) )
+tikz' x = tikz $ optimize $ unG (x (PGArrowD { unG = GAS_const 12 }) (PGArrowD { unG = GAS_merge }) )
 main = do putStrLn "hello"
 tikz example
      = do putStrLn "\\documentclass{article}"
-          putStrLn "\\usepackage[landscape,paperheight=20in,textwidth=19in]{geometry}"
+          putStrLn "\\usepackage[landscape,paperwidth=20in,textheight=19in,paperheight=40in,textwidth=39in]{geometry}"
           putStrLn "\\usepackage{tikz}"
           putStrLn "\\usepackage{amsmath}"
           putStrLn "\\begin{document}"
           putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
           putStrLn (toTikZ example)
           putStrLn "\\end{tikzpicture}"
---          putStrLn "\\begin{align*}"
---          putStr   (toTikZ' example)
---          putStrLn "\\end{align*}"
+          --putStrLn "\\pagebreak"
+          --putStrLn "\\begin{align*}"
+          --putStr   (toTikZ' example)
+          --putStrLn "\\end{align*}"
           putStrLn "\\end{document}"
