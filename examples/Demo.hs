@@ -11,7 +11,8 @@ foo :: (forall g a . <[ () -> a
                  (forall b . PGArrow g (GArrowTensor g b b) b) ->
 -}
 --foo con mer   = <[ ~~mer ~~con ~~con ]>
-foo const merge = <[ ~~merge ~~const (~~merge ~~const ~~const) ]>
+--foo const merge = <[ ~~merge ~~const (~~merge ~~const ~~const) ]>
+foo const merge = <[ ~~merge ~~const ~~const ]>
 
 --tester2 f = <[ \x -> ~~f x x ]>
 

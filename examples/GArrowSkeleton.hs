@@ -168,16 +168,23 @@ optimize x = let x' = optimize' x in if x == x' then x' else optimize x'
   optimize_pair GAS_uncancelr (GAS_first f)   = Just $ GAS_comp   f GAS_uncancelr
   optimize_pair GAS_uncancell (GAS_second f)  = Just $ GAS_comp   f GAS_uncancell
 
-  -- second priority: push GAS_swap leftward... why isn't this working?
+  -- second priority: push GAS_swap leftward
   optimize_pair (GAS_second f) GAS_swap       = Just $ GAS_comp   GAS_swap (GAS_first  f)
   optimize_pair (GAS_first f) GAS_swap        = Just $ GAS_comp   GAS_swap (GAS_second f)
   optimize_pair GAS_swap GAS_swap             = Just $ GAS_id
+  optimize_pair GAS_swap GAS_cancell          = Just $ GAS_cancelr
+  optimize_pair GAS_swap GAS_cancelr          = Just $ GAS_cancell
 
   optimize_pair (GAS_first f) (GAS_first g)   = Just $ GAS_first (GAS_comp f g)
   optimize_pair (GAS_second f) (GAS_second g) = Just $ GAS_second (GAS_comp f g)
 
   optimize_pair GAS_assoc   GAS_cancell       = Just $ GAS_first GAS_cancell
   optimize_pair GAS_unassoc GAS_cancelr       = Just $ GAS_second GAS_cancelr
+  optimize_pair GAS_assoc   (GAS_second GAS_cancell)  = Just $ GAS_first GAS_cancelr
+
+  -- FIXME: valid only for central morphisms
+  --optimize_pair (GAS_second f) (GAS_first g) = Just $ GAS_comp (GAS_first g) (GAS_second f)
+  optimize_pair (GAS_first g) (GAS_second f) = Just $ GAS_comp  (GAS_second f) (GAS_first g)
 
   optimize_pair _ _                           = Nothing
 
