@@ -341,9 +341,11 @@ tikz example
           putStrLn "\\usepackage[tightpage,active]{preview}"
           putStrLn "\\begin{document}"
           putStrLn "\\setlength\\PreviewBorder{5pt}"
+          putStrLn "\\begin{preview}"
           putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
           putStrLn (toTikZ example)
           putStrLn "\\end{tikzpicture}"
+          putStrLn "\\end{preview}"
           --putStrLn "\\pagebreak"
           --putStrLn "\\begin{align*}"
           --putStr   (toTikZ' example)
