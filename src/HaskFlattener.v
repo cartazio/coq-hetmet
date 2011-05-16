@@ -722,54 +722,32 @@ Section HaskFlattener.
       apply IHsucc2.
     Defined.
 
-  Definition arrange_esc : forall Γ Δ ec succ t,
-   ND Rule
-     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [t @@  nil]]
-     [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
-      [(@ga_mk _ (v2t ec) [] (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil] |- [t @@  nil]].
-    intros.
-    unfold drop_lev.
-    set (@arrange _ succ (levelMatch (ec::nil))) as q.
-    set (arrangeMap _ _ flatten_leveled_type q) as y.
-    eapply nd_comp.
-    eapply nd_rule.
-    eapply RArrange.
-    apply y.
-    idtac.
-    clear y q.
-
-    induction succ.
-    destruct a.
-      destruct l.
-      simpl.
-      unfold mkDropFlags; simpl.
-      unfold take_lev.
-      unfold mkTakeFlags.
-      simpl.
-      destruct (General.list_eq_dec h0 (ec :: nil)).
-        simpl.
-        rewrite e.
-        apply nd_id.
-        simpl.
-        apply nd_rule.
-        apply RArrange.
-        apply RLeft.
-        apply RWeak.
-      simpl.
-        apply nd_rule.
-        unfold take_lev.
-        simpl.
-        apply RArrange.
-        apply RLeft.
-        apply RWeak.
-      apply (Prelude_error "escapifying code with multi-leaf antecedents is not supported").
+  Definition arrange_empty_tree : forall {T}{A}(q:Tree A)(t:Tree ??T),
+    t = mapTree (fun _:A => None) q ->
+    Arrange t [].
+    intros T A q.
+    induction q; intros.
+      simpl in H.
+      rewrite H.
+      apply RId.
+    simpl in *.
+    destruct t; try destruct o; inversion H.
+      set (IHq1 _ H1) as x1.
+      set (IHq2 _ H2) as x2.
+      eapply RComp.
+        eapply RRight.
+        rewrite <- H1.
+        apply x1.
+      eapply RComp.
+        apply RCanL.
+        rewrite <- H2.
+        apply x2.
       Defined.
 
-  Lemma mapOptionTree_distributes
-    : forall T R (a b:Tree ??T) (f:T->R),
-      mapOptionTree f (a,,b) = (mapOptionTree f a),,(mapOptionTree f b).
-    reflexivity.
-    Qed.
+(*  Definition unarrange_empty_tree : forall {T}{A}(t:Tree ??T)(q:Tree A),
+    t = mapTree (fun _:A => None) q ->
+    Arrange [] t.
+  Defined.*)
 
   Definition decide_tree_empty : forall {T:Type}(t:Tree ??T),
     sum { q:Tree unit & t = mapTree (fun _ => None) q } unit.
@@ -796,6 +774,95 @@ Section HaskFlattener.
     right; auto.
     right; auto.
     Defined.
+
+  Definition arrange_esc : forall Γ Δ ec succ t,
+   ND Rule
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [t @@  nil]]
+     [Γ > Δ > mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ),,
+      [(@ga_mk _ (v2t ec) [] (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil] |- [t @@  nil]].
+    intros.
+    set (@arrange _ succ (levelMatch (ec::nil))) as q.
+    set (@drop_lev Γ (ec::nil) succ) as q'.
+    assert (@drop_lev Γ (ec::nil) succ=q') as H.
+      reflexivity.
+    unfold drop_lev in H.
+    unfold mkDropFlags in H.
+    rewrite H in q.
+    clear H.
+    set (arrangeMap _ _ flatten_leveled_type q) as y.
+    eapply nd_comp.
+    eapply nd_rule.
+    eapply RArrange.
+    apply y.
+    clear y q.
+
+    set (mapOptionTree flatten_leveled_type (dropT (mkFlags (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ))) as q.
+    destruct (decide_tree_empty q); [ idtac | apply (Prelude_error "escapifying open code not yet supported") ].
+    destruct s.
+
+    simpl.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RExch ].
+    set (fun z z' => @RLet Γ Δ z (mapOptionTree flatten_leveled_type q') t z' nil) as q''.
+    eapply nd_comp; [ idtac | eapply nd_rule; apply q'' ].
+    clear q''.
+    eapply nd_comp; [ apply nd_rlecnac | idtac ].
+    apply nd_prod.
+    apply nd_rule.
+    apply RArrange.
+    eapply RComp; [ idtac | apply RCanR ].
+    apply RLeft.
+    apply (@arrange_empty_tree _ _ _ _ e).
+    
+    eapply nd_comp.
+      eapply nd_rule.
+      eapply (@RVar Γ Δ t nil).
+    apply nd_rule.
+      apply RArrange.
+      eapply RComp.
+      apply RuCanL.
+      apply RRight.
+      apply RWeak.
+(*
+    eapply decide_tree_empty.
+
+    simpl.
+    set (dropT (mkFlags (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ)) as escapified.
+    destruct (decide_tree_empty escapified).
+
+    induction succ.
+    destruct a.
+      unfold drop_lev.
+      destruct l.
+      simpl.
+      unfold mkDropFlags; simpl.
+      unfold take_lev.
+      unfold mkTakeFlags.
+      simpl.
+      destruct (General.list_eq_dec h0 (ec :: nil)).
+        simpl.
+        rewrite e.
+        apply nd_id.
+        simpl.
+        apply nd_rule.
+        apply RArrange.
+        apply RLeft.
+        apply RWeak.
+      simpl.
+        apply nd_rule.
+        unfold take_lev.
+        simpl.
+        apply RArrange.
+        apply RLeft.
+        apply RWeak.
+      apply (Prelude_error "escapifying code with multi-leaf antecedents is not supported").
+*)
+      Defined.
+
+  Lemma mapOptionTree_distributes
+    : forall T R (a b:Tree ??T) (f:T->R),
+      mapOptionTree f (a,,b) = (mapOptionTree f a),,(mapOptionTree f b).
+    reflexivity.
+    Qed.
 
   Lemma unlev_relev : forall {Γ}(t:Tree ??(HaskType Γ ★)) lev, mapOptionTree unlev (t @@@ lev) = t.
     intros.
