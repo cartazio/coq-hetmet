@@ -8,176 +8,443 @@
 -- Maintainer  :  Adam Megacz <megacz@acm.org>
 -- Stability   :  experimental
 --
--- | Renders a @GArrowSkeleton@ using TikZ; the result is LaTeX code
+-- | Renders a @GArrowSkeleton@ using TikZ; the result is LaTeX code.
+-- You must have lp_solve installed in order for this to work.
 --
 
-module GArrowTikZ (tikz, tikz')
+module GArrowTikZ (tikz)
 where
+import System.Process
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
+import Control.Monad.State
 import GHC.HetMet.GArrow
 import Data.List hiding (lookup, insert)
 import Data.Map hiding (map, (!))
+import Data.Maybe (catMaybes)
 import Unify
 import GArrowSkeleton
+import GArrowPortShape
 import GHC.HetMet.Private
 
-data UPort =
-   UPortVar  UVar
- | UPortPair UPort UPort
-
-instance Unifiable UPort where
-  unify' (UPortPair vl1a vl1b) (UPortPair vl2a vl2b) = mergeU (unify vl1a vl2a) (unify vl1b vl2b)
-  unify' _ _                                         = error "impossible"
-  inject                                             = UPortVar
-  project (UPortVar v)                               = Just v
-  project _                                          = Nothing
-  occurrences (UPortVar v)                           = [v]
-  occurrences (UPortPair x y)                        = occurrences x ++ occurrences y
-
--- | Resolves a unification variable; the answer to this query will change if subsequent unifications are performed
-getU' :: Unifier UPort -> UPort -> UPort
-getU' u (UPortPair x y)  = UPortPair (getU' u x) (getU' u y)
-getU' u x@(UPortVar v)   = case Unify.getU u v  of
-                                     Nothing -> x
-                                     Just x' -> getU' u x'
-
-
-
+------------------------------------------------------------------------------
+-- Tracks
 
 --
--- | Render a fully-polymorphic GArrow term as a boxes-and-wires diagram using TikZ
+-- Figuring out the x-coordinates of the boxes is easy, but we'll need
+-- to use lp_solve to get a nice layout for the y-coordinates of the
+-- wires.  A @Track@ is basically just a y-axis position for one of
+-- the horizontal wires in the boxes-and-wires diagram; we will assign
+-- a unique Int to each visual element that has a y-coordinate, then
+-- generate a big pile of constraints on these y-coordinates and have
+-- lp_solve find a solution.
 --
+type TrackIdentifier = Int
 
-type Constraints = [(UPort, Int, UPort)]
+data Tracks = T  TrackIdentifier
+            | TU TrackIdentifier  -- a track known to be of unit type
+            | TT Tracks Tracks
 
--- the unification monad
-data UyM t a = UyM (([UVar],Unifier UPort,Constraints) -> ([UVar],Unifier UPort,Constraints,a))
-instance Monad (UyM t)
- where
-  return x      = UyM $ \(i,u,k) -> (i,u,k,x)
-  (UyM f) >>= g = UyM $ \(i,u,k) -> let (i',u',k',x) = f (i,u,k) in let UyM g' = g x in g' (i',u',k')
+instance Show Tracks where
+ show (T  ti   ) = "(T "++show ti++")"
+ show (TU ti   ) = "(TU "++show ti++")"
+ show (TT t1 t2) = "(TT "++show t1++" "++show t2++")"
+
+--
+-- | TrackPositions maps TrackIdentifiers to actual y-axis positions;
+-- this is what lp_solve gives us
+-- 
+type TrackPositions = TrackIdentifier -> Float
+
+(!) :: TrackPositions -> TrackIdentifier -> Float
+tp ! ti = tp ti
+
+-- | get the uppermost TrackIdentifier in a Tracks
+uppermost  (T x)    = x
+uppermost  (TU x)    = x
+uppermost  (TT x y) = uppermost x
+
+-- | get the lowermost TrackIdentifier in a Tracks
+lowermost (T x)    = x
+lowermost (TU x)    = x
+lowermost (TT x y) = lowermost y
 
 
-getU        = UyM $ \(i,u,k) -> (i,u,k,u)
-getM    v   = UyM $ \(i,u,k) -> (i,u,k,getU' u v)
-occursU v x = UyM $ \(i,u,k) -> (i,u,k,occurs u v x)
-unifyM :: Eq t => UPort -> UPort -> UyM t ()
-unifyM v1 v2 = UyM $ \(i,u,k) -> (i,mergeU u (unify v1 v2),k,())
-freshU :: UyM t UVar
-freshU = UyM $ \(i:is,u,k) -> (is,u,k,i)
-constrain :: UPort -> Int -> UPort -> UyM t ()
-constrain v1 d v2 = UyM $ \(i,u,k) -> (i,u,((v1,d,v2):k),())
-getK :: UyM t [(UPort, Int, UPort)]
-getK = UyM $ \(i,u,k) -> (i,u,k,k)
-runU :: UyM t a -> ([UVar],Unifier UPort,Constraints,a)
-runU (UyM f) = (f (uvarSupply,emptyUnifier,[]))
 
 
+------------------------------------------------------------------------------
+-- Diagrams
 
-name :: GArrowSkeleton m a b -> String
-name GAS_id              = "id"
-name (GAS_const i)       = "const " ++ show i
-name (GAS_comp      _ _) = "comp"
-name (GAS_first     _  ) = "first"
-name (GAS_second    _  ) = "second"
-name GAS_cancell         = "cancell"
-name GAS_cancelr         = "cancelr"
-name GAS_uncancell       = "uncancell"
-name GAS_uncancelr       = "uncancelr"
-name GAS_drop            = "drop"
-name GAS_copy            = "copy"
-name GAS_swap            = "swap"
-name (GAS_loopl     _ )  = "loopl"
-name (GAS_loopr     _ )  = "loopr"
-name GAS_assoc           = "assoc"
-name GAS_unassoc         = "unassoc"
-name GAS_merge           = "merge"
-name (GAS_misc _)        = "misc"
+-- | A Diagram is the visual representation of a GArrowSkeleton
+data Diagram
+  = DiagramComp      Diagram Diagram
+  | DiagramBox       TrackIdentifier Tracks BoxRenderer Tracks TrackIdentifier
+  | DiagramBypassTop Tracks Diagram
+  | DiagramBypassBot        Diagram Tracks
+  -- | DiagramLoopTop   Tracks Diagram
+  -- | DiagramLoopBot          Diagram Tracks
 
-fresh :: Int -> UyM () [Ports]
-fresh 0 = return []
-fresh n = do { xs <- fresh  (n-1)
-             ; x  <- freshU
-             ; case xs of
-                 []       -> return [UPortVar x]
-                 (x':xs') -> do { constrain (UPortVar x) 1 x'
-                                ; return $ (UPortVar x):x':xs'
-                                }
-             }
-
-data Diagram p = DiagramComp      (Diagram p) (Diagram p)
-               | DiagramPrim      String p p p p (String -> Int -> Int -> Int -> p -> p -> Int -> String)
-               | DiagramBypassTop p (Diagram p)
-               | DiagramBypassBot (Diagram p) p
-               -- | DiagramLoopTop   Diagram
-               -- | DiagramLoopBot   Diagram
-
-type Ports = UPort
-
-getOut :: Diagram Ports -> Ports
+-- | get the output tracks of a diagram
+getOut :: Diagram -> Tracks
 getOut (DiagramComp f g)                     = getOut g
-getOut (DiagramPrim s ptop pin pout pbot _)  = pout
-getOut (DiagramBypassTop p f)                = UPortPair p (getOut f)
-getOut (DiagramBypassBot f p)                = UPortPair (getOut f) p
+getOut (DiagramBox ptop pin q pout pbot)     = pout
+getOut (DiagramBypassTop p f)                = TT p (getOut f)
+getOut (DiagramBypassBot f p)                = TT (getOut f) p
 
-getIn :: Diagram Ports -> Ports
+-- | get the input tracks of a diagram
+getIn :: Diagram -> Tracks
 getIn (DiagramComp f g)                      = getIn f
-getIn (DiagramPrim s ptop pin pout pbot _)   = pin
-getIn (DiagramBypassTop p f)                 = UPortPair p (getIn f)
-getIn (DiagramBypassBot f p)                 = UPortPair (getIn f) p
+getIn (DiagramBox ptop pin q pout pbot)      = pin
+getIn (DiagramBypassTop p f)                 = TT p (getIn f)
+getIn (DiagramBypassBot f p)                 = TT (getIn f) p
+
+-- | A BoxRenderer is just a routine that, given the dimensions of a
+-- boxes-and-wires box element, knows how to spit out a bunch of TikZ
+-- code that draws it
+type BoxRenderer =
+    TrackPositions ->  -- resolves the TrackIdentifiers to actual y-coordinates
+    Float          ->  -- x1
+    Float          ->  -- y1
+    Float          ->  -- x2
+    Float          ->  -- y2
+    String             -- TikZ code
+
+
+
+
+
+
+------------------------------------------------------------------------------
+-- Constraints
+
+-- | a constraint (to be dealt with by lp_solve) relates two track identifiers
+data Constraint = C TrackIdentifier Ordering TrackIdentifier {- plus -} Float
+                | EqualSpace TrackIdentifier TrackIdentifier TrackIdentifier TrackIdentifier
+
+-- instance Show Constraint where
+--  show (C t1 LT t2 k s) = "x"++(show t1)++"  = x"++(show t2)++" + "++(show k) ++ ";\n"
+--  show (C t1 GT t2 k s) = "x"++(show t1)++"  = x"++(show t2)++" + "++(show k) ++ ";\n"
+--  show (C t1 EQ t2 k s) = "x"++(show t1)++"  = x"++(show t2)++" + "++(show k) ++ ";\n"
+
+instance Show Constraint where
+ show (C t1 LT t2 k) = "x"++(show t1)++" <= x"++(show t2)++" + "++(show k) ++ ";\n"
+ show (C t1 GT t2 k) = "x"++(show t1)++" >= x"++(show t2)++" + "++(show k) ++ ";\n"
+ show (C t1 EQ t2 k) = "x"++(show t1)++"  = x"++(show t2)++" + "++(show k) ++ ";\n"
+ show (EqualSpace t1a t1b t2a t2b) = "x"++(show t1a)++" = x"++(show t1b)++
+                                     " + x"++(show t2a)++" - x"++(show t2b)++ ";\n"
+
+-- | a monad to accumulate constraints and track the largest TrackIdentifier allocated
+type ConstraintM a = State (TrackIdentifier,[Constraint]) a
+
+-- | pull the constraints out of the monad
+getConstraints :: ConstraintM [Constraint]
+getConstraints = do { (_,c) <- get ; return c }
+
+-- | add a constraint
+constrain :: TrackIdentifier -> Ordering -> TrackIdentifier {- plus -} -> Float -> ConstraintM ()
+constrain t1 ord t2 k = do { (t,c) <- get
+                           ; put (t, (C t1 ord t2 k):c)
+                           ; return ()
+                           }
+
+constrainEqualSpace t1a t1b t2a t2b = do { (t,c) <- get
+                                         ; put (t, (EqualSpace t1a t1b t2a t2b):c)
+                                         ; return ()
+                                         }
+
+-- | simple form for equality constraints
+constrainEq (TT t1a t1b) (TT t2a t2b) = do { constrainEq t1a t2a ; constrainEq t1b t2b ; return () }
+constrainEq (T  t1     ) (T  t2     ) = constrain t1 EQ t2 0
+constrainEq (TU t1     ) (TU t2     ) = constrain t1 EQ t2 0
+constrainEq (TU t1     ) (T  t2     ) = constrain t1 EQ t2 0
+constrainEq (T  t1     ) (TU t2     ) = constrain t1 EQ t2 0
+constrainEq t1 t2                     = error $ "constrainEq mismatch: " ++ show t1 ++ " and " ++ show t2
+
+-- | allocate a TrackIdentifier
+alloc1 :: ConstraintM Tracks
+alloc1 = do { (t,c) <- get
+            ; put (t+1,c)
+            ; return (T t)
+            }
+
+
+mkdiag :: GArrowPortShape m () a b -> ConstraintM Diagram
+mkdiag (GASPortPassthrough  inp outp m) = error "not supported"
+mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
+ where
+ mkdiag' :: GArrowSkeleton (GArrowPortShape m ()) a b -> ConstraintM Diagram
+ 
+ mkdiag' (GAS_comp f g) = do { f' <- mkdiag' f; g' <- mkdiag' g
+                             ; constrainEq (getOut f') (getIn g') ; return $ DiagramComp f' g' }
+ mkdiag' (GAS_first  f) = do { (top,(TT _ x),bot) <- alloc inp; f' <- mkdiag' f ; constrainBot f' 1 (uppermost x)
+                             ; return $ DiagramBypassBot f' x  }
+ mkdiag' (GAS_second f) = do { (top,(TT x _),bot) <- alloc inp; f' <- mkdiag' f ; constrainTop (lowermost x) 1 f'
+                             ; return $ DiagramBypassTop x f'  }
+ mkdiag' (GAS_id      ) = do { (top,    x   ,bot) <- alloc inp ; simpleDiag        "id" top x x bot        [(x,x)]      }
+ mkdiag' GAS_cancell    = do { (top,(TT x y),bot) <- alloc inp
+                             ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancell" ++
+                                                      drawWires tp x1 y x2 y "black" ++
+                                                      drawLine  x1 (tp!lowermost x)  ((x1+x2)/2) (tp!uppermost y) "black" "dashed"
+                             ; return $ DiagramBox top (TT x y) r y bot  }
+ mkdiag' GAS_cancelr    = do { (top,(TT x y),bot) <- alloc inp
+                             ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancelr" ++
+                                                      drawWires tp x1 x x2 x "black" ++
+                                                      drawLine  x1 (tp!uppermost y) ((x1+x2)/2) (tp!lowermost x) "black" "dashed"
+                             ; return $ DiagramBox top (TT x y) r x bot  }
+ mkdiag' GAS_uncancell  = do { (top,(TT x y),bot) <- alloc outp
+                             ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancell" ++
+                                                      drawWires tp x1 y x2 y "black" ++
+                                                      drawLine  ((x1+x2)/2) (tp!uppermost y) x2 (tp!lowermost x) "black" "dashed"
+                             ; return $ DiagramBox top y r (TT x y) bot  }
+ mkdiag' GAS_uncancelr  = do { (top,(TT x y),bot) <- alloc outp
+                             ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancelr" ++
+                                                      drawWires tp x1 x x2 x "black" ++
+                                                      drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "black" "dashed"
+                             ; return $ DiagramBox top x r (TT x y) bot  }
+ mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp ; simpleDiag      "drop" top x x bot [] }
+ mkdiag' (GAS_const i)  = do { (top,    x   ,bot) <- alloc inp
+                             ; (_,      y   ,_)   <- alloc outp
+                             ; constrainEq x y
+                             ; simpleDiag   ("const " ++ show i) top x y bot [] }
+ mkdiag' GAS_copy       = do { (top,(TT y z),bot) <- alloc outp
+                             ; (_  ,      x ,_)   <- alloc inp
+                             ; constrainEqualSpace (lowermost y) (uppermost x) (lowermost x) (uppermost z)
+                             ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "copy" ++
+                                                      drawWires tp x1 x ((x1+x2)/2) x "black" ++
+                                                      drawWires tp ((x1+x2)/2) x x2 y "black" ++
+                                                      drawWires tp ((x1+x2)/2) x x2 z "black"
+                             ; return $ DiagramBox top x r (TT y z) bot
+                             }
+ mkdiag' GAS_merge      = do { (top,(TT x y),bot) <- alloc inp 
+                             ; simpleDiag     "times" top (TT x y) x bot [] }
+ mkdiag' GAS_swap       = do { (top,(TT x y),bot) <- alloc inp
+                             ; (top,(TT x' y'),bot) <- alloc outp
+                             ; constrainEq (T (lowermost x)) (T (lowermost x'))
+                             ; constrainEq (T (uppermost y)) (T (uppermost y'))
+                             ; simpleDiag'    "swap"  top (TT x y) (TT x' y') bot [(x,y'),(y,x')] "gray!50" }
+ mkdiag' GAS_assoc      =
+     do { (top,(TT (TT x y) z),bot) <- alloc inp
+        ; let r tp x1 y1 x2 y2
+                  = drawBox (x1+0.2*xscale) y1 (x2-0.2*xscale) y2 "white" "assoc" ++
+                    drawLine x1 y1 x2 y1 "gray!50" "-" ++
+                    drawLine x1 y2 x2 y2 "gray!50" "-" ++
+                    drawLine  x1      y1                          x1      ((tp ! uppermost x) - 0.5) "gray!50" "-"++
+                    drawLine  x1      ((tp ! uppermost x) - 0.5) (x1+0.2) ((tp ! uppermost x) - 0.5) "gray!50" "-"++
+                    drawLine (x1+0.2) ((tp ! uppermost x) - 0.5) (x1+0.2) ((tp ! lowermost y) + 0.5) "gray!50" "-"++
+                    drawLine (x1+0.2) ((tp ! lowermost y) + 0.5)  x1      ((tp ! lowermost y) + 0.5) "gray!50" "-"++
+                    drawLine  x1      ((tp ! lowermost y) + 0.5)  x1      y2                         "gray!50" "-"++
+                    drawLine  x2      y2                          x2      ((tp ! lowermost z) + 0.5) "gray!50" "-"++
+                    drawLine  x2      ((tp ! lowermost z) + 0.5) (x2-0.2) ((tp ! lowermost z) + 0.5) "gray!50" "-"++
+                    drawLine (x2-0.2) ((tp ! lowermost z) + 0.5) (x2-0.2) ((tp ! uppermost y) - 0.5) "gray!50" "-"++
+                    drawLine (x2-0.2) ((tp ! uppermost y) - 0.5)  x2      ((tp ! uppermost y) - 0.5) "gray!50" "-"++
+                    drawLine  x2      ((tp ! uppermost y) - 0.5)  x2      y1                         "gray!50" "-"++
+                    drawWires tp x1 x x2 x "black" ++
+                    drawWires tp x1 y x2 y "black" ++
+                    drawWires tp x1 z x2 z "black"
+        ; return $ DiagramBox top (TT (TT x y) z) r (TT x (TT y z)) bot
+        }
+ mkdiag' GAS_unassoc    =
+     do { (top,(TT x (TT y z)),bot) <- alloc inp
+        ; let r tp x1 y1 x2 y2
+                  = drawBox (x1+0.2*xscale) y1 (x2-0.2*xscale) y2 "white" "unassoc" ++
+                    drawLine x1 y1 x2 y1 "gray!50" "-" ++
+                    drawLine x1 y2 x2 y2 "gray!50" "-" ++
+                    drawLine  x2      y1                          x2      ((tp ! uppermost x) - 0.5) "gray!50" "-"++
+                    drawLine  x2      ((tp ! uppermost x) - 0.5) (x2-0.2) ((tp ! uppermost x) - 0.5) "gray!50" "-"++
+                    drawLine (x2-0.2) ((tp ! uppermost x) - 0.5) (x2-0.2) ((tp ! lowermost y) + 0.5) "gray!50" "-"++
+                    drawLine (x2-0.2) ((tp ! lowermost y) + 0.5)  x2      ((tp ! lowermost y) + 0.5) "gray!50" "-"++
+                    drawLine  x2      ((tp ! lowermost y) + 0.5)  x2      y2                         "gray!50" "-"++
+                    drawLine  x1      y2                          x1      ((tp ! lowermost z) + 0.5) "gray!50" "-"++
+                    drawLine  x1      ((tp ! lowermost z) + 0.5) (x1+0.2) ((tp ! lowermost z) + 0.5) "gray!50" "-"++
+                    drawLine (x1+0.2) ((tp ! lowermost z) + 0.5) (x1+0.2) ((tp ! uppermost y) - 0.5) "gray!50" "-"++
+                    drawLine (x1+0.2) ((tp ! uppermost y) - 0.5)  x1      ((tp ! uppermost y) - 0.5) "gray!50" "-"++
+                    drawLine  x1      ((tp ! uppermost y) - 0.5)  x1      y1                         "gray!50" "-"++
+                    drawWires tp x1 x x2 x "black" ++
+                    drawWires tp x1 y x2 y "black" ++
+                    drawWires tp x1 z x2 z "black"
+        ; return $ DiagramBox top (TT x (TT y z)) r (TT (TT x y) z) bot
+        }
+ mkdiag' (GAS_loopl f)  = error "not implemented"
+ mkdiag' (GAS_loopr f)  = error "not implemented"
+ mkdiag' (GAS_misc f )  = mkdiag f
+
+ diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
+ diagramBox ptop pin r pout pbot = do { constrain ptop LT (uppermost pin)  (-1)
+                                      ; constrain pbot GT (lowermost pin)  1
+                                      ; constrain ptop LT (uppermost pout) (-1)
+                                      ; constrain pbot GT (lowermost pout) 1
+                                      ; constrain ptop LT pbot (-1)
+                                      ; return $ DiagramBox ptop pin r pout pbot
+                                      }
+ simpleDiag  text ptop pin pout pbot conn = simpleDiag' text ptop pin pout pbot conn "black"
+ simpleDiag' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
+  where
+   defren tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 color text ++
+                           concat (map (\(x,y) -> drawWires tp x1 x x2 y "black") conn)
+   --    ++ wires (x-1) p1  x    "green"
+   --    ++ wires  (x+w) p2 (x+w+1) "red"
 
 -- constrain that Ports is at least Int units above the topmost portion of Diagram
-constrainTop :: Ports -> Int -> Diagram Ports -> UyM () ()
+constrainTop :: TrackIdentifier -> Float -> Diagram -> ConstraintM ()
 constrainTop v i (DiagramComp d1 d2)                  = do { constrainTop v i d1 ; constrainTop v i d2 ; return () }
-constrainTop v i (DiagramBypassTop p d)               = constrain v 2 p
+constrainTop v i (DiagramBypassTop p d)               = constrain v LT (uppermost p) (-1 * i)
 constrainTop v i (DiagramBypassBot d p)               = constrainTop v (i+1) d
-constrainTop v i (DiagramPrim s ptop pin pout pbot _) = constrain v i ptop
+constrainTop v i (DiagramBox ptop pin r pout pbot)    = constrain v LT ptop (-1 * i)
 
 -- constrain that Ports is at least Int units below the bottommost portion of Diagram
-constrainBot :: Diagram Ports -> Int -> Ports -> UyM () ()
+constrainBot :: Diagram -> Float -> TrackIdentifier -> ConstraintM ()
 constrainBot (DiagramComp d1 d2)                  i v = do { constrainBot d1 i v ; constrainBot d2 i v ; return () }
 constrainBot (DiagramBypassTop p d)               i v = constrainBot d (i+1) v
-constrainBot (DiagramBypassBot d p)               i v = constrain p 2 v
-constrainBot (DiagramPrim s ptop pin pout pbot _) i v = constrain pbot i v
+constrainBot (DiagramBypassBot d p)               i v = constrain v GT (lowermost p) 2
+constrainBot (DiagramBox ptop pin r pout pbot)    i v = constrain v GT pbot i
 
-ga2diag :: GArrowSkeleton m a b -> UyM () (Diagram Ports)
-ga2diag (GAS_id           ) = do { [top,x,bot] <- fresh 3 ; return $ DiagramPrim "id" top x x bot defren }
-ga2diag (GAS_comp      f g) = do { f' <- ga2diag f
-                                  ; g' <- ga2diag g
-                                  ; unifyM (getOut f') (getIn g')
-                                  ; return $ DiagramComp f' g' }
-ga2diag (GAS_first  f) = do { [x] <- fresh 1; f' <- ga2diag f ; constrainBot f' 1 x  ; return $ DiagramBypassBot f' x  }
-ga2diag (GAS_second f) = do { [x] <- fresh 1; f' <- ga2diag f ; constrainTop x  1 f' ; return $ DiagramBypassTop x f'  }
-ga2diag GAS_cancell    = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim   "cancell" top (UPortPair x y) y bot defren }
-ga2diag GAS_cancelr    = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim   "cancelr" top (UPortPair x y) x bot defren }
-ga2diag GAS_uncancell  = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim "uncancell" top y (UPortPair x y) bot defren }
-ga2diag GAS_uncancelr  = do { [top,x,y  ,bot] <- fresh 4  ; return $ DiagramPrim "uncancelr" top x (UPortPair x y) bot defren }
-ga2diag GAS_drop       = do { [top,x    ,bot] <- fresh 3  ; return $ DiagramPrim      "drop" top x x bot defren }
-ga2diag (GAS_const i)  = do { [top,x    ,bot] <- fresh 3  ; return $ DiagramPrim  ("const " ++ show i) top x x bot defren }
-ga2diag GAS_copy       = do { [top,x,y,z,bot] <- fresh 5
-                             ; return $ DiagramPrim      "copy" top y (UPortPair x z) bot defren }
-ga2diag GAS_merge      = do { [top,x,y,z,bot] <- fresh 5
-                             ; return $ DiagramPrim      "merge" top (UPortPair x z) y bot defren }
-ga2diag GAS_swap       = do { [top,x,y  ,bot] <- fresh 4
-                             ; return $ DiagramPrim      "swap" top (UPortPair x y) (UPortPair x y) bot defren }
-ga2diag GAS_assoc      = do { [top,x,y,z,bot] <- fresh 5
-                             ; return $ DiagramPrim  "assoc" top (UPortPair (UPortPair x y) z) (UPortPair x (UPortPair y z)) bot defren }
-ga2diag GAS_unassoc    = do { [top,x,y,z,bot] <- fresh 5
-                             ; return $ DiagramPrim "unassoc" top (UPortPair x (UPortPair y z)) (UPortPair (UPortPair x y) z) bot defren }
-ga2diag (GAS_loopl f) = error "not implemented"
-ga2diag (GAS_loopr f) = error "not implemented"
-ga2diag (GAS_misc f ) = error "not implemented"
+-- | The width of a box is easy to calculate
+width :: Diagram -> Float
+width (DiagramComp d1 d2)               = (width d1) + 1 + (width d2)
+width (DiagramBox ptop pin x pout pbot) = 2
+width (DiagramBypassTop p d)            = (width d) + 2
+width (DiagramBypassBot d p)            = (width d) + 2
 
-defren :: String -> Int -> Int -> Int -> Ports -> Ports -> Int -> String
-defren s x w top p1 p2 bot
-      = drawBox x top (x+w) bot "black" s
---        ++ wires (x-1) p1  x    "green"
---        ++ wires  (x+w) p2 (x+w+1) "red"
+drawWires :: TrackPositions -> Float -> Tracks -> Float -> Tracks -> String -> String
+drawWires tp x1 (TT a b) x2 (TT a' b') color = drawWires tp x1 a x2 a' color ++ drawWires tp x1 b x2 b' color
+drawWires tp x1 (T a)    x2 (T a')     color = drawLine x1 (tp!a) x2 (tp!a') color "-"
+drawWires tp x1 (TU a)   x2 (TU a')    color = drawLine x1 (tp!a) x2 (tp!a') color "dashed"
+drawWires tp _ _ _ _ _                       = error "drawwires fail"
 
-xscale = 1
-yscale = 1
+tikZ :: TrackPositions ->
+        Diagram ->
+        Float ->                -- horizontal position
+        String
+tikZ m = tikZ'
+ where
+  tikZ'  d@(DiagramComp d1 d2)    x = tikZ' d1 x
+                                      ++ wires' (x+width d1) (getOut d1) (x+width d1+0.5) "black" "->"
+                                      ++ wires' (x+width d1+0.5) (getOut d1) (x+width d1+1) "black" "-"
+                                      ++ tikZ' d2 (x + width d1 + 1)
+  tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
+                                      let bot = getBot d' in
+                                      drawBox  x top (x+width d') bot "gray!50" "second"
+                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
+                                      ++ tikZ' d (x+1)
+                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width d+1) p "black"
+  tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
+                                      let bot = getBot d' in
+                                      drawBox  x top (x+width d') bot "gray!50" "first"
+                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
+                                      ++ tikZ' d (x+1)
+                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width d+1) p "black"
+  tikZ' d@(DiagramBox ptop pin r pout pbot) x = r m x (m ! ptop) (x + width d) (m ! pbot)
 
+  wires x1 t x2 c = wires' x1 t x2 c "-"
+
+  wires' :: Float -> Tracks -> Float -> String -> String -> String
+  wires' x1 (TT x y) x2 color st = wires' x1 x x2 color st ++ wires' x1 y x2 color st
+  wires' x1 (T v)    x2 color st = drawLine x1 (m ! v) x2 (m ! v) color st -- ++ textc ((x1+x2) / 2) (m!v) (show v) "purple"
+  wires' x1 (TU v)   x2 color st = drawLine x1 (m ! v) x2 (m ! v) color "dashed"
+
+  getTop :: Diagram -> Float
+  getTop (DiagramComp d1 d2)        = min (getTop d1) (getTop d2)
+  getTop (DiagramBox ptop _ _ _ _)  = m ! ptop
+  getTop (DiagramBypassTop p d)     = (m ! uppermost p) - 1
+  getTop (DiagramBypassBot d p)     = getTop d - 1
+
+  getBot :: Diagram -> Float
+  getBot (DiagramComp d1 d2)        = max (getBot d1) (getBot d2)
+  getBot (DiagramBox _ _ _ _ pbot)  = m ! pbot
+  getBot (DiagramBypassTop p d)     = getBot d + 1
+  getBot (DiagramBypassBot d p)     = (m ! lowermost p) + 1
+
+-- allocates multiple tracks, adding constraints that they are at least one unit apart
+alloc :: PortShape a -> ConstraintM (TrackIdentifier,Tracks,TrackIdentifier)
+alloc shape = do { tracks <- alloc' shape
+                 ; T ptop <- alloc1
+                 ; T pbot <- alloc1
+                 ; constrain ptop LT (uppermost tracks) (-1)
+                 ; constrain pbot GT (lowermost tracks) 1
+                 ; return (ptop,tracks,pbot)
+                 }
+ where
+   alloc' :: PortShape a -> ConstraintM Tracks
+   alloc' PortUnit           = do { T x <- alloc1 ; return (TU x) }
+   alloc' (PortFree _)       = do { x <- alloc1 ; return x }
+   alloc' (PortTensor p1 p2) = do { x1 <- alloc' p1
+                                  ; x2 <- alloc' p2
+                                  ; constrain (lowermost x1) LT (uppermost x2) (-1)
+                                  ; return (TT x1 x2)
+                                  }
+
+do_lp_solve :: [Constraint] -> IO String
+do_lp_solve c = do { let stdin = "min: x1;\n" ++ (foldl (++) "" (map show c)) ++ "\n"
+                   ; putStrLn stdin
+                   ; stdout <- readProcess "lp_solve" [] stdin
+                   ; return stdout
+                   }
+
+splitWs :: String -> [String]
+splitWs s = splitWs' "" s
+ where
+  splitWs' [] []       = []
+  splitWs' acc []      = [acc]
+  splitWs' []  (' ':k) = splitWs' [] k
+  splitWs' acc (' ':k) = acc:(splitWs' [] k)
+  splitWs' acc (x:k)   = splitWs' (acc++[x]) k
+
+lp_solve_to_trackpos :: String -> TrackPositions
+lp_solve_to_trackpos s = toTrackPos $ map parse $ catMaybes $ map grab $ lines s
+ where
+   grab ('x':k) = Just k
+   grab _       = Nothing
+   parse :: String -> (Int,Float)
+   parse s = case splitWs s of
+               [a,b] -> (read a, read b)
+               _     -> error "parse: should not happen"
+   toTrackPos :: [(Int,Float)] -> TrackPositions
+   toTrackPos []           tr = 0 -- error $ "could not find track "++show tr
+   toTrackPos ((i,f):rest) tr = if (i==tr) then f else toTrackPos rest tr
+
+toTikZ :: GArrowSkeleton m a b -> IO String
+toTikZ g = 
+    let cm = do { let g' = detectShape g
+                ; g'' <- mkdiag g'
+                ; return g''
+                }
+     in do { let (_,constraints) = execState cm (0,[])
+           ; lps <- do_lp_solve $ constraints
+           ; let trackpos = lp_solve_to_trackpos lps
+           ; return $ tikZ trackpos (evalState cm (0,[])) 0
+           }
+
+tikz :: (forall g a .
+                 (Int -> PGArrow g (GArrowUnit g) a) ->
+                 (
+                   forall b . PGArrow g (GArrowTensor g b b) b) ->
+                     PGArrow g (GArrowUnit g) a) -> IO ()
+
+tikz x = tikz' $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }) )
+
+tikz' example
+     = do putStrLn "\\documentclass{article}"
+          putStrLn "\\usepackage[paperwidth=\\maxdimen,paperheight=\\maxdimen]{geometry}"
+          putStrLn "\\usepackage{tikz}"
+          putStrLn "\\usepackage{amsmath}"
+          putStrLn "\\usepackage[tightpage,active]{preview}"
+          putStrLn "\\begin{document}"
+          putStrLn "\\setlength\\PreviewBorder{5pt}"
+          putStrLn "\\begin{preview}"
+          putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
+          tikz <- toTikZ example
+          putStrLn tikz
+          putStrLn "\\end{tikzpicture}"
+          putStrLn "\\end{preview}"
+          --putStrLn "\\pagebreak"
+          --putStrLn "\\begin{align*}"
+          --putStr   (toTikZ' example)
+          --putStrLn "\\end{align*}"
+          putStrLn "\\end{document}"
+
+-- Random TikZ routines
 textc x y text color = 
     "\\node[anchor=center,color="++color++"] at ("++show (x*xscale)++"cm,"++show (y*yscale)++"cm) "++
     "{{\\tt{"++text++"}}};\n"
@@ -195,159 +462,8 @@ drawLine x1 y1 x2 y2 color style =
   "("++show (x1*xscale)++","++show (y1*yscale)++") -- " ++
   "("++show (x2*xscale)++","++show (y2*yscale)++");\n"
 
-width :: Diagram Ports -> Int
-width (DiagramComp d1 d2)         = (width d1) + 1 + (width d2)
-width (DiagramPrim s _ p1 p2 _ _) = 2
-width (DiagramBypassTop p d)      = (width d) + 2
-width (DiagramBypassBot d p)      = (width d) + 2
+-- | x scaling factor for the entire diagram, since TikZ doesn't scale font sizes
+xscale = 1
 
-(!) :: Map UVar Int -> UVar -> Int
-m ! x = case lookup x m of
-          Nothing -> 0
-          Just y -> y
-
-tikZ :: Map UVar Int ->
-        Diagram Ports ->
-        Int ->                -- horizontal position
-        String
-tikZ m = tikZ'
- where
-  tikZ'  d@(DiagramComp d1 d2)    x = tikZ' d1 x
-                                      ++ wires (x+width d1) (getOut d1) (x+width d1+1) "black"
-                                      ++ tikZ' d2 (x + width d1 + 1)
-  tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
-                                      let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "second"
-                                      ++ wires x (getIn d) (x+1) "black"
-                                      ++ tikZ' d (x+1)
-                                      ++ wires (x+1+width d) (getOut d) (x+1+width d+1) "black"
-                                      ++ wires x p (x+1+width d+1) "black"
-  tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
-                                      let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "first"
-                                      ++ wires x (getIn d) (x+1) "black"
-                                      ++ tikZ' d (x+1)
-                                      ++ wires (x+1+width d) (getOut d) (x+1+width d+1) "black"
-                                      ++ wires x p (x+1+width d+1) "black"
-  tikZ'  d@(DiagramPrim s (UPortVar top) p1 p2 (UPortVar bot) r)  x = r s x (width d) (m ! top) p1 p2 (m ! bot)
-  tikZ'  _ _ = error "FIXME"
-
-  wires :: Int -> Ports -> Int -> String -> String
-  wires x1 (UPortVar v)    x2 color = drawLine x1 (m ! v) x2 (m ! v) color "->"
-                                       --  ++ textc ((x1+x2) `div` 2) (m!v) (show v) "purple"
-  wires x1 (UPortPair x y) x2 color = wires x1 x x2 color ++ wires x1 y x2 color
-
-  getTop :: Diagram Ports -> Int
-  getTop (DiagramComp d1 d2)                = min (getTop d1) (getTop d2)
-  getTop (DiagramBypassTop p d)             = (m ! getleft p) - 1
-  getTop (DiagramBypassBot d p)             = getTop d - 1
-  getTop (DiagramPrim s (UPortVar ptop) _ _ _ _)  = m ! ptop
-  getTop _ = error "getTop failed"
-
-  getBot :: Diagram Ports -> Int
-  getBot (DiagramComp d1 d2)                = max (getBot d1) (getBot d2)
-  getBot (DiagramBypassTop p d)             = getBot d + 1
-  getBot (DiagramBypassBot d p)             = (m ! getright p) + 1
-  getBot (DiagramPrim s _ _ _ (UPortVar pbot) _)  = m ! pbot
-  getBot _ = error "getTop failed"
-
-resolve' (DiagramComp d1 d2)    = do { d1' <- resolve' d1 ; d2' <- resolve' d2 ; return $ DiagramComp d1' d2'    }
-resolve' (DiagramBypassTop p d) = do { p'  <- getM p     ; d'  <- resolve' d  ; return $ DiagramBypassTop p' d' }
-resolve' (DiagramBypassBot d p) = do { p'  <- getM p     ; d'  <- resolve' d  ; return $ DiagramBypassBot d' p' }
-resolve' (DiagramPrim s ptop pin pout pbot r) 
-    = do { ptop' <- getM ptop
-         ; pbot' <- getM pbot
-         ; pin'  <- getM pin
-         ; pout' <- getM pout
-         ; return $ DiagramPrim s ptop' pin' pout' pbot' r }
-
-getleft (UPortVar   v)  = v
-getleft (UPortPair a b) = getleft a
-
-getright (UPortVar   v)  = v
-getright (UPortPair a b) = getright b
-
-strip :: [(Ports,Int,Ports)] -> [(UVar,Int,UVar)]
-strip = map (\(v1,x,v2) -> (getright v1, x, getleft v2))
-
-
--- must use bubblesort because the ordering isn't transitive
-sortit :: [(UVar,Int,UVar)] -> [(UVar,Int,UVar)]
-sortit x = let x' = stupidSort x [] in if x==x' then x else sortit x'
- where
-  stupidSort []    x = x
-  stupidSort (h:t) x = stupidSort t (stupidInsert h x)
-
-  stupidInsert t []    = [t]
-  stupidInsert t@(_,_,t') ((a@(_,_,a')):b) = if cmp' x t' a' == LT
-                                             then t:a:b
-                                             else a:(stupidInsert t b)
-  
-  cmp' :: [(UVar,Int,UVar)] -> UVar -> UVar -> Ordering
-  cmp' [] a b = EQ -- compare a b
-  cmp' ((v1,_,v2):r) a b = if a == v1 && b==v2
-                           then LT
-                           else if a == v2 && b==v1
-                                then GT
-                                else cmp' r a b
-
-lookup'' :: Map UVar Int -> UVar -> Int
-lookup'' m x = case lookup x m of
-                 Nothing -> 0
-                 Just y -> y
-
-valuatit :: Map UVar Int -> [(UVar,Int,UVar)] -> Map UVar Int
-valuatit m []            = m
-valuatit m ((v1,k,v2):r) = valuatit m' r
-                            where
-                              m'  = insert v2 v2' m
-                              v2' = max (lookup'' m v2) (k+(lookup'' m v1))
-
-resolve'k :: UyM () [(Ports,Int,Ports)]
-resolve'k = do { k  <- getK
-              ; k' <- mapM (\(v1,x,v2) -> do { v1' <- getM v1 ; v2' <- getM v2 ; return (v1',x,v2') }) k
-              ; return k'
-              }
-
-toTikZ :: GArrowSkeleton m a b -> String
-toTikZ g = tikZ m d 0
-            where
-              (_,_,_,(d,k)) = runU $ do { d <- ga2diag g
-                                        ; d' <- resolve' d
-                                        ; k' <- resolve'k
-                                        ; return (d',k') }
-              s = sortit (strip k)
-              m = valuatit empty s
-toTikZ' :: GArrowSkeleton m a b -> String
-toTikZ' g = foldr (\x y -> x++"\\\\\n"++y) [] (map foo s)
-             where
-               (_,_,_,k) = runU $ ga2diag g >>= resolve' >>= \_ -> resolve'k
-               foo (v1,v,v2) = "x_{"++show v1++"} + "++show v++" \\leq x_{"++show v2++"} = " ++ (show $ lookup'' m v2)
-               s = sortit (strip k)
-               m = valuatit empty s
-
-tikz' :: (forall g a .
-                 PGArrow g (GArrowUnit g) a ->
-                 (
-                   forall b . PGArrow g (GArrowTensor g b b) b) ->
-                     PGArrow g (GArrowUnit g) a) -> IO ()
-tikz' x = tikz $ optimize $ unG (x (PGArrowD { unG = GAS_const 12 }) (PGArrowD { unG = GAS_merge }) )
-main = do putStrLn "hello"
-tikz example
-     = do putStrLn "\\documentclass{article}"
-          putStrLn "\\usepackage[paperwidth=\\maxdimen,paperheight=\\maxdimen]{geometry}"
-          putStrLn "\\usepackage{tikz}"
-          putStrLn "\\usepackage{amsmath}"
-          putStrLn "\\usepackage[tightpage,active]{preview}"
-          putStrLn "\\begin{document}"
-          putStrLn "\\setlength\\PreviewBorder{5pt}"
-          putStrLn "\\begin{preview}"
-          putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
-          putStrLn (toTikZ example)
-          putStrLn "\\end{tikzpicture}"
-          putStrLn "\\end{preview}"
-          --putStrLn "\\pagebreak"
-          --putStrLn "\\begin{align*}"
-          --putStr   (toTikZ' example)
-          --putStrLn "\\end{align*}"
-          putStrLn "\\end{document}"
+-- | y scaling factor for the entire diagram, since TikZ doesn't scale font sizes
+yscale = 1

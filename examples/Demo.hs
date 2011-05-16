@@ -1,19 +1,18 @@
-{-# OPTIONS_GHC -XRankNTypes -XScopedTypeVariables -XFlexibleContexts -XModalTypes -XKindSignatures -fcoqpass -XMultiParamTypeClasses -dcore-lint #-}
-module Demo (foo) where
-import GHC.HetMet.GArrow
-import GHC.HetMet.CodeTypes
-import GHC.HetMet.Private
---import GArrowTikZ
+{-# OPTIONS_GHC -XModalTypes -fcoqpass -dcore-lint #-}
+module Demo (demo) where
+
+demo con mer = <[ ~~mer ~~(con (2::Int)) ~~(con (12::Int)) ]>
+
+-- demo const mult = <[ let q = ~~(const (1::Int)) in ~~mult q q ]>
+
+--demo const mult =
+-- <[ let twelve = ~~(const (12::Int))
+--    in  ~~mult (~~mult twelve twelve) (~~mult twelve twelve) ]>
 
 {-
-foo :: (forall g a . <[ () -> a
-                 PGArrow g (GArrowUnit g) a ->
-                 (forall b . PGArrow g (GArrowTensor g b b) b) ->
+demo const mult = demo' 3
+ where
+  demo' 0 = const 12
+  demo' 1 = const 12
+  demo' n = <[ ~~mult ~~(demo' (n-1)) ~~(demo' (n-2)) ]>
 -}
---foo con mer   = <[ ~~mer ~~con ~~con ]>
---foo const merge = <[ ~~merge ~~const (~~merge ~~const ~~const) ]>
-foo const merge = <[ ~~merge ~~const ~~const ]>
-
---tester2 f = <[ \x -> ~~f x x ]>
-
---main = tikz' $ \a b -> pga_flatten (foo (pga_unflatten a))
