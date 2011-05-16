@@ -127,6 +127,10 @@ optimize x = let x' = optimize' x in if x == x' then x' else optimize x'
   -- left-associativity and hope for the best
   optimize' (GAS_comp      f (GAS_comp g h)) = GAS_comp (GAS_comp f g) h
   optimize' (GAS_comp    (GAS_comp f (GAS_comp g h)) k) = GAS_comp (GAS_comp (GAS_comp f g) h) k
+
+  optimize' (GAS_comp    (GAS_comp             GAS_unassoc  (GAS_second g)) GAS_assoc)   = GAS_second (GAS_second g)
+  optimize' (GAS_comp    (GAS_comp (GAS_comp f GAS_unassoc) (GAS_second g)) GAS_assoc)   = GAS_comp f (GAS_second (GAS_second g))
+
   optimize' (GAS_comp    (GAS_comp f g) h) = case optimize_pair g h of
                                                Nothing   -> GAS_comp (optimize' (GAS_comp f g)) h'
                                                Just ret' -> GAS_comp f' ret'
@@ -181,6 +185,8 @@ optimize x = let x' = optimize' x in if x == x' then x' else optimize x'
   optimize_pair GAS_assoc   GAS_cancell       = Just $ GAS_first GAS_cancell
   optimize_pair GAS_unassoc GAS_cancelr       = Just $ GAS_second GAS_cancelr
   optimize_pair GAS_assoc   (GAS_second GAS_cancell)  = Just $ GAS_first GAS_cancelr
+  optimize_pair GAS_unassoc (GAS_first  GAS_cancell)  = Just $ GAS_cancell
+
 
   -- FIXME: valid only for central morphisms
   --optimize_pair (GAS_second f) (GAS_first g) = Just $ GAS_comp (GAS_first g) (GAS_second f)
