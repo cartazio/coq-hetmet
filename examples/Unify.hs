@@ -59,10 +59,10 @@ resolve (Unifier u) v | member v u = v:(concatMap (resolve (Unifier u)) $ occurr
 occurs :: Unifiable t => Unifier t -> UVar -> t -> Bool
 occurs u v x = elem v $ concatMap (resolve u) (occurrences x)
 
--- | Given two unifiables, find their most general unifier.  Do not override this.
+-- | Given two unifiables, find their most general unifier.
 unify :: Unifiable t => t -> t -> Unifier t
 unify v1 v2 | (Just v1') <- project v1, (Just v2') <- project v2, v1'==v2'                   = emptyUnifier
-unify v1 v2 | (Just v1') <- project v1 = if  occurs emptyUnifier v1' v2 
+unify v1 v2 | (Just v1') <- project v1 = if  occurs emptyUnifier v1' v2
                                          then error "occurs check failed"
                                          else Unifier $ insert v1' v2 empty
 unify v1 v2 | (Just v2') <- project v2 = unify v2 v1
