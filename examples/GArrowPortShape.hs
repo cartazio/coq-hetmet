@@ -19,7 +19,7 @@
 -- information for certain nodes (the inference mechanism below adds
 -- it on every node).
 --
-module GArrowPortShape (GArrowPortShape(..), PortShape(..))
+module GArrowPortShape (GArrowPortShape(..), PortShape(..), detectShape)
 where
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
@@ -58,7 +58,9 @@ type UPort = PortShape UVar
 
 instance Unifiable UPort where
   unify' (PortTensor x1 y1) (PortTensor x2 y2) = mergeU (unify x1 x2) (unify y1 y2)
-  unify' _ _                                   = error "impossible"
+  unify' PortUnit PortUnit                     = emptyUnifier
+  unify' s1 s2                                 = error $ "Unifiable UPort got impossible unification case: "
+--                                                          ++ show s1 ++ " and " ++ show s2
   inject                                       = PortFree
   project (PortFree v)                         = Just v
   project _                                    = Nothing
@@ -117,6 +119,9 @@ resolveG u (GASPortShapeWrapper x y g) = GASPortShapeWrapper (getU' u x) (getU' 
   resolveG' (GAS_loopr f)       = GAS_loopr (resolveG' f)
   resolveG' (GAS_misc g )       = GAS_misc $ resolveG u g
 
+detectShape :: GArrowSkeleton m a b -> GArrowPortShape m () a b
+detectShape g = runM (detect g)
+
 runM :: DetectM (GArrowPortShape m UVar a b) -> GArrowPortShape m () a b
 runM f = let s     = (emptyUnifier,uvarSupply)
              g     = evalState f s
@@ -125,10 +130,10 @@ runM f = let s     = (emptyUnifier,uvarSupply)
 
 detect :: GArrowSkeleton m a b -> DetectM (GArrowPortShape m UVar a b)
 detect (GAS_id      ) = do { x <- freshM ; return $ GASPortShapeWrapper (PortFree x) (PortFree x) GAS_id }
-detect (GAS_comp g f) = do { f' <- detect f
+detect (GAS_comp f g) = do { f' <- detect f
                            ; g' <- detect g
                            ; unifyM (snd $ shapes f') (fst $ shapes g')
-                           ; return $ GASPortShapeWrapper (fst $ shapes f') (snd $ shapes g') (GAS_comp (GAS_misc g') (GAS_misc f'))
+                           ; return $ GASPortShapeWrapper (fst $ shapes f') (snd $ shapes g') (GAS_comp (GAS_misc f') (GAS_misc g'))
                            }
 detect (GAS_first  f) = do { x <- freshM
                            ; f' <- detect f
@@ -176,8 +181,11 @@ detect GAS_unassoc    = do { x <- freshM; y <- freshM; z <- freshM
                                         GAS_unassoc
                            }
 detect (GAS_const i)  = do { x <- freshM; return $ GASPortShapeWrapper PortUnit (PortFree x) (GAS_const i) }
+
+-- FIXME: I need to fix the occurs check before I can make these different again
 detect GAS_merge      = do { x <- freshM
-                           ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree x)) (PortFree x) GAS_merge }
+                           ; y <- freshM
+                           ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree y)) (PortFree x) GAS_merge }
 detect (GAS_loopl f)  = error "not implemented"
 detect (GAS_loopr f)  = error "not implemented"
 
