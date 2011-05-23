@@ -142,6 +142,9 @@ Section Natural_Deduction.
     (* natural deduction: you may duplicate conclusions *)
     | nd_copy   : forall  h,    h   /⋯⋯/ (h,,h)
   
+    (* natural deduction: you may re-order conclusions *)
+    | nd_exch   : forall  x y, (x,,y) /⋯⋯/ (y,,x)
+  
     (* natural deduction: you may write two proof trees side by side on a piece of paper -- "proof product" *)
     | nd_prod : forall {h1 h2 c1 c2}
        (pf1: h1       /⋯⋯/ c1      )
@@ -295,6 +298,7 @@ Section Natural_Deduction.
       apply k.
       apply scnd_weak.
       eapply scnd_branch; apply k.
+      inversion k; subst; auto.
       inversion k; subst.
         apply (scnd_branch _ _ _ (IHnd1 X) (IHnd2 X0)).
       apply IHnd2.
@@ -603,6 +607,7 @@ Definition nd_map
         | nd_id1     h               => let case_nd_id1     := tt in _
         | nd_weak1   h               => let case_nd_weak    := tt in _
         | nd_copy    h               => let case_nd_copy    := tt in _
+        | nd_exch    x y             => let case_nd_exch    := tt in _
         | nd_prod    _ _ _ _ lpf rpf => let case_nd_prod    := tt in _
         | nd_comp    _ _ _   top bot => let case_nd_comp    := tt in _
         | nd_rule    _ _     rule    => let case_nd_rule    := tt in _
@@ -618,6 +623,7 @@ Definition nd_map
     destruct case_nd_id1.      apply nd_id1.
     destruct case_nd_weak.     apply nd_weak.
     destruct case_nd_copy.     apply nd_copy.
+    destruct case_nd_exch.     apply nd_exch.
     destruct case_nd_prod.     apply (nd_prod (nd_map _ _ lpf) (nd_map _ _ rpf)).
     destruct case_nd_comp.     apply (nd_comp (nd_map _ _ top) (nd_map _ _ bot)).
     destruct case_nd_cancell.  apply nd_cancell.
@@ -651,6 +657,7 @@ Definition nd_map'
         | nd_id1     h               => let case_nd_id1     := tt in _
         | nd_weak1   h               => let case_nd_weak    := tt in _
         | nd_copy    h               => let case_nd_copy    := tt in _
+        | nd_exch    x y             => let case_nd_exch    := tt in _
         | nd_prod    _ _ _ _ lpf rpf => let case_nd_prod    := tt in _
         | nd_comp    _ _ _   top bot => let case_nd_comp    := tt in _
         | nd_rule    _ _     rule    => let case_nd_rule    := tt in _
@@ -666,6 +673,7 @@ Definition nd_map'
     destruct case_nd_id1.      apply nd_id1.
     destruct case_nd_weak.     apply nd_weak.
     destruct case_nd_copy.     apply nd_copy.
+    destruct case_nd_exch.     apply nd_exch.
     destruct case_nd_prod.     apply (nd_prod (nd_map' _ _ lpf) (nd_map' _ _ rpf)).
     destruct case_nd_comp.     apply (nd_comp (nd_map' _ _ top) (nd_map' _ _ bot)).
     destruct case_nd_cancell.  apply nd_cancell.
@@ -743,6 +751,9 @@ Section ToLatex.
                                        rawLatexMath "\inferrule*[Left=ndWeak]{" +++ toLatexMath h' +++ rawLatexMath "}{ }" +++ eolL
       | nd_copy h'                  => rawLatexMath indent +++
                                        rawLatexMath "\inferrule*[Left=ndCopy]{"+++judgments2latex h+++
+                                                         rawLatexMath "}{"+++judgments2latex c+++rawLatexMath "}" +++ eolL
+      | nd_exch x y                 => rawLatexMath indent +++
+                                       rawLatexMath "\inferrule*[Left=exch]{"+++judgments2latex h+++
                                                          rawLatexMath "}{"+++judgments2latex c+++rawLatexMath "}" +++ eolL
       | nd_prod h1 h2 c1 c2 pf1 pf2 => rawLatexMath indent +++
                                        rawLatexMath "% prod " +++ eolL +++
