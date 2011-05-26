@@ -19,6 +19,9 @@ Section HaskStrongToProof.
 Definition pivotContext {T} a b c : @Arrange T ((a,,b),,c) ((a,,c),,b) :=
   RComp (RComp (RCossa _ _ _) (RLeft a (RExch c b))) (RAssoc _ _ _).
 
+Definition pivotContext' {T} a b c : @Arrange T (a,,(b,,c)) (b,,(a,,c)) :=
+  RComp (RComp (RAssoc _ _ _) (RRight c (RExch b a))) (RCossa _ _ _).
+
 Definition copyAndPivotContext {T} a b c : @Arrange T ((a,,b),,(c,,b)) ((a,,c),,b).
   eapply RComp; [ idtac | apply (RLeft (a,,c) (RCont b)) ].
   eapply RComp; [ idtac | apply RCossa ]. 
@@ -522,9 +525,9 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | EGlobal  Γ Δ ξ _ _ _                          => []
   | EVar     Γ Δ ξ ev                             => [ev]
   | ELit     Γ Δ ξ lit lev                        => []
-  | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e2),,(expr2antecedent e1)
+  | EApp     Γ Δ ξ t1 t2 lev e1 e2                => (expr2antecedent e1),,(expr2antecedent e2)
   | ELam     Γ Δ ξ t1 t2 lev v    e               => stripOutVars (v::nil) (expr2antecedent e)
-  | ELet     Γ Δ ξ tv t  lev v ev ebody           => ((stripOutVars (v::nil) (expr2antecedent ebody)),,(expr2antecedent ev))
+  | ELet     Γ Δ ξ tv t  lev v ev ebody           => (expr2antecedent ev),,((stripOutVars (v::nil) (expr2antecedent ebody)))
   | EEsc     Γ Δ ξ ec t lev e                     => expr2antecedent e
   | EBrak    Γ Δ ξ ec t lev e                     => expr2antecedent e
   | ECast    Γ Δ ξ γ t1 t2 lev      e             => expr2antecedent e
@@ -535,7 +538,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | ETyApp   Γ Δ κ σ τ ξ  l    e                  => expr2antecedent e
   | ELetRec  Γ Δ ξ l τ vars _ branches body       =>
       let branch_context := eLetRecContext branches
-   in let all_contexts := (expr2antecedent body),,branch_context
+   in let all_contexts := branch_context,,(expr2antecedent body)
    in     stripOutVars (leaves (mapOptionTree (@fst _ _ ) vars)) all_contexts
   | ECase    Γ Δ ξ l tc tbranches atypes e' alts =>
     ((fix varsfromalts (alts:
@@ -598,7 +601,112 @@ Lemma stripping_nothing_is_inert
     reflexivity.
     Qed.
 
-Definition arrangeContext
+Definition factorContextLeft
+     (Γ:TypeEnv)(Δ:CoercionEnv Γ)
+     v      (* variable to be pivoted, if found *)
+     ctx    (* initial context *)
+     (ξ:VV -> LeveledHaskType Γ ★)
+     :
+ 
+    (* a proof concluding in a context where that variable does not appear *)
+     sum (Arrange
+          (mapOptionTree ξ                        ctx                        )
+          (mapOptionTree ξ ([],,(stripOutVars (v::nil) ctx))                ))
+   
+    (* or a proof concluding in a context where that variable appears exactly once in the left branch *)
+        (Arrange
+          (mapOptionTree ξ                         ctx                       )
+          (mapOptionTree ξ ([v],,(stripOutVars (v::nil) ctx))                )).
+
+  induction ctx.
+  
+    refine (match a with None => let case_None := tt in _ | Some v' => let case_Some := tt in _ end).
+  
+        (* nonempty leaf *)
+        destruct case_Some.
+          unfold stripOutVars in *; simpl.
+          unfold dropVar.
+          unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
+
+          destruct (eqd_dec v' v); subst.
+          
+            (* where the leaf is v *)
+            apply inr.
+              subst.
+              apply RuCanR.
+
+            (* where the leaf is NOT v *)
+            apply inl.
+              apply RuCanL.
+  
+        (* empty leaf *)
+        destruct case_None.
+          apply inl; simpl in *.
+          apply RuCanR.
+  
+      (* branch *)
+      refine (
+        match IHctx1 with
+          | inr lpf =>
+            match IHctx2 with
+              | inr rpf => let case_Both := tt in _
+              | inl rpf => let case_Left := tt in _
+            end
+          | inl lpf =>
+            match IHctx2 with
+              | inr rpf => let case_Right   := tt in _
+              | inl rpf => let case_Neither := tt in _
+            end
+        end); clear IHctx1; clear IHctx2.
+
+    destruct case_Neither.
+      apply inl.
+      simpl.
+      eapply RComp; [idtac | apply RuCanL ].
+        exact (RComp
+          (* order will not matter because these are central as morphisms *)
+          (RRight _ (RComp lpf (RCanL _)))
+          (RLeft  _ (RComp rpf (RCanL _)))).
+
+    destruct case_Right.
+      apply inr.
+      unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
+      fold (stripOutVars (v::nil)).
+      eapply RComp; [ idtac | eapply pivotContext' ].
+      eapply RComp.
+      eapply RRight.
+      eapply RComp.
+      apply lpf.
+      apply RCanL.
+      eapply RLeft.
+      apply rpf.
+
+    destruct case_Left.
+      apply inr.
+      fold (stripOutVars (v::nil)).
+      simpl.
+      eapply RComp.
+      eapply RLeft.
+      eapply RComp.
+      apply rpf.
+      simpl.
+      eapply RCanL.
+      eapply RComp; [ idtac | eapply RCossa ].
+      eapply RRight.
+      apply lpf.
+
+    destruct case_Both.
+      apply inr.
+      simpl.
+      eapply RComp; [ idtac | eapply RRight; eapply RCont ].
+      eapply RComp; [ eapply RRight; eapply lpf | idtac ].
+      eapply RComp; [ eapply RLeft; eapply rpf | idtac ].
+      clear lpf rpf.
+      simpl.
+      apply arrangeSwapMiddle.
+      Defined.
+
+Definition factorContextRight
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
      ctx    (* initial context *)
@@ -703,7 +811,72 @@ Definition arrangeContext
     Defined.
 
 (* same as before, but use RWeak if necessary *)
-Definition arrangeContextAndWeaken  
+Definition factorContextLeftAndWeaken  
+     (Γ:TypeEnv)(Δ:CoercionEnv Γ)
+     v      (* variable to be pivoted, if found *)
+     ctx    (* initial context *)
+     (ξ:VV -> LeveledHaskType Γ ★) :
+       Arrange
+          (mapOptionTree ξ                        ctx                )
+          (mapOptionTree ξ ([v],,(stripOutVars (v::nil) ctx))        ).
+  set (factorContextLeft Γ Δ v ctx ξ) as q.
+  destruct q; auto.
+  eapply RComp; [ apply a | idtac ].
+  refine (RRight _ (RWeak _)).
+  Defined.
+
+Definition factorContextLeftAndWeaken''
+     (Γ:TypeEnv)(Δ:CoercionEnv Γ)
+     v      (* variable to be pivoted, if found *)
+     (ξ:VV -> LeveledHaskType Γ ★) : forall ctx,
+  distinct (leaves v) ->
+  Arrange
+    ((mapOptionTree ξ ctx)                                       )
+    ((mapOptionTree ξ v),,(mapOptionTree ξ (stripOutVars (leaves v) ctx))).
+
+  induction v; intros.
+    destruct a.
+    unfold mapOptionTree in *.
+    simpl in *.
+    fold (mapOptionTree ξ) in *.
+    intros.
+    set (@factorContextLeftAndWeaken) as q.
+    simpl in q.
+    apply q.
+    apply Δ.
+
+  unfold mapOptionTree; simpl in *.
+    intros.
+    rewrite (@stripping_nothing_is_inert Γ); auto.
+    apply RuCanL.
+    intros.
+    unfold mapOptionTree in *.
+    simpl in *.
+    fold (mapOptionTree ξ) in *.
+    set (mapOptionTree ξ) as X in *.
+
+    set (distinct_app _ _ _ H) as H'.
+    destruct H' as [H1 H2].
+
+    set (IHv1 (v2,,(stripOutVars (leaves v2) ctx))) as IHv1'.
+
+    unfold X in *.
+    simpl in *.
+      rewrite <- strip_twice_lemma.
+      set (notin_strip_inert' v2 (leaves v1)) as q.
+      unfold stripOutVars in q.
+      rewrite q in IHv1'.
+      clear q.
+    eapply RComp; [ idtac | eapply RAssoc ].
+    eapply RComp; [ idtac | eapply IHv1' ].
+    clear IHv1'.
+    apply IHv2; auto.
+    auto.
+    auto.
+    Defined.
+
+(* same as before, but use RWeak if necessary *)
+Definition factorContextRightAndWeaken  
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
      ctx    (* initial context *)
@@ -711,13 +884,13 @@ Definition arrangeContextAndWeaken
        Arrange
           (mapOptionTree ξ                        ctx                )
           (mapOptionTree ξ ((stripOutVars (v::nil) ctx),,[v])        ).
-  set (arrangeContext Γ Δ v ctx ξ) as q.
+  set (factorContextRight Γ Δ v ctx ξ) as q.
   destruct q; auto.
   eapply RComp; [ apply a | idtac ].
   refine (RLeft _ (RWeak _)).
   Defined.
 
-Definition arrangeContextAndWeaken''
+Definition factorContextRightAndWeaken''
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
      (ξ:VV -> LeveledHaskType Γ ★) : forall ctx,
@@ -732,7 +905,7 @@ Definition arrangeContextAndWeaken''
     simpl in *.
     fold (mapOptionTree ξ) in *.
     intros.
-    apply arrangeContextAndWeaken.
+    apply factorContextRightAndWeaken.
     apply Δ.
 
   unfold mapOptionTree; simpl in *.
@@ -833,7 +1006,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   eapply nd_comp; [ idtac | eapply nd_rule; apply z ].
   clear z.
 
-  set (@arrangeContextAndWeaken''  Γ Δ  pctx ξ' (expr2antecedent body,,eLetRecContext branches)) as q'.
+  set (@factorContextRightAndWeaken''  Γ Δ  pctx ξ' (eLetRecContext branches,,expr2antecedent body)) as q'.
   unfold passback in *; clear passback.
   unfold pctx in *; clear pctx.
   set (q' disti) as q''.
@@ -855,7 +1028,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
 
   set (letRecSubproofsToND _ _ _ _ _ branches lrsp) as q.
     eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
-    eapply nd_comp; [ apply nd_llecnac | idtac ].
+    eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod; auto.
     rewrite ξlemma.
     apply q.
@@ -1007,7 +1180,7 @@ Definition expr2proof  :
       unfold mapOptionTree; simpl; fold (mapOptionTree ξ).
       eapply nd_comp; [ idtac | eapply nd_rule; apply RLam ].
       set (update_ξ ξ lev ((v,t1)::nil)) as ξ'.
-      set (arrangeContextAndWeaken Γ Δ v (expr2antecedent e) ξ') as pfx.
+      set (factorContextRightAndWeaken Γ Δ v (expr2antecedent e) ξ') as pfx.
         eapply RArrange in pfx.
         unfold mapOptionTree in pfx; simpl in pfx.
         unfold ξ' in pfx.
@@ -1024,16 +1197,14 @@ Definition expr2proof  :
 
     destruct case_ELet; intros; simpl in *.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
-      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      eapply nd_comp; [ apply nd_rlecnac | idtac ].
       apply nd_prod.
-        apply pf_let.
-        clear pf_let.
-        eapply nd_comp; [ apply pf_body | idtac ].
-        clear pf_body.
+      apply pf_let.
+      eapply nd_comp; [ apply pf_body | idtac ].
       fold (@mapOptionTree VV).
       fold (mapOptionTree ξ).
       set (update_ξ ξ v ((lev,tv)::nil)) as ξ'.
-      set (arrangeContextAndWeaken Γ Δ lev (expr2antecedent ebody) ξ') as n.
+      set (factorContextLeftAndWeaken Γ Δ lev (expr2antecedent ebody) ξ') as n.
       unfold mapOptionTree in n; simpl in n; fold (mapOptionTree ξ') in n.
       unfold ξ' in n.
       rewrite updating_stripped_tree_is_inert in n.
@@ -1102,7 +1273,7 @@ Definition expr2proof  :
       rewrite <- (scbwv_coherent scbx l ξ).
       rewrite <- vec2list_map_list2vec.
       rewrite mapleaves'.
-      set (@arrangeContextAndWeaken'') as q.
+      set (@factorContextRightAndWeaken'') as q.
       unfold scbwv_ξ.
       set (@updating_stripped_tree_is_inert' _ (weakL' l) (weakLT' ○ ξ) (vec2list (scbwv_varstypes scbx))) as z.
       unfold scbwv_varstypes in z.
@@ -1110,6 +1281,7 @@ Definition expr2proof  :
       rewrite fst_zip in z.
       rewrite <- z.
       clear z.
+
       replace (stripOutVars (vec2list (scbwv_exprvars scbx))) with
         (stripOutVars (leaves (unleaves (vec2list (scbwv_exprvars scbx))))).
       apply q.

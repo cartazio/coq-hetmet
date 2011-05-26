@@ -524,8 +524,9 @@ Section HaskProofToStrong.
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
-      | RJoin Γ p lri m x q   => let case_RJoin := tt in _
-      | RVoid _ _               => let case_RVoid := tt   in _
+      | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
+      | RJoin   Γ p lri m x q         => let case_RJoin := tt in _
+      | RVoid   _ _                   => let case_RVoid := tt   in _
       | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
       | REsc    Σ a b c n m           => let case_REsc := tt          in _
       | RCase   Γ Δ lev tc Σ avars tbranches alts => let case_RCase := tt         in _
@@ -636,41 +637,83 @@ Section HaskProofToStrong.
     apply ileaf in q1'.
     apply ileaf in q2'.
     simpl in *.
-    apply (EApp _ _ _ _ _ _ q2' q1').
+    apply (EApp _ _ _ _ _ _ q1' q2').
 
   destruct case_RLet.
     apply ILeaf.
     simpl in *; intros.
     destruct vars; try destruct o; inversion H.
-    refine (fresh_lemma _ ξ vars1 _ σ₂ p H1 >>>= (fun pf => _)).
+
+    refine (fresh_lemma _ ξ _ _ σ₁ p H2 >>>= (fun pf => _)).
     apply FreshMon.
+
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ p (((vnew, σ₂ )) :: nil)) as ξ' in *.
+    set (update_ξ ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
     inversion X_.
     apply ileaf in X.
     apply ileaf in X0.
     simpl in *.
-    refine (X ξ  vars2 _ >>>= fun X0' => _).
+
+    refine (X ξ vars1 _ >>>= fun X0' => _).
     apply FreshMon.
+    simpl.
     auto.
 
-    refine (X0 ξ' (vars1,,[vnew]) _ >>>= fun X1' => _).
+    refine (X0 ξ' ([vnew],,vars2) _ >>>= fun X1' => _).
     apply FreshMon.
-    rewrite H1.
     simpl.
     rewrite pf2.
     rewrite pf1.
-    rewrite H1.
+    reflexivity.
+    apply FreshMon.
+
+    apply ILeaf.
+    apply ileaf in X1'.
+    apply ileaf in X0'.
+    simpl in *.
+    apply ELet with (ev:=vnew)(tv:=σ₁).
+    apply X0'.
+    apply X1'.
+
+  destruct case_RWhere.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars;  try destruct o; inversion H.
+    destruct vars2; try destruct o; inversion H2.
+    clear H2.
+
+    assert ((Σ₁,,Σ₃) = mapOptionTree ξ (vars1,,vars2_2)) as H13; simpl; subst; auto.
+    refine (fresh_lemma _ ξ _ _ σ₁ p H13 >>>= (fun pf => _)).
+    apply FreshMon.
+
+    destruct pf as [ vnew [ pf1 pf2 ]].
+    set (update_ξ ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
+    inversion X_.
+    apply ileaf in X.
+    apply ileaf in X0.
+    simpl in *.
+
+    refine (X ξ' (vars1,,([vnew],,vars2_2)) _ >>>= fun X0' => _).
+    apply FreshMon.
+    simpl.
+    inversion pf1.
+    rewrite H3.
+    rewrite H4.
+    rewrite pf2.
     reflexivity.
 
-    refine (return _).
+    refine (X0 ξ vars2_1 _ >>>= fun X1' => _).
+    apply FreshMon.
+    reflexivity.
+    apply FreshMon.
+
     apply ILeaf.
     apply ileaf in X0'.
     apply ileaf in X1'.
     simpl in *.
-    apply ELet with (ev:=vnew)(tv:=σ₂).
-    apply X0'.
+    apply ELet with (ev:=vnew)(tv:=σ₁).
     apply X1'.
+    apply X0'.
 
   destruct case_RVoid.
     apply ILeaf; simpl; intros.
@@ -720,11 +763,11 @@ Section HaskProofToStrong.
     apply (@ELetRec _ _ _ _ _ _ _ varstypes).
     auto.
     apply (@letrec_helper Γ Δ t varstypes).
-    rewrite <- pf2 in X1.
+    rewrite <- pf2 in X0.
     rewrite mapOptionTree_compose.
-    apply X1.
-    apply ileaf in X0.
     apply X0.
+    apply ileaf in X1.
+    apply X1.
 
   destruct case_RCase.
     apply ILeaf; simpl; intros.

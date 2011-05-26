@@ -189,12 +189,13 @@ Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
     | RAbsCo        _ _ _ _ _ _ _ _   => "AbsCo"
     | RApp          _ _ _ _ _ _ _     => "App"
     | RLet          _ _ _ _ _ _ _     => "Let"
-    | RJoin _ _ _ _ _ _       => "RJoin"
+    | RWhere        _ _ _ _ _ _ _ _   => "Where"
+    | RJoin         _ _ _ _ _ _       => "RJoin"
     | RLetRec       _ _ _ _ _ _       => "LetRec"
     | RCase         _ _ _ _ _ _ _ _   => "Case"
     | RBrak         _ _ _ _ _ _       => "Brak"
     | REsc          _ _ _ _ _ _       => "Esc"
-    | RVoid   _ _               => "RVoid"
+    | RVoid         _ _               => "RVoid"
 end.
 
 Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=

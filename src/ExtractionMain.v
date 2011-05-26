@@ -235,14 +235,14 @@ Section core2proof.
   Definition curry {Γ}{Δ}{a}{s}{Σ}{lev} :
     ND Rule 
        [ Γ > Δ > Σ             |- [a ---> s @@ lev ] ]
-       [ Γ > Δ > Σ,,[a @@ lev] |-       [ s @@ lev ] ].
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RExch ].
-    eapply nd_comp; [ idtac | eapply nd_rule; apply (@RApp Γ Δ [a@@lev] Σ a s lev) ].
-    eapply nd_comp; [ apply nd_llecnac | idtac ].
+       [ Γ > Δ > [a @@ lev],,Σ |-       [ s @@ lev ] ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RApp ].
+    eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
+    apply nd_id.
     apply nd_rule.
     apply RVar.
-    apply nd_id.
     Defined.
 
   Definition fToC1 {Γ}{Δ}{a}{s}{lev} :
@@ -251,13 +251,13 @@ Section core2proof.
     intro pf.
     eapply nd_comp.
     apply pf.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanL ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanR ].
     apply curry.
     Defined.
 
   Definition fToC2 {Γ}{Δ}{a1}{a2}{s}{lev} :
     ND Rule [] [ Γ > Δ >                       [] |- [a1 ---> (a2 ---> s) @@ lev ] ] ->
-    ND Rule [] [ Γ > Δ > [a1 @@ lev],,[a2 @@ lev] |-                 [ s @@ lev ] ].
+    ND Rule [] [ Γ > Δ > [a1 @@ lev],,[a2 @@ lev] |-                  [ s @@ lev ] ].
     intro pf.
     eapply nd_comp.
     eapply pf.
@@ -267,7 +267,8 @@ Section core2proof.
     eapply nd_comp.
     eapply nd_rule.
     eapply RArrange.
-    eapply RCanL.
+    eapply RCanR.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
     apply curry.
     Defined.
 

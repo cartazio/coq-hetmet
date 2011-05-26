@@ -82,9 +82,11 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 | RJoin  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ ,   Rule ([Γ > Δ > Σ₁ |- τ₁ ],,[Γ > Δ > Σ₂ |- τ₂ ])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂          ]
 
-| RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁ |- [tx@@l]],,[Γ>Δ> Σ₂       |- [tx--->te @@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
+(* order is important here; we want to be able to skolemize without introducing new RExch'es *)
+| RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁ |- [tx--->te @@l]],,[Γ>Δ> Σ₂ |- [tx@@l]])  [Γ>Δ> Σ₁,,Σ₂ |- [te   @@l]]
 
-| RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₂ |- [σ₂@@l]],,[Γ>Δ> Σ₁,,[σ₂@@l] |- [σ₁@@l] ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₁   @@l]]
+| RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁ |- [σ₁@@l]],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂@@l] ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   @@l]]
+| RWhere         : ∀ Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,([σ₁@@l],,Σ₃) |- [σ₂@@l] ],,[Γ>Δ> Σ₂ |- [σ₁@@l]])     [Γ>Δ> Σ₁,,(Σ₂,,Σ₃) |- [σ₂   @@l]]
 
 | RVoid    : ∀ Γ Δ ,               Rule [] [Γ > Δ > [] |- [] ]
 
@@ -99,7 +101,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ @@ l]]
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ @@l]]
 
-| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- ([τ₁],,τ₂)@@@lev ] [Γ > Δ > Σ₁ |- [τ₁@@lev] ]
+| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- (τ₂,,[τ₁])@@@lev ] [Γ > Δ > Σ₁ |- [τ₁@@lev] ]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
   (alts:Tree ??{ sac : @StrongAltCon tc & @ProofCaseBranch tc Γ Δ lev tbranches avars sac }),
                    Rule
@@ -141,6 +143,7 @@ Lemma no_rules_with_multiple_conclusions : forall c h,
     try apply no_urules_with_empty_conclusion in u; try apply u.
     destruct X0; destruct s; inversion e.
     auto.
+    destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
