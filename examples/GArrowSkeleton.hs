@@ -46,8 +46,8 @@ data GArrowSkeleton m :: * -> * -> *
   GAS_copy      ::                                                 GArrowSkeleton m x         (x,x)
   GAS_swap      ::                                                 GArrowSkeleton m (x,y)     (y,x)
   GAS_merge     ::                                                 GArrowSkeleton m (x,y)     z
-  GAS_loopl     ::                 GArrowSkeleton m (x,z) (y,z) -> GArrowSkeleton m x y
-  GAS_loopr     ::                 GArrowSkeleton m (z,x) (z,y) -> GArrowSkeleton m x y
+  GAS_loopl     ::                 GArrowSkeleton m (z,x) (z,y) -> GArrowSkeleton m x y
+  GAS_loopr     ::                 GArrowSkeleton m (x,z) (y,z) -> GArrowSkeleton m x y
   GAS_misc      ::                                        m x y -> GArrowSkeleton m x y
 
 instance Category (GArrowSkeleton m) where
