@@ -20,6 +20,8 @@ Inductive WeakAltCon :=
 Inductive WeakExpr :=
 | WEVar       : WeakExprVar                                                  -> WeakExpr
 | WELit       : HaskLiteral                                                  -> WeakExpr
+
+(* TO DO: add a WEWhere and use the source location to detect which one the user used *)
 | WELet       : WeakExprVar -> WeakExpr         -> WeakExpr                  -> WeakExpr
 | WELetRec    : Tree ??(WeakExprVar * WeakExpr) -> WeakExpr                  -> WeakExpr
 | WECast      : WeakExpr                        -> WeakCoercion              -> WeakExpr
