@@ -1220,8 +1220,29 @@ Section HaskFlattener.
 
     destruct case_RLetRec.
       rename t into lev.
+      simpl. destruct lev; simpl.
+      replace (getjlev (y @@@ nil)) with (nil: (HaskLevel Γ)).
+      replace (mapOptionTree flatten_leveled_type (y @@@ nil))
+        with  ((mapOptionTree flatten_type y) @@@ nil).
+      unfold flatten_leveled_type at 2.
       simpl.
-      apply (Prelude_error "LetRec not supported (FIXME)").
+      unfold flatten_leveled_type at 3.
+      simpl.
+      apply nd_rule.
+      set (@RLetRec Γ Δ (mapOptionTree flatten_leveled_type lri) (flatten_type x) (mapOptionTree flatten_type y) nil) as q.
+      simpl in q.
+      apply q.
+        induction y; try destruct a; auto.
+        simpl.
+        rewrite IHy1.
+        rewrite IHy2.
+        reflexivity.
+        induction y; try destruct a; auto.
+        simpl.
+        rewrite <- IHy1.
+        rewrite <- IHy2.
+        reflexivity.
+      apply (Prelude_error "LetRec not supported inside brackets yet (FIXME)").
 
     destruct case_RCase.
       simpl.
