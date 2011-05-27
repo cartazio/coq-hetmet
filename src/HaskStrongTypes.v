@@ -199,6 +199,8 @@ Notation "t @@  l" := (@mkLeveledHaskType _ _ t l) (at level 20).
 Notation "t @@@ l" := (mapOptionTree (fun t' => t' @@ l) t) (at level 20).
 Notation "'<[' a '|-' t ']>'" := (@HaskBrak _ a t).
 
+Definition getlev {Γ}(lt:LeveledHaskType Γ ★) := match lt with _ @@ l => l end.
+
 Definition unlev {Γ}{κ}(lht:LeveledHaskType Γ κ) :=
   match lht with t@@l => t end.
 

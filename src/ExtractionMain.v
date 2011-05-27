@@ -234,8 +234,8 @@ Section core2proof.
 
   Definition curry {Γ}{Δ}{a}{s}{Σ}{lev} :
     ND Rule 
-       [ Γ > Δ > Σ             |- [a ---> s @@ lev ] ]
-       [ Γ > Δ > [a @@ lev],,Σ |-       [ s @@ lev ] ].
+       [ Γ > Δ > Σ             |- [a ---> s  ]@lev ]
+       [ Γ > Δ > [a @@ lev],,Σ |-       [ s ]@lev ].
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RApp ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
@@ -246,8 +246,8 @@ Section core2proof.
     Defined.
 
   Definition fToC1 {Γ}{Δ}{a}{s}{lev} :
-    ND Rule [] [ Γ > Δ > [        ] |- [a ---> s @@ lev ] ] ->
-    ND Rule [] [ Γ > Δ > [a @@ lev] |-       [ s @@ lev ] ].
+    ND Rule [] [ Γ > Δ > [        ] |- [a ---> s  ]@lev ] ->
+    ND Rule [] [ Γ > Δ > [a @@ lev] |-       [ s  ]@lev ].
     intro pf.
     eapply nd_comp.
     apply pf.
@@ -256,8 +256,8 @@ Section core2proof.
     Defined.
 
   Definition fToC2 {Γ}{Δ}{a1}{a2}{s}{lev} :
-    ND Rule [] [ Γ > Δ >                       [] |- [a1 ---> (a2 ---> s) @@ lev ] ] ->
-    ND Rule [] [ Γ > Δ > [a1 @@ lev],,[a2 @@ lev] |-                  [ s @@ lev ] ].
+    ND Rule [] [ Γ > Δ >                       [] |- [a1 ---> (a2 ---> s)  ]@lev ] ->
+    ND Rule [] [ Γ > Δ > [a1 @@ lev],,[a2 @@ lev] |-                  [ s  ]@lev ].
     intro pf.
     eapply nd_comp.
     eapply pf.
@@ -338,7 +338,7 @@ Section core2proof.
       Defined.
 
     Definition mkGlob2 {Γ}{Δ}{l}{κ₁}{κ₂}(cv:CoreVar)(f:HaskType Γ κ₁ -> HaskType Γ κ₂ -> HaskType Γ ★) x y
-      : ND Rule [] [ Γ > Δ > [] |- [f x y @@ l] ].
+      : ND Rule [] [ Γ > Δ > [] |- [f x y ]@l ].
       apply nd_rule.
       refine (@RGlobal Γ Δ l 
         {| glob_wv    := coreVarToWeakExprVarOrError cv
@@ -357,7 +357,7 @@ Section core2proof.
       Defined.
 
     Definition mkGlob3 {Γ}{Δ}{l}{κ₁}{κ₂}{κ₃}(cv:CoreVar)(f:HaskType Γ κ₁ -> HaskType Γ κ₂ -> HaskType Γ κ₃ -> HaskType Γ ★) x y z
-      : ND Rule [] [ Γ > Δ > [] |- [f x y z @@ l] ].
+      : ND Rule [] [ Γ > Δ > [] |- [f x y z ]@l ].
       apply nd_rule.
       refine (@RGlobal Γ Δ l 
         {| glob_wv    := coreVarToWeakExprVarOrError cv
@@ -377,7 +377,7 @@ Section core2proof.
       Defined.
 
     Definition mkGlob4 {Γ}{Δ}{l}{κ₁}{κ₂}{κ₃}{κ₄}(cv:CoreVar)(f:HaskType Γ κ₁ -> HaskType Γ κ₂ -> HaskType Γ κ₃ -> HaskType Γ κ₄ -> HaskType Γ ★) x y z q
-      : ND Rule [] [ Γ > Δ > [] |- [f x y z q @@ l] ].
+      : ND Rule [] [ Γ > Δ > [] |- [f x y z q ] @l].
       apply nd_rule.
       refine (@RGlobal Γ Δ l 
         {| glob_wv    := coreVarToWeakExprVarOrError cv
@@ -418,10 +418,10 @@ Section core2proof.
     Definition hetmet_unflatten'  := coreVarToWeakExprVarOrError hetmet_unflatten.
     Definition hetmet_flattened_id'  := coreVarToWeakExprVarOrError hetmet_flattened_id.
 
-    Definition coreToCoreExpr' (ce:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
-      addErrorMessage ("input CoreSyn: " +++ toString ce)
-      (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr ce)) (
-        coreExprToWeakExpr ce >>= fun we =>
+    Definition coreToCoreExpr' (cex:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
+      addErrorMessage ("input CoreSyn: " +++ toString cex)
+      (addErrorMessage ("input CoreType: " +++ toString (coreTypeOfCoreExpr cex)) (
+        coreExprToWeakExpr cex >>= fun we =>
           addErrorMessage ("WeakExpr: " +++ toString we)
             ((addErrorMessage ("CoreType of WeakExpr: " +++ toString (coreTypeOfCoreExpr (weakExprToCoreExpr we)))
               ((weakTypeOfWeakExpr we) >>= fun t =>
@@ -434,7 +434,7 @@ Section core2proof.
                         (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
                                             hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
-                         OK ((@proof2expr nat _ FreshNat _ _ _ _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
+                         OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ@@nil) _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                          >>= fun e' =>
                            (snd e') >>= fun e'' =>
                          strongExprToWeakExpr hetmet_brak' hetmet_esc'

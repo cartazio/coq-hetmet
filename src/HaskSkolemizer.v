@@ -82,19 +82,7 @@ Section HaskSkolemizer.
     end.
 
   (* rules of skolemized proofs *)
-  Definition getΓ (j:Judg) := match j with Γ > _ > _ |- _ => Γ end.
-  Definition getSuc (j:Judg) : Tree ??(LeveledHaskType (getΓ j) ★) :=
-    match j as J return Tree ??(LeveledHaskType (getΓ J) ★) with Γ > _ > _ |- s => s end.
-  Fixpoint getjlev {Γ}(tt:Tree ??(LeveledHaskType Γ ★)) : HaskLevel Γ :=
-    match tt with
-      | T_Leaf None              => nil
-      | T_Leaf (Some (_ @@ lev)) => lev
-      | T_Branch b1 b2 =>
-        match getjlev b1 with
-          | nil => getjlev b2
-          | lev => lev
-        end
-    end.
+  Definition getΓ (j:Judg) := match j with Γ > _ > _ |- _ @ _ => Γ end.
 
   Fixpoint take_trustme {Γ}
     (n:nat)
@@ -184,13 +172,13 @@ Section HaskSkolemizer.
   | SFlat  : forall h c, Rule h c -> SRule h c
   | SBrak  : forall Γ Δ t ec Σ l,
     SRule
-    [Γ > Δ > Σ,,(take_arg_types_as_tree t @@@ (ec::l)) |- [ drop_arg_types_as_tree t        @@ (ec::l) ]]
-    [Γ > Δ > Σ                                  |- [<[ec |- t]>              @@      l  ]]
+    [Γ > Δ > Σ,,(take_arg_types_as_tree t @@@ (ec::l)) |- [ drop_arg_types_as_tree t        ] @ (ec::l)]
+    [Γ > Δ > Σ                                  |- [<[ec |- t]>                ] @l]
 
   | SEsc   : forall Γ Δ t ec Σ l,
     SRule
-    [Γ > Δ > Σ                                  |- [<[ec |- t]>              @@      l  ]]
-    [Γ > Δ > Σ,,(take_arg_types_as_tree t @@@ (ec::l)) |- [ drop_arg_types_as_tree t        @@ (ec::l) ]]
+    [Γ > Δ > Σ                                  |- [<[ec |- t]>                ] @l]
+    [Γ > Δ > Σ,,(take_arg_types_as_tree t @@@ (ec::l)) |- [ drop_arg_types_as_tree t         ] @ (ec::l)]
     .
 
   Definition take_arg_types_as_tree' {Γ}(lt:LeveledHaskType Γ ★) :=
@@ -201,11 +189,9 @@ Section HaskSkolemizer.
 
   Definition skolemize_judgment (j:Judg) : Judg :=
     match j with
-      Γ > Δ > Σ₁ |- Σ₂ =>
-        match getjlev Σ₂ with
-          | nil => j
-          | lev => Γ > Δ > Σ₁,,(mapOptionTreeAndFlatten take_arg_types_as_tree' Σ₂) |- mapOptionTree drop_arg_types_as_tree' Σ₂
-        end
+      | Γ > Δ > Σ₁ |- Σ₂ @ nil       => j
+        | Γ > Δ > Σ₁ |- Σ₂ @ lev => 
+          Γ > Δ > Σ₁,,(mapOptionTreeAndFlatten take_arg_types_as_tree Σ₂ @@@ lev) |- mapOptionTree drop_arg_types_as_tree Σ₂ @ lev
     end.
 
   Definition check_hof : forall {Γ}(t:HaskType Γ ★),
@@ -232,7 +218,7 @@ Section HaskSkolemizer.
     intros.
 
     refine (match X as R in Rule H C with
-      | RArrange Γ Δ a b x d           => let case_RArrange := tt      in _
+      | RArrange Γ Δ a b x l d         => let case_RArrange := tt      in _
       | RNote    Γ Δ Σ τ l n           => let case_RNote := tt         in _
       | RLit     Γ Δ l     _           => let case_RLit := tt          in _
       | RVar     Γ Δ σ           lev   => let case_RVar := tt          in _
@@ -246,8 +232,8 @@ Section HaskSkolemizer.
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
       | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev => let case_RWhere := tt          in _
-      | RJoin    Γ p lri m x q         => let case_RJoin := tt in _
-      | RVoid    _ _                   => let case_RVoid := tt   in _
+      | RJoin    Γ p lri m x q l       => let case_RJoin := tt in _
+      | RVoid    _ _           l       => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev     => let case_RBrak := tt         in _
       | REsc     Γ Δ t ec succ lev     => let case_REsc := tt          in _
       | RCase    Γ Δ lev tc Σ avars tbranches alts => let case_RCase := tt         in _
@@ -256,7 +242,7 @@ Section HaskSkolemizer.
 
       destruct case_RArrange.
         simpl.
-        destruct (getjlev x).
+        destruct l. 
         apply nd_rule.
         apply SFlat.
         apply RArrange.
@@ -363,12 +349,10 @@ Section HaskSkolemizer.
 
       destruct case_RJoin.
         simpl.
-        destruct (getjlev x).
-        destruct (getjlev q).
+        destruct l.
         apply nd_rule.
         apply SFlat.
         apply RJoin.
-        apply (Prelude_error "found RJoin at level >0").
         apply (Prelude_error "found RJoin at level >0").
 
       destruct case_RApp.
@@ -446,6 +430,11 @@ Section HaskSkolemizer.
 
       destruct case_RVoid.
         simpl.
+        destruct l.
+        apply nd_rule.
+        apply SFlat.
+        apply RVoid.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RuCanL ].
         apply nd_rule.
         apply SFlat.
         apply RVoid.
@@ -474,17 +463,16 @@ Section HaskSkolemizer.
       destruct case_RLetRec.
         simpl.
         destruct t.
-        destruct (getjlev (y @@@ nil)).
         apply nd_rule.
         apply SFlat.
         apply (@RLetRec Γ Δ lri x y nil).
-        apply (Prelude_error "RLetRec at depth>0").
         apply (Prelude_error "RLetRec at depth>0").
 
       destruct case_RCase.
         simpl.
         apply (Prelude_error "CASE: BIG FIXME").
         Defined.
+
   Transparent take_arg_types_as_tree.
 
 End HaskSkolemizer.

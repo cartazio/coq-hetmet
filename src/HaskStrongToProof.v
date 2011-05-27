@@ -955,7 +955,7 @@ Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v t
 Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ lev tree -> Type := 
   | lrsp_nil  : LetRecSubproofs Γ Δ ξ lev [] (ELR_nil _ _ _ _)
   | lrsp_leaf : forall v t e ,
-    (ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [t@@lev]]) ->
+    (ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [t]@lev]) ->
     LetRecSubproofs Γ Δ ξ lev [(v, t)] (ELR_leaf _ _ _ _ _ t e)
   | lrsp_cons : forall t1 t2 b1 b2,
     LetRecSubproofs Γ Δ ξ lev t1 b1 ->
@@ -965,7 +965,7 @@ Inductive LetRecSubproofs Γ Δ ξ lev : forall tree, ELetRecBindings Γ Δ ξ l
 Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
   LetRecSubproofs Γ Δ ξ lev tree branches ->
     ND Rule [] [ Γ > Δ > mapOptionTree ξ (eLetRecContext branches)
-      |- (mapOptionTree (@snd _ _) tree) @@@ lev ].
+      |- (mapOptionTree (@snd _ _) tree) @ lev ].
   intro X; induction X; intros; simpl in *.
     apply nd_rule.
       apply RVoid.
@@ -980,9 +980,9 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
 
 Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     forall branches body (dist:distinct (leaves (mapOptionTree (@fst _ _) tree))),
-    ND Rule [] [Γ > Δ > mapOptionTree (update_xi ξ lev (leaves tree)) (expr2antecedent body) |- [τ @@ lev]] -> 
+    ND Rule [] [Γ > Δ > mapOptionTree (update_xi ξ lev (leaves tree)) (expr2antecedent body) |- [τ ]@ lev] -> 
     LetRecSubproofs Γ Δ (update_xi ξ lev (leaves tree)) lev tree branches ->
-    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree dist branches body)) |- [τ @@ lev]].
+    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree dist branches body)) |- [τ ]@ lev].
 
   (* NOTE: how we interpret stuff here affects the order-of-side-effects *)
   intro branches.
@@ -1021,7 +1021,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   simpl.
   rewrite <- mapOptionTree_compose in q''.
   rewrite <- ξlemma.
-  eapply nd_comp; [ idtac | eapply nd_rule; apply (RArrange _ _ _ _ _ q'') ].
+  eapply nd_comp; [ idtac | eapply nd_rule; apply (RArrange _ _ _ _ _ _ q'') ].
   clear q'.
   clear q''.
   simpl.
@@ -1030,8 +1030,6 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod; auto.
-    rewrite ξlemma.
-    apply q.
     Defined.
 
 Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _}{sac} :
@@ -1097,10 +1095,10 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
 
 Definition expr2proof  :
   forall Γ Δ ξ τ (e:Expr Γ Δ ξ τ),
-    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [τ]].
+    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [unlev τ] @ getlev τ].
 
   refine (fix expr2proof Γ' Δ' ξ' τ' (exp:Expr Γ' Δ' ξ' τ') {struct exp}
-    : ND Rule [] [Γ' > Δ' > mapOptionTree ξ' (expr2antecedent exp) |- [τ']] :=
+    : ND Rule [] [Γ' > Δ' > mapOptionTree ξ' (expr2antecedent exp) |- [unlev τ'] @ getlev τ'] :=
     match exp as E in Expr Γ Δ ξ τ with
     | EGlobal  Γ Δ ξ     g v lev                    => let case_EGlobal := tt in _
     | EVar     Γ Δ ξ ev                             => let case_EVar := tt in _

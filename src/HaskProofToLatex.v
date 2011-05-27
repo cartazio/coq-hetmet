@@ -146,9 +146,9 @@ Definition ltypeToLatexMath {Γ:TypeEnv}{κ}(t:LeveledHaskType Γ κ) : VarNameS
 
 Definition judgmentToRawLatexMath (j:Judg) : LatexMath :=
   match match j return VarNameStoreM LatexMath with
-    | mkJudg Γ Δ Σ₁ Σ₂ =>
+    | mkJudg Γ Δ Σ₁ Σ₂ l =>
           bind Σ₁' = treeM (mapOptionTree ltypeToLatexMath Σ₁)
-        ; bind Σ₂' = treeM (mapOptionTree ltypeToLatexMath Σ₂)
+        ; bind Σ₂' = treeM (mapOptionTree (fun t => ltypeToLatexMath (t@@l)) Σ₂)
         ; return treeToLatexMath Σ₁' +++ (rawLatexMath "\vdash") +++ treeToLatexMath Σ₂'
   end with
     varNameStoreM f => fst (f (varNameStore 0 0 0))
@@ -176,7 +176,7 @@ Fixpoint nd_uruleToRawLatexMath {T}{h}{c}(r:@Arrange T h c) : string :=
 
 Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
   match r with
-    | RArrange      _ _ _ _ _ r       => nd_uruleToRawLatexMath r
+    | RArrange      _ _ _ _ _ _ r     => nd_uruleToRawLatexMath r
     | RNote         _ _ _ _ _ _       => "Note"
     | RLit          _ _ _ _           => "Lit"
     | RVar          _ _ _ _           => "Var"
@@ -190,12 +190,12 @@ Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
     | RApp          _ _ _ _ _ _ _     => "App"
     | RLet          _ _ _ _ _ _ _     => "Let"
     | RWhere        _ _ _ _ _ _ _ _   => "Where"
-    | RJoin         _ _ _ _ _ _       => "RJoin"
+    | RJoin         _ _ _ _ _ _ _     => "RJoin"
     | RLetRec       _ _ _ _ _ _       => "LetRec"
     | RCase         _ _ _ _ _ _ _ _   => "Case"
     | RBrak         _ _ _ _ _ _       => "Brak"
     | REsc          _ _ _ _ _ _       => "Esc"
-    | RVoid         _ _               => "RVoid"
+    | RVoid         _ _ _             => "RVoid"
 end.
 
 Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
@@ -217,9 +217,9 @@ Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
   end.
 Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=
   match r with
-    | RArrange      _ _ _ _ _ r => nd_hideURule r
-    | RVoid   _ _         => true
-    | RJoin _ _ _ _ _ _ => true
+    | RArrange _    _ _ _ _ _ r => nd_hideURule r
+    | RVoid _  _ _         => true
+    | RJoin _ _ _ _ _ _ _ => true
     | _                         => false
   end.
 

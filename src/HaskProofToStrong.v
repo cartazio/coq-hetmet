@@ -27,8 +27,8 @@ Section HaskProofToStrong.
 
   Definition judg2exprType (j:Judg) : Type :=
     match j with
-      (Γ > Δ > Σ |- τ) => forall (ξ:ExprVarResolver Γ) vars, Σ = mapOptionTree ξ vars ->
-        FreshM (ITree _ (fun t => Expr Γ Δ ξ t) τ)
+      (Γ > Δ > Σ |- τ @ l) => forall (ξ:ExprVarResolver Γ) vars, Σ = mapOptionTree ξ vars ->
+        FreshM (ITree _ (fun t => Expr Γ Δ ξ (t @@ l)) τ)
       end.
 
   Definition justOne Γ Δ ξ τ : ITree _ (fun t => Expr Γ Δ ξ t) [τ] -> Expr Γ Δ ξ τ.
@@ -222,23 +222,23 @@ Section HaskProofToStrong.
       inversion pf2.
     Defined.
 
-  Definition ujudg2exprType Γ (ξ:ExprVarResolver Γ)(Δ:CoercionEnv Γ) Σ τ : Type :=
-    forall vars, Σ = mapOptionTree ξ vars -> FreshM (ITree _ (fun t => Expr Γ Δ ξ t) τ).
+  Definition ujudg2exprType Γ (ξ:ExprVarResolver Γ)(Δ:CoercionEnv Γ) Σ τ l : Type :=
+    forall vars, Σ = mapOptionTree ξ vars -> FreshM (ITree _ (fun t => Expr Γ Δ ξ (t@@l)) τ).
 
-  Definition urule2expr  : forall Γ Δ h j t (r:@Arrange _ h j) (ξ:VV -> LeveledHaskType Γ ★),
-    ujudg2exprType Γ ξ Δ h t ->
-    ujudg2exprType Γ ξ Δ j t
+  Definition urule2expr  : forall Γ Δ h j t l (r:@Arrange _ h j) (ξ:VV -> LeveledHaskType Γ ★),
+    ujudg2exprType Γ ξ Δ h t l ->
+    ujudg2exprType Γ ξ Δ j t l
     .
     intros Γ Δ.
-      refine (fix urule2expr h j t (r:@Arrange _ h j) ξ {struct r} : 
-    ujudg2exprType Γ ξ Δ h t ->
-    ujudg2exprType Γ ξ Δ j t :=
+      refine (fix urule2expr h j t l (r:@Arrange _ h j) ξ {struct r} : 
+    ujudg2exprType Γ ξ Δ h t l ->
+    ujudg2exprType Γ ξ Δ j t l :=
         match r as R in Arrange H C return
-    ujudg2exprType Γ ξ Δ H t ->
-    ujudg2exprType Γ ξ Δ C t
+    ujudg2exprType Γ ξ Δ H t l ->
+    ujudg2exprType Γ ξ Δ C t l
  with
-          | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ r)
-          | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ r)
+          | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ _ r)
+          | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ _ r)
           | RId     a       => let case_RId    := tt in _
           | RCanL   a       => let case_RCanL  := tt in _
           | RCanR   a       => let case_RCanR  := tt in _
@@ -249,7 +249,7 @@ Section HaskProofToStrong.
           | RExch   a b     => let case_RExch  := tt in _
           | RWeak   a       => let case_RWeak  := tt in _
           | RCont   a       => let case_RCont  := tt in _
-          | RComp   a b c f g => let case_RComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ f) (urule2expr _ _ _ g)
+          | RComp   a b c f g => let case_RComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ _ f) (urule2expr _ _ _ _ g)
           end); clear urule2expr; intros.
 
       destruct case_RId.
@@ -353,9 +353,9 @@ Section HaskProofToStrong.
         Defined.
 
   Definition letrec_helper Γ Δ l (varstypes:Tree ??(VV * HaskType Γ ★)) ξ' :
-    ITree (LeveledHaskType Γ ★)
-         (fun t : LeveledHaskType Γ ★ => Expr Γ Δ ξ' t)
-         (mapOptionTree (ξ' ○ (@fst _ _)) varstypes)
+    ITree (HaskType Γ ★)
+         (fun t : HaskType Γ ★ => Expr Γ Δ ξ' (t @@ l))
+         (mapOptionTree (unlev ○ ξ' ○ (@fst _ _)) varstypes)
          -> ELetRecBindings Γ Δ ξ' l varstypes.
     intros.
     induction varstypes.
@@ -371,6 +371,8 @@ Section HaskProofToStrong.
       simpl.
       destruct (eqd_dec h0 l).
         rewrite <- e0.
+        simpl in X.
+        subst.
         apply X.
       apply (Prelude_error "level mismatch; should never happen").
       apply (Prelude_error "letrec type mismatch; should never happen").
@@ -511,7 +513,7 @@ Section HaskProofToStrong.
     intros h j r.
 
       refine (match r as R in Rule H C return ITree _ judg2exprType H -> ITree _ judg2exprType C with
-      | RArrange a b c d e  r         => let case_RURule := tt        in _
+      | RArrange a b c d e l r        => let case_RURule := tt        in _
       | RNote   Γ Δ Σ τ l n           => let case_RNote := tt         in _
       | RLit    Γ Δ l     _           => let case_RLit := tt          in _
       | RVar    Γ Δ σ         p       => let case_RVar := tt          in _
@@ -525,8 +527,8 @@ Section HaskProofToStrong.
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
       | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
-      | RJoin   Γ p lri m x q         => let case_RJoin := tt in _
-      | RVoid   _ _                   => let case_RVoid := tt   in _
+      | RJoin   Γ p lri m x q l       => let case_RJoin := tt in _
+      | RVoid   _ _ l                 => let case_RVoid := tt   in _
       | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
       | REsc    Σ a b c n m           => let case_REsc := tt          in _
       | RCase   Γ Δ lev tc Σ avars tbranches alts => let case_RCase := tt         in _
@@ -535,12 +537,10 @@ Section HaskProofToStrong.
 
     destruct case_RURule.
       apply ILeaf. simpl. intros.
-      set (@urule2expr a b _ _ e r0 ξ) as q.
-      set (fun z => q z) as q'.
-      simpl in q'.
-      apply q' with (vars:=vars).
-      clear q' q.
+      set (@urule2expr a b _ _ e l r0 ξ) as q.
       unfold ujudg2exprType.
+      unfold ujudg2exprType in q.
+      apply q with (vars:=vars).
       intros.
       apply X_ with (vars:=vars0).
       auto.
@@ -763,10 +763,18 @@ Section HaskProofToStrong.
     apply (@ELetRec _ _ _ _ _ _ _ varstypes).
     auto.
     apply (@letrec_helper Γ Δ t varstypes).
-    rewrite <- pf2 in X0.
     rewrite mapOptionTree_compose.
-    apply X0.
+    rewrite mapOptionTree_compose.
+    rewrite pf2.
+    replace ((mapOptionTree unlev (y @@@ t))) with y.
+      apply X0.
+      clear pf1 X0 X1 pfdist pf2 vars varstypes.
+      induction y; try destruct a; auto.
+      rewrite IHy1 at 1.
+      rewrite IHy2 at 1.
+      reflexivity.
     apply ileaf in X1.
+    simpl in X1.
     apply X1.
 
   destruct case_RCase.
@@ -845,7 +853,7 @@ Section HaskProofToStrong.
     Defined.
 
   Definition proof2expr Γ Δ τ Σ (ξ0: VV -> LeveledHaskType Γ ★)
-    {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [τ]] ->
+    {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [unlev τ] @ getlev τ] ->
     FreshM (???{ ξ : _ & Expr Γ Δ ξ τ}).
     intro pf.
     set (mkSIND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) as cnd.
@@ -862,7 +870,10 @@ Section HaskProofToStrong.
     auto.
     refine (return OK _).
     exists ξ.
-    apply (ileaf it).
+    apply ileaf in it.
+    simpl in it.
+    destruct τ.
+    apply it.
     apply INone.
     Defined.
 
