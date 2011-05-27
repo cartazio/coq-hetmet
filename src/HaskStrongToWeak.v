@@ -95,16 +95,16 @@ Section HaskStrongToWeak.
   
   Context {VV}{eqVV:EqDecidable VV}{toStringVV:ToString VV}.
   
-  Definition update_χ (χ:VV->???WeakExprVar)(vv:VV)(ev':WeakExprVar) : VV->???WeakExprVar :=
+  Definition update_chi (χ:VV->???WeakExprVar)(vv:VV)(ev':WeakExprVar) : VV->???WeakExprVar :=
     fun vv' =>
       if eqd_dec vv vv'
       then OK ev'
       else χ vv'.
 
-  Fixpoint update_χ' (χ:VV->???WeakExprVar)(varsexprs:list (VV * WeakExprVar)) : VV->???WeakExprVar :=
+  Fixpoint update_chi' (χ:VV->???WeakExprVar)(varsexprs:list (VV * WeakExprVar)) : VV->???WeakExprVar :=
     match varsexprs with
       | nil => χ
-      | (vv,wev)::rest => update_χ (update_χ' χ rest) vv wev
+      | (vv,wev)::rest => update_chi (update_chi' χ rest) vv wev
     end.
 
   Fixpoint exprToWeakExpr {Γ}{Δ}{ξ}{τ}(χ:VV->???WeakExprVar)(exp:@Expr _ eqVV Γ Δ ξ τ)
@@ -116,12 +116,12 @@ Section HaskStrongToWeak.
                                                 ; return (fold_left (fun x y => WETyApp x y) tv' (WEVar g))
     | ELam  Γ'   _ _ tv _ _ cv e    => fun ite => bind tv' = typeToWeakType tv ite
                                                 ; bind ev' = mkWeakExprVar tv'
-                                                ; bind e'  = exprToWeakExpr (update_χ χ cv ev') e ite
+                                                ; bind e'  = exprToWeakExpr (update_chi χ cv ev') e ite
                                                 ; return WELam ev' e'
     | ELet  Γ' _ _ t _ _ ev e1 e2   => fun ite => bind tv' = typeToWeakType t ite
                                                 ; bind e1' = exprToWeakExpr χ e1 ite
                                                 ; bind ev' = mkWeakExprVar tv'
-                                                ; bind e2' = exprToWeakExpr (update_χ χ ev ev') e2 ite
+                                                ; bind e2' = exprToWeakExpr (update_chi χ ev ev') e2 ite
                                                 ; return WELet ev' e1' e2'
     | ELit  _ _ _ lit _             => fun ite => return WELit lit
     | EApp  Γ' _ _ _ _ _ e1 e2      => fun ite => bind e1' = exprToWeakExpr χ e1 ite
@@ -172,7 +172,7 @@ Section HaskStrongToWeak.
                                                                          ; bind v' = mkWeakExprVar tleaf
                                                                          ; return ((fst vt),v'))
                                                                 varstypes)
-                                    ; let χ' := update_χ' χ exprvars in
+                                    ; let χ' := update_chi' χ exprvars in
                                       bind e'' = exprToWeakExpr χ' e (snd evars_ite)
                                     ; return [(sac_altcon sac, vec2list (fst evars_ite), nil, (map (@snd _ _) exprvars), e'')]
                               | T_Branch b1 b2        => bind b1' = caseBranches b1
@@ -188,7 +188,7 @@ Section HaskStrongToWeak.
                                                                          ; bind v' = mkWeakExprVar tleaf
                                                                          ; return ((fst vt),v'))
                                                                 (leaves vars))
-                                                ; let χ' := update_χ' χ vars' in
+                                                ; let χ' := update_chi' χ vars' in
                                                   bind elrb' = exprLetRec2WeakExprLetRec χ' elrb ite
                                                 ; bind e'    = exprToWeakExpr χ' e ite
                                                 ; return WELetRec elrb' e'

@@ -42,7 +42,7 @@ Section HaskProofToStrong.
     Defined.
 
   Lemma update_branches : forall Γ (ξ:VV -> LeveledHaskType Γ ★) lev l1 l2 q,
-    update_ξ ξ lev (app l1 l2) q = update_ξ (update_ξ ξ lev l2) lev l1 q.
+    update_xi ξ lev (app l1 l2) q = update_xi (update_xi ξ lev l2) lev l1 q.
     intros.
     induction l1.
       reflexivity.
@@ -122,7 +122,7 @@ Section HaskProofToStrong.
   Lemma fresh_lemma'' Γ 
     : forall types ξ lev, 
     FreshM { varstypes : _
-      |  mapOptionTree (update_ξ(Γ:=Γ)   ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) = (types @@@ lev)
+      |  mapOptionTree (update_xi(Γ:=Γ)   ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) = (types @@@ lev)
       /\ distinct (leaves (mapOptionTree (@fst _ _) varstypes)) }.
   admit.
   Defined.
@@ -130,8 +130,8 @@ Section HaskProofToStrong.
   Lemma fresh_lemma' Γ 
     : forall types vars Σ ξ lev, Σ = mapOptionTree ξ vars ->
     FreshM { varstypes : _
-      |  mapOptionTree (update_ξ(Γ:=Γ) ξ lev (leaves varstypes)) vars = Σ
-      /\ mapOptionTree (update_ξ       ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) = (types @@@ lev)
+      |  mapOptionTree (update_xi(Γ:=Γ) ξ lev (leaves varstypes)) vars = Σ
+      /\ mapOptionTree (update_xi       ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) = (types @@@ lev)
       /\ distinct (leaves (mapOptionTree (@fst _ _) varstypes)) }.
     induction types.
       intros; destruct a.
@@ -164,7 +164,7 @@ Section HaskProofToStrong.
         intros vars Σ ξ lev pf; refine (bind x2 = IHtypes2 vars Σ ξ lev pf; _).
           apply FreshMon.
           destruct x2 as [vt2 [pf21 [pf22 pfdist]]].
-          refine (bind x1 = IHtypes1 (vars,,(mapOptionTree (@fst _ _) vt2)) (Σ,,(types2@@@lev)) (update_ξ ξ lev
+          refine (bind x1 = IHtypes1 (vars,,(mapOptionTree (@fst _ _) vt2)) (Σ,,(types2@@@lev)) (update_xi ξ lev
             (leaves vt2)) _ _; return _).
           apply FreshMon.
           simpl.
@@ -204,8 +204,8 @@ Section HaskProofToStrong.
   Lemma fresh_lemma Γ ξ vars Σ Σ' lev
     : Σ = mapOptionTree ξ vars ->
     FreshM { vars' : _
-      |  mapOptionTree (update_ξ(Γ:=Γ) ξ lev ((vars',Σ')::nil)) vars = Σ
-      /\ mapOptionTree (update_ξ ξ lev ((vars',Σ')::nil)) [vars'] = [Σ' @@ lev] }.
+      |  mapOptionTree (update_xi(Γ:=Γ) ξ lev ((vars',Σ')::nil)) vars = Σ
+      /\ mapOptionTree (update_xi ξ lev ((vars',Σ')::nil)) [vars'] = [Σ' @@ lev] }.
     intros.
     set (fresh_lemma' Γ [Σ'] vars Σ ξ lev H) as q.
     refine (q >>>= fun q' => return _).
@@ -419,7 +419,7 @@ Section HaskProofToStrong.
      prod (judg2exprType (pcb_judg (projT2 pcb))) {vars' : Tree ??VV & pcb_freevars (projT2 pcb) = mapOptionTree ξ vars'} ->
      ((fun sac => FreshM
        { scb : StrongCaseBranchWithVVs VV eqdec_vv tc avars sac
-         & Expr (sac_Γ sac Γ) (sac_Δ sac Γ avars (weakCK'' Δ)) (scbwv_ξ scb ξ lev) (weakLT' (tbranches @@  lev)) }) (projT1 pcb)).
+         & Expr (sac_gamma sac Γ) (sac_delta sac Γ avars (weakCK'' Δ)) (scbwv_xi scb ξ lev) (weakLT' (tbranches @@  lev)) }) (projT1 pcb)).
     intro pcb.
     intro X.
     simpl in X.
@@ -445,10 +445,10 @@ Section HaskProofToStrong.
     cut (distinct (vec2list localvars'')). intro H'''.
     set (@Build_StrongCaseBranchWithVVs _ _ _ _ avars sac localvars'' H''') as scb.
 
-    refine (bind q = (f (scbwv_ξ scb ξ lev) (vars,,(unleaves (vec2list (scbwv_exprvars scb)))) _) ; return _).
+    refine (bind q = (f (scbwv_xi scb ξ lev) (vars,,(unleaves (vec2list (scbwv_exprvars scb)))) _) ; return _).
       apply FreshMon.
       simpl.
-      unfold scbwv_ξ.
+      unfold scbwv_xi.
       rewrite vars_pf.
       rewrite <- mapOptionTree_compose.
       clear localvars_pf1.
@@ -581,7 +581,7 @@ Section HaskProofToStrong.
     refine (fresh_lemma _ ξ vars _ tx x H >>>= (fun pf => _)).
     apply FreshMon.
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ x (((vnew, tx  )) :: nil)) as ξ' in *.
+    set (update_xi ξ x (((vnew, tx  )) :: nil)) as ξ' in *.
     refine (X_ ξ' (vars,,[vnew]) _ >>>= _).
     apply FreshMon.
     simpl.
@@ -648,7 +648,7 @@ Section HaskProofToStrong.
     apply FreshMon.
 
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
+    set (update_xi ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
     inversion X_.
     apply ileaf in X.
     apply ileaf in X0.
@@ -687,7 +687,7 @@ Section HaskProofToStrong.
     apply FreshMon.
 
     destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_ξ ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
+    set (update_xi ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
     inversion X_.
     apply ileaf in X.
     apply ileaf in X0.
@@ -751,7 +751,7 @@ Section HaskProofToStrong.
     apply ILeaf; simpl; intros.
     refine (bind ξvars = fresh_lemma' _ y _ _ _ t H; _). apply FreshMon.
     destruct ξvars as [ varstypes [ pf1[ pf2 pfdist]]].
-    refine (X_ ((update_ξ ξ t (leaves varstypes)))
+    refine (X_ ((update_xi ξ t (leaves varstypes)))
       (vars,,(mapOptionTree (@fst _ _) varstypes)) _ >>>= fun X => return _); clear X_.  apply FreshMon.
     simpl.
     rewrite pf2.
@@ -824,7 +824,7 @@ Section HaskProofToStrong.
     clear q.
     destruct q' as [varstypes [pf1 [pf2 distpf]]].
     exists (mapOptionTree (@fst _ _) varstypes).
-    exists (update_ξ ξ l (leaves varstypes)).
+    exists (update_xi ξ l (leaves varstypes)).
     symmetry; auto.
     refine (return _).
     exists [].

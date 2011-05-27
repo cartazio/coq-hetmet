@@ -439,10 +439,10 @@ Record StrongAltCon {tc:TyCon} :=
 ; sac_numExprVars :  nat
 ; sac_ekinds      :  vec Kind sac_numExTyVars
 ; sac_kinds       := app (tyConKind tc) (vec2list sac_ekinds)
-; sac_Γ           := fun Γ => app (vec2list sac_ekinds) Γ
-; sac_coercions   :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskCoercionKind (sac_Γ Γ)) sac_numCoerVars
-; sac_types       :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskType (sac_Γ Γ) ★) sac_numExprVars
-; sac_Δ           := fun    Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)) Δ => app (vec2list (sac_coercions Γ atypes)) Δ
+; sac_gamma          := fun Γ => app (vec2list sac_ekinds) Γ
+; sac_coercions   :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskCoercionKind (sac_gamma Γ)) sac_numCoerVars
+; sac_types       :  forall Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)), vec (HaskType (sac_gamma Γ) ★) sac_numExprVars
+; sac_delta          := fun    Γ (atypes:IList _ (HaskType Γ) (tyConKind tc)) Δ => app (vec2list (sac_coercions Γ atypes)) Δ
 }.
 Coercion sac_tc     : StrongAltCon >-> TyCon.
 Coercion sac_altcon : StrongAltCon >-> WeakAltCon.
@@ -462,7 +462,7 @@ Definition literalType (lit:HaskLiteral){Γ} : HaskType Γ ★.
 
 Notation "a ∼∼∼ b" := (@mkHaskCoercionKind _ _ a b) (at level 18).
 
-Fixpoint update_ξ
+Fixpoint update_xi
   `{EQD_VV:EqDecidable VV}{Γ}
    (ξ:VV -> LeveledHaskType Γ ★)
    (lev:HaskLevel Γ)
@@ -470,12 +470,12 @@ Fixpoint update_ξ
    : VV -> LeveledHaskType Γ ★ :=
   match vt with
     | nil => ξ
-    | (v,τ)::tl => fun v' => if eqd_dec v v' then τ @@ lev else (update_ξ ξ lev tl) v'
+    | (v,τ)::tl => fun v' => if eqd_dec v v' then τ @@ lev else (update_xi ξ lev tl) v'
   end.
 
-Lemma update_ξ_lemma0 `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:list (VV*_)) v,
+Lemma update_xi_lemma0 `{EQD_VV:EqDecidable VV} : forall Γ ξ (lev:HaskLevel Γ)(varstypes:list (VV*_)) v,
   not (In v (map (@fst _ _) varstypes)) ->
-  (update_ξ ξ lev varstypes) v = ξ v.
+  (update_xi ξ lev varstypes) v = ξ v.
   intros.
   induction varstypes.
   reflexivity.

@@ -36,7 +36,7 @@ Inductive Judg  :=
 (* information needed to define a case branch in a HaskProof *)
 Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars}{sac:@StrongAltCon tc} :=
 { pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
-; pcb_judg           := sac_Γ sac Γ > sac_Δ sac Γ avars (map weakCK' Δ)
+; pcb_judg           := sac_gamma sac Γ > sac_delta sac Γ avars (map weakCK' Δ)
                 > (mapOptionTree weakLT' pcb_freevars),,(unleaves (map (fun t => t@@weakL' lev)
                   (vec2list (sac_types sac Γ avars))))
                 |- [weakLT' (branchtype @@ lev)]

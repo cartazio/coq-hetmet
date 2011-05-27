@@ -25,7 +25,7 @@ Section HaskStrong.
   { scbwv_exprvars          :  vec VV (sac_numExprVars sac)
   ; scbwv_exprvars_distinct :  distinct (vec2list scbwv_exprvars)
   ; scbwv_varstypes         := vec_zip scbwv_exprvars (sac_types sac Γ atypes)
-  ; scbwv_ξ                 := fun ξ lev =>  update_ξ (weakLT'○ξ) (weakL' lev) (vec2list scbwv_varstypes)
+  ; scbwv_xi                := fun ξ lev =>  update_xi (weakLT'○ξ) (weakL' lev) (vec2list scbwv_varstypes)
   }.
   Implicit Arguments StrongCaseBranchWithVVs [[Γ]].
 
@@ -37,8 +37,8 @@ Section HaskStrong.
   | EVar   : ∀ Γ Δ ξ ev,                                                                             Expr Γ Δ ξ (ξ ev)
   | ELit   : ∀ Γ Δ ξ lit   l,                                                                        Expr Γ Δ ξ (literalType lit@@l)
   | EApp   : ∀ Γ Δ ξ t1 t2 l,        Expr Γ Δ ξ (t2--->t1 @@ l)   -> Expr Γ Δ ξ (t2 @@ l)         -> Expr Γ Δ ξ (t1 @@ l)
-  | ELam   : ∀ Γ Δ ξ t1 t2 l ev,              Expr Γ Δ (update_ξ ξ l ((ev,t1)::nil)) (t2@@l)      -> Expr Γ Δ ξ (t1--->t2@@l)
-  | ELet   : ∀ Γ Δ ξ tv t  l ev,Expr Γ Δ ξ (tv@@l)->Expr Γ Δ (update_ξ ξ l ((ev,tv)::nil))(t@@l)  -> Expr Γ Δ ξ (t@@l)
+  | ELam   : ∀ Γ Δ ξ t1 t2 l ev,              Expr Γ Δ (update_xi ξ l ((ev,t1)::nil)) (t2@@l)      -> Expr Γ Δ ξ (t1--->t2@@l)
+  | ELet   : ∀ Γ Δ ξ tv t  l ev,Expr Γ Δ ξ (tv@@l)->Expr Γ Δ (update_xi ξ l ((ev,tv)::nil))(t@@l)  -> Expr Γ Δ ξ (t@@l)
   | EEsc   : ∀ Γ Δ ξ ec t  l,     Expr Γ Δ ξ (<[ ec |- t ]> @@ l)                                 -> Expr Γ Δ ξ (t @@ (ec::l))
   | EBrak  : ∀ Γ Δ ξ ec t  l,     Expr Γ Δ ξ (t @@ (ec::l))                                       -> Expr Γ Δ ξ (<[ ec |- t ]> @@ l)
   | ECast  : forall Γ Δ ξ t1 t2 (γ:HaskCoercion Γ Δ (t1 ∼∼∼ t2)) l,
@@ -55,15 +55,15 @@ Section HaskStrong.
                Expr Γ Δ ξ (caseType tc atypes @@ l) ->
                Tree ??{ sac : _
                     & { scb : StrongCaseBranchWithVVs tc atypes sac
-                    &         Expr (sac_Γ sac Γ)
-                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
-                                   (scbwv_ξ scb ξ l)
+                    &         Expr (sac_gamma sac Γ)
+                                   (sac_delta sac Γ atypes (weakCK'' Δ))
+                                   (scbwv_xi scb ξ l)
                                    (weakLT' (tbranches@@l)) } } ->
                Expr Γ Δ ξ (tbranches @@ l)
 
   | ELetRec  : ∀ Γ Δ ξ l τ vars,
     distinct (leaves (mapOptionTree (@fst _ _) vars)) ->
-    let ξ' := update_ξ ξ l (leaves vars) in
+    let ξ' := update_xi ξ l (leaves vars) in
     ELetRecBindings Γ Δ ξ'     l vars ->
     Expr            Γ Δ ξ' (τ@@l) ->
     Expr            Γ Δ ξ  (τ@@l)

@@ -330,7 +330,7 @@ Lemma updating_stripped_tree_is_inert'
   {Γ} lev
   (ξ:VV -> LeveledHaskType Γ ★)
   lv tree2 :
-    mapOptionTree (update_ξ ξ lev lv) (stripOutVars (map (@fst _ _) lv) tree2)
+    mapOptionTree (update_xi ξ lev lv) (stripOutVars (map (@fst _ _) lv) tree2)
   = mapOptionTree ξ (stripOutVars (map (@fst _ _) lv) tree2).
 
   induction tree2.
@@ -459,10 +459,10 @@ Lemma distinct_swap : forall {T}(a b:list T), distinct (app a b) -> distinct (ap
   inversion H; auto.
   Qed.
 
-Lemma update_ξ_lemma' `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
+Lemma update_xiv_lemma' `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
   forall v1 v2,
   distinct (map (@fst _ _) (leaves (v1,,(varstypes,,v2)))) ->
-  mapOptionTree (update_ξ ξ lev (leaves (v1,,(varstypes,,v2)))) (mapOptionTree (@fst _ _) varstypes) =
+  mapOptionTree (update_xi ξ lev (leaves (v1,,(varstypes,,v2)))) (mapOptionTree (@fst _ _) varstypes) =
   mapOptionTree (fun t => t@@ lev) (mapOptionTree (@snd _ _) varstypes).
   induction varstypes; intros.
   destruct a; simpl; [ idtac | reflexivity ].
@@ -510,11 +510,11 @@ Lemma update_ξ_lemma' `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstyp
     repeat rewrite ass_app in *; auto.
     Qed.
 
-Lemma update_ξ_lemma `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
+Lemma update_xiv_lemma `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstypes:Tree ??(VV*_)) :
   distinct (map (@fst _ _) (leaves varstypes)) ->
-  mapOptionTree (update_ξ ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) =
+  mapOptionTree (update_xi ξ lev (leaves varstypes)) (mapOptionTree (@fst _ _) varstypes) =
   mapOptionTree (fun t => t@@ lev) (mapOptionTree (@snd _ _) varstypes).
-  set (update_ξ_lemma' Γ ξ lev varstypes [] []) as q.
+  set (update_xiv_lemma' Γ ξ lev varstypes [] []) as q.
   simpl in q.
   rewrite <- app_nil_end in q.
   apply q.
@@ -543,9 +543,9 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | ECase    Γ Δ ξ l tc tbranches atypes e' alts =>
     ((fix varsfromalts (alts:
                Tree ??{ sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
-                            & Expr (sac_Γ sac Γ)
-                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
-                                   (scbwv_ξ scb ξ l)
+                            & Expr (sac_gamma sac Γ)
+                                   (sac_delta sac Γ atypes (weakCK'' Δ))
+                                   (scbwv_xi scb ξ l)
                                    (weakLT' (tbranches@@l)) } }
       ): Tree ??VV :=
       match alts with
@@ -563,9 +563,9 @@ end.
 
 Definition mkProofCaseBranch {Γ}{Δ}{ξ}{l}{tc}{tbranches}{atypes}
 (alt : { sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
-                            & Expr (sac_Γ sac Γ)
-                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
-                                   (scbwv_ξ scb ξ l)
+                            & Expr (sac_gamma sac Γ)
+                                   (sac_delta sac Γ atypes (weakCK'' Δ))
+                                   (scbwv_xi scb ξ l)
                                    (weakLT' (tbranches@@l)) } })
   : { sac : _ & ProofCaseBranch tc Γ Δ l tbranches atypes sac }.
   destruct alt.
@@ -943,7 +943,7 @@ Definition factorContextRightAndWeaken''
     Defined.
 
 Lemma updating_stripped_tree_is_inert {Γ} (ξ:VV -> LeveledHaskType Γ ★) v tree t lev :
-      mapOptionTree (update_ξ ξ lev ((v,t)::nil)) (stripOutVars (v :: nil) tree)
+      mapOptionTree (update_xi ξ lev ((v,t)::nil)) (stripOutVars (v :: nil) tree)
     = mapOptionTree ξ (stripOutVars (v :: nil) tree).
   set (@updating_stripped_tree_is_inert' Γ lev ξ ((v,t)::nil)) as p.
   rewrite p.
@@ -980,8 +980,8 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
 
 Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     forall branches body (dist:distinct (leaves (mapOptionTree (@fst _ _) tree))),
-    ND Rule [] [Γ > Δ > mapOptionTree (update_ξ ξ lev (leaves tree)) (expr2antecedent body) |- [τ @@ lev]] -> 
-    LetRecSubproofs Γ Δ (update_ξ ξ lev (leaves tree)) lev tree branches ->
+    ND Rule [] [Γ > Δ > mapOptionTree (update_xi ξ lev (leaves tree)) (expr2antecedent body) |- [τ @@ lev]] -> 
+    LetRecSubproofs Γ Δ (update_xi ξ lev (leaves tree)) lev tree branches ->
     ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent (@ELetRec VV _ Γ Δ ξ lev τ tree dist branches body)) |- [τ @@ lev]].
 
   (* NOTE: how we interpret stuff here affects the order-of-side-effects *)
@@ -995,10 +995,10 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     apply disti.
     rewrite mapleaves in disti'.
 
-  set (@update_ξ_lemma _ Γ ξ lev tree disti') as ξlemma.
+  set (@update_xiv_lemma _ Γ ξ lev tree disti') as ξlemma.
     rewrite <- mapOptionTree_compose in ξlemma.
 
-  set ((update_ξ ξ lev (leaves tree))) as ξ' in *.
+  set ((update_xi ξ lev (leaves tree))) as ξ' in *.
   set ((stripOutVars (leaves (mapOptionTree (@fst _ _) tree)) (eLetRecContext branches))) as ctx.
   set (mapOptionTree (@fst _ _) tree) as pctx.
   set (mapOptionTree ξ' pctx) as passback.
@@ -1037,12 +1037,12 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
 Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _}{sac} :
   forall scb:StrongCaseBranchWithVVs _ _ tc atypes sac,
     forall l ξ,
-      vec2list (vec_map (scbwv_ξ scb ξ l) (scbwv_exprvars scb)) =
+      vec2list (vec_map (scbwv_xi scb ξ l) (scbwv_exprvars scb)) =
       vec2list (vec_map (fun t => t @@ weakL' l) (sac_types sac _ atypes)).
   intros.
-  unfold scbwv_ξ.
+  unfold scbwv_xi.
   unfold scbwv_varstypes.
-  set (@update_ξ_lemma _ _ (weakLT' ○ ξ) (weakL' l)
+  set (@update_xiv_lemma _ _ (weakLT' ○ ξ) (weakL' l)
     (unleaves (vec2list (vec_zip (scbwv_exprvars scb) (sac_types sac Γ atypes))))
     ) as q.
   rewrite <- mapleaves' in q.
@@ -1068,8 +1068,8 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
    (alts':Tree
             ??{sac : StrongAltCon &
               {scb : StrongCaseBranchWithVVs VV eqd_vv tc atypes sac &
-              Expr (sac_Γ sac Γ) (sac_Δ sac Γ atypes (weakCK'' Δ))
-                (scbwv_ξ scb ξ l) (weakLT' (tbranches @@  l))}}),
+              Expr (sac_gamma sac Γ) (sac_delta sac Γ atypes (weakCK'' Δ))
+                (scbwv_xi scb ξ l) (weakLT' (tbranches @@  l))}}),
 
       (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x))
         (mapOptionTree mkProofCaseBranch alts'))
@@ -1111,7 +1111,7 @@ Definition expr2proof  :
     | ELet     Γ Δ ξ tv t      v lev ev ebody       => let case_ELet := tt in 
                                                        (fun pf_let pf_body => _) (expr2proof _ _ _ _ ev) (expr2proof _ _ _ _ ebody) 
     | ELetRec  Γ Δ ξ lev t tree disti branches ebody =>
-      let ξ' := update_ξ ξ lev (leaves tree) in
+      let ξ' := update_xi ξ lev (leaves tree) in
       let case_ELetRec := tt in  (fun e' subproofs => _) (expr2proof _ _ _ _ ebody) 
         ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
         (branches':ELetRecBindings Γ'' Δ'' ξ'' lev'' tree')
@@ -1134,9 +1134,9 @@ Definition expr2proof  :
       let dcsp :=
         ((fix mkdcsp (alts:
                Tree ??{ sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
-                            & Expr (sac_Γ sac Γ)
-                                   (sac_Δ sac Γ atypes (weakCK'' Δ))
-                                   (scbwv_ξ scb ξ l)
+                            & Expr (sac_gamma sac Γ)
+                                   (sac_delta sac Γ atypes (weakCK'' Δ))
+                                   (scbwv_xi scb ξ l)
                                    (weakLT' (tbranches@@l)) } })
           : ND Rule [] (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) alts) :=
         match alts as ALTS return ND Rule [] 
@@ -1179,13 +1179,13 @@ Definition expr2proof  :
     destruct case_ELam; intros.
       unfold mapOptionTree; simpl; fold (mapOptionTree ξ).
       eapply nd_comp; [ idtac | eapply nd_rule; apply RLam ].
-      set (update_ξ ξ lev ((v,t1)::nil)) as ξ'.
+      set (update_xi ξ lev ((v,t1)::nil)) as ξ'.
       set (factorContextRightAndWeaken Γ Δ v (expr2antecedent e) ξ') as pfx.
         eapply RArrange in pfx.
         unfold mapOptionTree in pfx; simpl in pfx.
         unfold ξ' in pfx.
         rewrite updating_stripped_tree_is_inert in pfx.
-        unfold update_ξ in pfx.
+        unfold update_xi in pfx.
         destruct (eqd_dec v v).
         eapply nd_comp; [ idtac | apply (nd_rule pfx) ].
         clear pfx.
@@ -1203,15 +1203,15 @@ Definition expr2proof  :
       eapply nd_comp; [ apply pf_body | idtac ].
       fold (@mapOptionTree VV).
       fold (mapOptionTree ξ).
-      set (update_ξ ξ v ((lev,tv)::nil)) as ξ'.
+      set (update_xi ξ v ((lev,tv)::nil)) as ξ'.
       set (factorContextLeftAndWeaken Γ Δ lev (expr2antecedent ebody) ξ') as n.
       unfold mapOptionTree in n; simpl in n; fold (mapOptionTree ξ') in n.
       unfold ξ' in n.
       rewrite updating_stripped_tree_is_inert in n.
-      unfold update_ξ in n.
+      unfold update_xi in n.
       destruct (eqd_dec lev lev).
       unfold ξ'.
-      unfold update_ξ.
+      unfold update_xi.
       eapply RArrange in n.
       apply (nd_rule n).
       assert False. apply n0; auto. inversion H.
@@ -1266,15 +1266,15 @@ Definition expr2proof  :
       rewrite mapleaves'.
       simpl.
       rewrite <- mapOptionTree_compose.
-      unfold scbwv_ξ.
+      unfold scbwv_xi.
       rewrite <- mapleaves'.
       rewrite vec2list_map_list2vec.
-      unfold sac_Γ.      
+      unfold sac_gamma.      
       rewrite <- (scbwv_coherent scbx l ξ).
       rewrite <- vec2list_map_list2vec.
       rewrite mapleaves'.
       set (@factorContextRightAndWeaken'') as q.
-      unfold scbwv_ξ.
+      unfold scbwv_xi.
       set (@updating_stripped_tree_is_inert' _ (weakL' l) (weakLT' ○ ξ) (vec2list (scbwv_varstypes scbx))) as z.
       unfold scbwv_varstypes in z.
       rewrite vec2list_map_list2vec in z.
@@ -1285,7 +1285,7 @@ Definition expr2proof  :
       replace (stripOutVars (vec2list (scbwv_exprvars scbx))) with
         (stripOutVars (leaves (unleaves (vec2list (scbwv_exprvars scbx))))).
       apply q.
-      apply (sac_Δ sac Γ atypes (weakCK'' Δ)).
+      apply (sac_delta sac Γ atypes (weakCK'' Δ)).
       rewrite leaves_unleaves.
       apply (scbwv_exprvars_distinct scbx).
       rewrite leaves_unleaves.
