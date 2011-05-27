@@ -1,15 +1,21 @@
 {-# OPTIONS_GHC -XModalTypes -fcoqpass -dcore-lint #-}
 module Demo (demo) where
 
+
 --demo con mer = <[ ~~mer ~~(con (2::Int)) ~~(con (12::Int)) ]>
 
--- demo const mult = <[ let q = ~~(const (1::Int)) in ~~mult q q ]>
+demo const mult =
+   <[ let twelve = ~~(const (12::Int))
+          four   = ~~(const ( 4::Int))
+      in  ~~mult four (~~mult four twelve)
+    ]>
 
+{-
 demo const mult =
  <[ let     twelve = ~~(const (12::Int))
     in let  four    = ~~(const (4::Int))
          in  ~~mult four twelve  ]>
-
+-}
 {-
 demo const mult =
  <[ let     twelve = ~~(const (12::Int))
