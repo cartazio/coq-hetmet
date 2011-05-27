@@ -866,6 +866,8 @@ Definition map2 {A}{B}(f:A->B)(t:A*A) : (B*B) := ((f (fst t)), (f (snd t))).
 
 (* boolean "not" *)
 Definition bnot (b:bool) : bool := if b then false else true.
+Definition band (b1 b2:bool) : bool := if b1 then b2 else false.
+Definition bor  (b1 b2:bool) : bool := if b1 then true else b2.
 
 (* string stuff *)
 Variable eol : string.
