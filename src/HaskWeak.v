@@ -9,6 +9,7 @@ Require Import Coq.Lists.List.
 Require Import HaskKinds.
 Require Import HaskLiterals.
 Require Import HaskTyCons.
+Require Import HaskCoreVars.
 Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 
@@ -52,3 +53,59 @@ Inductive WeakExpr :=
 Definition weakTypeOfLiteral (lit:HaskLiteral) : WeakType :=
   (WTyCon (haskLiteralToTyCon lit)).
 
+(*
+Fixpoint weakExprVarOccursFree (wvf:WeakExprVar)(we:WeakExpr) : bool :=
+  match we with
+  | WEVar   wv                           => if eqd_dec (wvf:CoreVar) (wv:CoreVar) then true else false
+  | WELit   lit                          => false
+  | WEApp   e1 e2                        => weakExprVarOccursFree wvf e1 || weakExprVarOccursFree wvf e2
+  | WETyApp e t                          => weakExprVarOccursFree wvf e
+  | WECoApp e co                         => weakExprVarOccursFree wvf e
+  | WENote  n e                          => weakExprVarOccursFree wvf e
+  | WELam   ev e                         => if eqd_dec (wvf:CoreVar) (ev:CoreVar) then false else weakExprVarOccursFree wvf e
+  | WETyLam tv e                         => weakExprVarOccursFree wvf e
+  | WECoLam cv e                         => weakExprVarOccursFree wvf e
+  | WECast  e co                         => weakExprVarOccursFree wvf e
+  | WEBrak  v wtv e t                    => weakExprVarOccursFree wvf e
+  | WEEsc   v wtv e t                    => weakExprVarOccursFree wvf e
+  | WECSP   v wtv e t                    => weakExprVarOccursFree wvf e
+  | WELet   v ebind ebody                => weakExprVarOccursFree wvf ebind
+                                            || if eqd_dec (wvf:CoreVar) (v:CoreVar) then false else weakExprVarOccursFree wvf ebody
+  | WECase  vs es tb tc tys alts         =>
+    if weakExprVarOccursFree wvf es
+      then true
+      else (fix weakExprVarOccursFreeBranches (alts:Tree ??(_)) : bool :=
+        match alts with
+          | T_Leaf None     => false
+          | T_Leaf (Some (_,_,_,v',e')) => 
+            if fold_left bor (map (fun v'':WeakExprVar => if eqd_dec (wvf:CoreVar) (v'':CoreVar) then true else false ) v') false
+              then false
+              else weakExprVarOccursFree wvf e'
+          | T_Branch b1 b2  => weakExprVarOccursFreeBranches b1 ||
+            weakExprVarOccursFreeBranches b2
+        end) alts
+  | WELetRec mlr e                       => false
+  end.
+
+(* some very simple-minded cleanups to produce "prettier" expressions *)
+Fixpoint simplifyWeakExpr (me:WeakExpr) : WeakExpr :=
+  match me with
+  | WEVar   wv                           => WEVar wv
+  | WELit   lit                          => WELit lit
+  | WEApp   e1 e2                        => WEApp        (simplifyWeakExpr e1) (simplifyWeakExpr e2)
+  | WETyApp e t                          => WETyApp      (simplifyWeakExpr e ) t
+  | WECoApp e co                         => CoreEApp     (simplifyWeakExpr e ) co
+  | WENote  n e                          => CoreENote n  (simplifyWeakExpr e )
+  | WELam   ev e                         => CoreELam  ev (simplifyWeakExpr e )
+  | WETyLam tv e                         => CoreELam  tv (simplifyWeakExpr e )
+  | WECoLam cv e                         => CoreELam  cv (simplifyWeakExpr e )
+  | WECast  e co                         => CoreECast    (simplifyWeakExpr e ) co
+  | WEBrak  v wtv e t                    => WEBrak v wtv (simplifyWeakExpr e ) t
+  | WEEsc   v wtv e t                    => WEEsc  v wtv (simplifyWeakExpr e ) t
+  | WECSP   v wtv e t                    => WECSP  v wtv (simplifyWeakExpr e ) t
+  | WELet   v ebind ebody                => WELet  v (simplifyWeakExpr ebind) (simplifyWeakExpr ebody)
+  | WECase  vs es tb tc tys alts         => WECase vs es tb tc tys (* FIXME alts *)
+  (* un-letrec-ify multi branch letrecs *)
+  | WELetRec mlr e                       => WELetRec mlr (simplifyWeakExpr e )
+  end.
+*)
