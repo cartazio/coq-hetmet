@@ -287,7 +287,7 @@ Section HaskFlattener.
     ND Rule []                         [ Γ > Δ > [x@@lev] |- [y]@lev ] ->
     ND Rule [ Γ > Δ > ant |- [x]@lev ] [ Γ > Δ > ant      |- [y]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
     eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
@@ -296,7 +296,7 @@ Section HaskFlattener.
       apply X.
       eapply nd_rule.
       eapply RArrange.
-      apply RuCanR.
+      apply AuCanR.
     Defined.
 
   Definition precompose Γ Δ ec : forall a x y z lev,
@@ -308,7 +308,7 @@ Section HaskFlattener.
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     apply ga_comp.
     Defined.
 
@@ -317,8 +317,8 @@ Section HaskFlattener.
       [ Γ > Δ > a,,b                             |- [@ga_mk _ ec y z ]@lev ]
       [ Γ > Δ > a,,([@ga_mk _ ec x y @@ lev],,b) |- [@ga_mk _ ec x z ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RLeft; eapply RExch ].
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCossa ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ALeft; eapply AExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuAssoc ].
     apply precompose.
     Defined.
 
@@ -338,7 +338,7 @@ Section HaskFlattener.
     ND Rule [] [ Γ > Δ > []                       |- [@ga_mk _ ec x y ]@lev ] ->
     ND Rule [] [ Γ > Δ > [@ga_mk _ ec y z @@ lev] |- [@ga_mk _ ec x z ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanL ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
     eapply nd_comp; [ idtac | eapply postcompose_ ].
     apply X.
     Defined.
@@ -347,12 +347,12 @@ Section HaskFlattener.
     ND Rule [ Γ > Δ > Σ                    |- [@ga_mk Γ ec a b ]@lev ]
             [ Γ > Δ > Σ                    |- [@ga_mk Γ ec (a,,c) (b,,c) ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
     eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RuCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
     apply ga_first.
     Defined.
 
@@ -370,12 +370,12 @@ Section HaskFlattener.
      [ Γ > Δ > Σ                    |- [@ga_mk Γ ec a b ]@lev ]
      [ Γ > Δ > Σ                    |- [@ga_mk Γ ec (c,,a) (c,,b) ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
     eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RuCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
     apply ga_second.
     Defined.
 
@@ -393,7 +393,7 @@ Section HaskFlattener.
      [Γ > Δ > Σ                          |- [@ga_mk Γ ec (a,,x)  b ]@l ] 
      [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec x       b ]@l ].
      intros.
-     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
      eapply nd_comp; [ apply nd_llecnac | idtac ].
      apply nd_prod.
@@ -404,7 +404,7 @@ Section HaskFlattener.
      apply nd_prod.
      apply postcompose.
      apply ga_uncancell.
-     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
      apply precompose.
      Defined.
 
@@ -430,38 +430,38 @@ Section HaskFlattener.
             (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) B))
             (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) A)) ]@nil]
           with
-          | RId  a               => let case_RId := tt    in ga_id _ _ _ _ _
-          | RCanL  a             => let case_RCanL := tt  in ga_uncancell _ _ _ _ _
-          | RCanR  a             => let case_RCanR := tt  in ga_uncancelr _ _ _ _ _
-          | RuCanL a             => let case_RuCanL := tt in ga_cancell _ _ _ _ _
-          | RuCanR a             => let case_RuCanR := tt in ga_cancelr _ _ _ _ _
-          | RAssoc a b c         => let case_RAssoc := tt in ga_assoc _ _ _ _ _ _ _
-          | RCossa a b c         => let case_RCossa := tt in ga_unassoc _ _ _ _ _ _ _
-          | RExch  a b           => let case_RExch := tt  in ga_swap  _ _ _ _ _ _
-          | RWeak  a             => let case_RWeak := tt  in ga_drop _ _ _ _ _ 
-          | RCont  a             => let case_RCont := tt  in ga_copy  _ _ _ _ _ 
-          | RLeft  a b c r'      => let case_RLeft := tt  in flatten _ _ r' ;; boost _ _ _ _ _ (ga_second _ _ _ _ _ _ _)
-          | RRight a b c r'      => let case_RRight := tt in flatten _ _ r' ;; boost _ _ _ _ _ (ga_first  _ _ _ _ _ _ _)
-          | RComp  c b a r1 r2   => let case_RComp := tt  in (fun r1' r2' => _) (flatten _ _ r1) (flatten _ _ r2)
+          | AId  a               => let case_AId := tt    in ga_id _ _ _ _ _
+          | ACanL  a             => let case_ACanL := tt  in ga_uncancell _ _ _ _ _
+          | ACanR  a             => let case_ACanR := tt  in ga_uncancelr _ _ _ _ _
+          | AuCanL a             => let case_AuCanL := tt in ga_cancell _ _ _ _ _
+          | AuCanR a             => let case_AuCanR := tt in ga_cancelr _ _ _ _ _
+          | AAssoc a b c         => let case_AAssoc := tt in ga_assoc _ _ _ _ _ _ _
+          | AuAssoc a b c         => let case_AuAssoc := tt in ga_unassoc _ _ _ _ _ _ _
+          | AExch  a b           => let case_AExch := tt  in ga_swap  _ _ _ _ _ _
+          | AWeak  a             => let case_AWeak := tt  in ga_drop _ _ _ _ _ 
+          | ACont  a             => let case_ACont := tt  in ga_copy  _ _ _ _ _ 
+          | ALeft  a b c r'      => let case_ALeft := tt  in flatten _ _ r' ;; boost _ _ _ _ _ (ga_second _ _ _ _ _ _ _)
+          | ARight a b c r'      => let case_ARight := tt in flatten _ _ r' ;; boost _ _ _ _ _ (ga_first  _ _ _ _ _ _ _)
+          | AComp  c b a r1 r2   => let case_AComp := tt  in (fun r1' r2' => _) (flatten _ _ r1) (flatten _ _ r2)
         end); clear flatten; repeat take_simplify; repeat drop_simplify; intros.
 
-        destruct case_RComp.
+        destruct case_AComp.
           set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) a)) as a' in *.
           set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) b)) as b' in *.
           set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) c)) as c' in *.
-          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanL ].
+          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
           eapply nd_comp; [ idtac | eapply nd_rule; apply
              (@RLet Γ Δ [] [] (@ga_mk _ (v2t ec) a' b') (@ga_mk _ (v2t ec) a' c')) ].
           eapply nd_comp; [ apply nd_llecnac | idtac ].
           apply nd_prod.
           apply r2'.
-          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RuCanR ].
-          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanL ].
+          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
+          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
           eapply nd_comp; [ idtac | eapply nd_rule;  apply RLet ].
           eapply nd_comp; [ apply nd_llecnac | idtac ].
           eapply nd_prod.
           apply r1'.
-          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+          eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
           apply ga_comp.
           Defined.
 
@@ -485,19 +485,19 @@ Section HaskFlattener.
         match r as R in Arrange A B return
           Arrange (mapOptionTree (flatten_leveled_type ) (drop_lev _ A))
           (mapOptionTree (flatten_leveled_type ) (drop_lev _ B)) with
-          | RId  a               => let case_RId := tt  in RId _
-          | RCanL  a             => let case_RCanL := tt  in RCanL _
-          | RCanR  a             => let case_RCanR := tt  in RCanR _
-          | RuCanL a             => let case_RuCanL := tt in RuCanL _
-          | RuCanR a             => let case_RuCanR := tt in RuCanR _
-          | RAssoc a b c         => let case_RAssoc := tt in RAssoc _ _ _
-          | RCossa a b c         => let case_RCossa := tt in RCossa _ _ _
-          | RExch  a b           => let case_RExch := tt  in RExch _ _
-          | RWeak  a             => let case_RWeak := tt  in RWeak _
-          | RCont  a             => let case_RCont := tt  in RCont _
-          | RLeft  a b c r'      => let case_RLeft := tt  in RLeft  _ (flatten _ _ r')
-          | RRight a b c r'      => let case_RRight := tt in RRight _ (flatten _ _ r')
-          | RComp  a b c r1 r2   => let case_RComp := tt  in RComp    (flatten _ _ r1) (flatten _ _ r2)
+          | AId  a               => let case_AId := tt  in AId _
+          | ACanL  a             => let case_ACanL := tt  in ACanL _
+          | ACanR  a             => let case_ACanR := tt  in ACanR _
+          | AuCanL a             => let case_AuCanL := tt in AuCanL _
+          | AuCanR a             => let case_AuCanR := tt in AuCanR _
+          | AAssoc a b c         => let case_AAssoc := tt in AAssoc _ _ _
+          | AuAssoc a b c         => let case_AuAssoc := tt in AuAssoc _ _ _
+          | AExch  a b           => let case_AExch := tt  in AExch _ _
+          | AWeak  a             => let case_AWeak := tt  in AWeak _
+          | ACont  a             => let case_ACont := tt  in ACont _
+          | ALeft  a b c r'      => let case_ALeft := tt  in ALeft  _ (flatten _ _ r')
+          | ARight a b c r'      => let case_ARight := tt in ARight _ (flatten _ _ r')
+          | AComp  a b c r1 r2   => let case_AComp := tt  in AComp    (flatten _ _ r1) (flatten _ _ r2)
         end) ant1 ant2 r); clear flatten; repeat take_simplify; repeat drop_simplify; intros.
         Defined.
 
@@ -511,19 +511,19 @@ Section HaskFlattener.
       apply nd_rule.
       apply RArrange.
       induction r; simpl.
-        apply RId.
-        apply RCanL.
-        apply RCanR.
-        apply RuCanL.
-        apply RuCanR.
-        apply RAssoc.
-        apply RCossa.
-        apply RExch.    (* TO DO: check for all-leaf trees here *)
-        apply RWeak.
-        apply RCont.
-        apply RLeft; auto.
-        apply RRight; auto.
-        eapply RComp; [ apply IHr1 | apply IHr2 ].
+        apply AId.
+        apply ACanL.
+        apply ACanR.
+        apply AuCanL.
+        apply AuCanR.
+        apply AAssoc.
+        apply AuAssoc.
+        apply AExch.    (* TO DO: check for all-leaf trees here *)
+        apply AWeak.
+        apply ACont.
+        apply ALeft; auto.
+        apply ARight; auto.
+        eapply AComp; [ apply IHr1 | apply IHr2 ].
 
       apply flatten_arrangement.
         apply r.
@@ -546,11 +546,11 @@ Section HaskFlattener.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanL ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
     eapply nd_comp; [ idtac | eapply postcompose_ ].
     apply ga_uncancelr.
 
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     eapply nd_comp; [ idtac | eapply precompose ].
     apply pfb.
     Defined.
@@ -573,7 +573,7 @@ Section HaskFlattener.
     apply y.
     idtac.
     clear y q.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     simpl.
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
@@ -641,7 +641,7 @@ Section HaskFlattener.
     destruct s.
 
     simpl.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AExch ].
     set (fun z z' => @RLet Γ Δ z (mapOptionTree flatten_leveled_type q') t z' nil) as q''.
     eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
     clear q''.
@@ -649,8 +649,8 @@ Section HaskFlattener.
     apply nd_prod.
     apply nd_rule.
     apply RArrange.
-    eapply RComp; [ idtac | apply RCanR ].
-    apply RLeft.
+    eapply AComp; [ idtac | apply ACanR ].
+    apply ALeft.
     apply (@arrangeCancelEmptyTree _ _ _ _ e).
    
     eapply nd_comp.
@@ -658,10 +658,10 @@ Section HaskFlattener.
       eapply (@RVar Γ Δ t nil).
     apply nd_rule.
       apply RArrange.
-      eapply RComp.
-      apply RuCanR.
-      apply RLeft.
-      apply RWeak.
+      eapply AComp.
+      apply AuCanR.
+      apply ALeft.
+      apply AWeak.
 (*
     eapply decide_tree_empty.
 
@@ -685,15 +685,15 @@ Section HaskFlattener.
         simpl.
         apply nd_rule.
         apply RArrange.
-        apply RLeft.
-        apply RWeak.
+        apply ALeft.
+        apply AWeak.
       simpl.
         apply nd_rule.
         unfold take_lev.
         simpl.
         apply RArrange.
-        apply RLeft.
-        apply RWeak.
+        apply ALeft.
+        apply AWeak.
       apply (Prelude_error "escapifying code with multi-leaf antecedents is not supported").
 *)
       Defined.
@@ -714,17 +714,17 @@ Section HaskFlattener.
     simpl.
     drop_simplify.
     simpl.
-    apply RId.
+    apply AId.
     simpl.
-    apply RId.
-    eapply RComp; [ idtac | apply RCanL ].
-    eapply RComp; [ idtac | eapply RLeft; apply IHt2 ].
+    apply AId.
+    eapply AComp; [ idtac | apply ACanL ].
+    eapply AComp; [ idtac | eapply ALeft; apply IHt2 ].
     Opaque drop_lev.
     simpl.
     Transparent drop_lev.
     idtac.
     drop_simplify.
-    apply RRight.
+    apply ARight.
     apply IHt1.
     Defined.
 
@@ -735,17 +735,17 @@ Section HaskFlattener.
     simpl.
     drop_simplify.
     simpl.
-    apply RId.
+    apply AId.
     simpl.
-    apply RId.
-    eapply RComp; [ apply RuCanL | idtac ].
-    eapply RComp; [ eapply RRight; apply IHt1 | idtac ].
+    apply AId.
+    eapply AComp; [ apply AuCanL | idtac ].
+    eapply AComp; [ eapply ARight; apply IHt1 | idtac ].
     Opaque drop_lev.
     simpl.
     Transparent drop_lev.
     idtac.
     drop_simplify.
-    apply RLeft.
+    apply ALeft.
     apply IHt2.
     Defined.
 
@@ -901,7 +901,7 @@ Section HaskFlattener.
         eapply nd_rule.
         eapply RArrange.
         simpl.
-        apply RCanR.
+        apply ACanR.
       apply boost.
       simpl.
       apply ga_curry.
@@ -967,8 +967,8 @@ Section HaskFlattener.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
       apply nd_prod.
       apply nd_id.
-      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply RCanL | idtac ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch (* okay *)].
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ACanL | idtac ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch (* okay *)].
       apply precompose.
 
     destruct case_RWhere.
@@ -997,8 +997,8 @@ Section HaskFlattener.
       eapply nd_comp; [ idtac | eapply precompose' ].
       apply nd_rule.
       apply RArrange.
-      apply RLeft.
-      apply RCanL.
+      apply ALeft.
+      apply ACanL.
 
     destruct case_RVoid.
       simpl.
@@ -1100,15 +1100,15 @@ Section HaskFlattener.
       set (mapOptionTree (flatten_type ○ unlev)(take_lev (ec :: nil) succ)) as succ_guest.
       set (mapOptionTree flatten_type (take_arg_types_as_tree t)) as succ_args.
       unfold empty_tree.
-      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply RLeft; apply tree_of_nothing | idtac ].
-      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply RCanR | idtac ].
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ALeft; apply tree_of_nothing | idtac ].
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ACanR | idtac ].
       refine (ga_unkappa Γ Δ (v2t ec) nil _ _ _ _ ;; _).
       eapply nd_comp; [ idtac | eapply arrange_brak ].
       unfold succ_host.
       unfold succ_guest.
       eapply nd_rule.
         eapply RArrange.
-        apply RExch.
+        apply AExch.
       apply (Prelude_error "found Brak at depth >0 indicating 3-level code; only two-level code is currently supported").
 
     destruct case_SEsc.
@@ -1122,8 +1122,8 @@ Section HaskFlattener.
       take_simplify.
       drop_simplify.
       simpl.
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RLeft; apply tree_of_nothing' ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanR ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ALeft; apply tree_of_nothing' ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
       simpl.
       rewrite take_lemma'.
       rewrite unlev_relev.
@@ -1139,15 +1139,15 @@ Section HaskFlattener.
       set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)) as succ_host.
       set (mapOptionTree flatten_type (take_arg_types_as_tree t)) as succ_args.
 
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RuCanR ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RuCanR ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanL ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod; [ idtac | eapply boost ].
       induction x.
         apply ga_id.
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RCanL ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
         simpl.
         apply ga_join.
           apply IHx1.

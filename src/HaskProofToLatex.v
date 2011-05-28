@@ -160,19 +160,19 @@ Instance ToLatexMathJudgment : ToLatexMath Judg :=
 
 Fixpoint nd_uruleToRawLatexMath {T}{h}{c}(r:@Arrange T h c) : string :=
   match r with
-    | RLeft   _ _ _ r => nd_uruleToRawLatexMath r
-    | RRight  _ _ _ r => nd_uruleToRawLatexMath r
-    | RId     _     => "Id"
-    | RCanL   _     => "CanL"
-    | RCanR   _     => "CanR"
-    | RuCanL  _     => "uCanL"
-    | RuCanR  _     => "uCanR"
-    | RAssoc  _ _ _ => "Assoc"
-    | RCossa  _ _ _ => "Cossa"
-    | RExch   _ _   => "Exch"
-    | RWeak   _     => "Weak"
-    | RCont   _     => "Cont"
-    | RComp   _ _ _ _ _  => "Comp"  (* FIXME: do a better job here *)
+    | ALeft   _ _ _ r => nd_uruleToRawLatexMath r
+    | ARight  _ _ _ r => nd_uruleToRawLatexMath r
+    | AId     _     => "Id"
+    | ACanL   _     => "CanL"
+    | ACanR   _     => "CanR"
+    | AuCanL  _     => "uCanL"
+    | AuCanR  _     => "uCanR"
+    | AAssoc  _ _ _ => "Assoc"
+    | AuAssoc  _ _ _ => "Cossa"
+    | AExch   _ _   => "Exch"
+    | AWeak   _     => "Weak"
+    | ACont   _     => "Cont"
+    | AComp   _ _ _ _ _  => "Comp"  (* FIXME: do a better job here *)
   end.
 
 Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
@@ -201,19 +201,19 @@ end.
 
 Fixpoint nd_hideURule {T}{h}{c}(r:@Arrange T h c) : bool :=
   match r with
-    | RLeft   _ _ _ r             => nd_hideURule r
-    | RRight  _ _ _ r             => nd_hideURule r
-    | RCanL   _                   => true
-    | RCanR   _                   => true
-    | RuCanL  _                   => true
-    | RuCanR  _                   => true
-    | RAssoc  _ _ _               => true
-    | RCossa  _ _ _               => true
-    | RExch      (T_Leaf None) b  => true
-    | RExch   a  (T_Leaf None)    => true
-    | RWeak      (T_Leaf None)    => true
-    | RCont      (T_Leaf None)    => true
-    | RComp   _ _ _ _ _           => false   (* FIXME: do better *)
+    | ALeft   _ _ _ r             => nd_hideURule r
+    | ARight  _ _ _ r             => nd_hideURule r
+    | ACanL   _                   => true
+    | ACanR   _                   => true
+    | AuCanL  _                   => true
+    | AuCanR  _                   => true
+    | AAssoc  _ _ _               => true
+    | AuAssoc  _ _ _               => true
+    | AExch      (T_Leaf None) b  => true
+    | AExch   a  (T_Leaf None)    => true
+    | AWeak      (T_Leaf None)    => true
+    | ACont      (T_Leaf None)    => true
+    | AComp   _ _ _ _ _           => false   (* FIXME: do better *)
     | _                           => false
   end.
 Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=

@@ -183,8 +183,8 @@ Section PCF.
       eapply nd_prod.
       apply nd_id.
       apply (PCF_Arrange [h] ([],,[h]) [h0]).
-      apply RuCanL.
-      eapply nd_comp; [ idtac | apply (PCF_Arrange ([],,a) a [h0]); apply RCanL ].
+      apply AuCanL.
+      eapply nd_comp; [ idtac | apply (PCF_Arrange ([],,a) a [h0]); apply ACanL ].
       apply nd_rule.
       (*
       set (@RLet Γ Δ [] (a@@@(ec::nil)) h0 h (ec::nil)) as q.
@@ -241,27 +241,27 @@ Section PCF.
   ; cnd_expand_right := fun a b c => PCF_right Γ Δ lev c a b }.
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RCossa _ _ _)).
+      exists (RArrange _ _ _ _ _ (AuAssoc _ _ _)).
       apply (PCF_RArrange _ _ lev ((a,,b),,c) (a,,(b,,c)) x).
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RAssoc _ _ _)).
+      exists (RArrange _ _ _ _ _ (AAssoc _ _ _)).
       apply (PCF_RArrange _ _ lev (a,,(b,,c)) ((a,,b),,c) x).
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RCanL _)).
+      exists (RArrange _ _ _ _ _ (ACanL _)).
       apply (PCF_RArrange _ _ lev ([],,a) _ _).
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RCanR _)).
+      exists (RArrange _ _ _ _ _ (ACanR _)).
       apply (PCF_RArrange _ _ lev (a,,[]) _ _).
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RuCanL _)).
+      exists (RArrange _ _ _ _ _ (AuCanL _)).
       apply (PCF_RArrange _ _ lev _ ([],,a) _).
 
     intros; apply nd_rule. unfold PCFRule. simpl.
-      exists (RArrange _ _ _ _ _ (RuCanR _)).
+      exists (RArrange _ _ _ _ _ (AuCanR _)).
       apply (PCF_RArrange _ _ lev _ (a,,[]) _).
       Defined.
 

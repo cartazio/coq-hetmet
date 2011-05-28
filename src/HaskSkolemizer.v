@@ -125,14 +125,14 @@ Section HaskSkolemizer.
     destruct (eqd_dec ([tx],,take_arg_types_as_tree te) (take_arg_types_as_tree (tx ---> te))).
       rewrite <- e.
       simpl.
-      apply RId.
+      apply AId.
     unfold take_arg_types_as_tree.
       Opaque take_arg_types_as_tree.
       simpl.
       destruct (count_arg_types (te (fun _ : Kind => unit) (ite_unit Γ))).
       simpl.
       replace (tx) with (fun (TV : Kind → Type) (ite : InstantiatedTypeEnv TV Γ) => tx TV ite).
-      apply RCanR.
+      apply ACanR.
         apply phoas_extensionality.
         reflexivity.
     apply (Prelude_error "should not be possible").
@@ -146,14 +146,14 @@ Section HaskSkolemizer.
     destruct (eqd_dec ([tx],,take_arg_types_as_tree te) (take_arg_types_as_tree (tx ---> te))).
       rewrite <- e.
       simpl.
-      apply RId.
+      apply AId.
     unfold take_arg_types_as_tree.
       Opaque take_arg_types_as_tree.
       simpl.
       destruct (count_arg_types (te (fun _ : Kind => unit) (ite_unit Γ))).
       simpl.
       replace (tx) with (fun (TV : Kind → Type) (ite : InstantiatedTypeEnv TV Γ) => tx TV ite).
-      apply RuCanR.
+      apply AuCanR.
         apply phoas_extensionality.
         reflexivity.
     apply (Prelude_error "should not be possible").
@@ -251,7 +251,7 @@ Section HaskSkolemizer.
         apply nd_rule.
         apply SFlat.
         apply RArrange.
-        apply RRight.
+        apply ARight.
         apply d.
 
       destruct case_RBrak.
@@ -288,7 +288,7 @@ Section HaskSkolemizer.
         rewrite H.
         rewrite H0.
         simpl.
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; apply RuCanL ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; apply AuCanL ].
         apply nd_rule.
         apply SFlat.
         apply RLit.
@@ -303,7 +303,7 @@ Section HaskSkolemizer.
         rewrite H.
         rewrite H0.
         simpl.
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply RuCanR ].
+        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AuCanR ].
         apply nd_rule.
         apply SFlat.
         apply RVar.
@@ -318,7 +318,7 @@ Section HaskSkolemizer.
         rewrite H.
         rewrite H0.
         simpl.
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply RuCanR ].
+        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AuCanR ].
         apply nd_rule.
         apply SFlat.
         apply RGlobal.
@@ -334,9 +334,9 @@ Section HaskSkolemizer.
         apply nd_rule.
           apply SFlat.
           apply RArrange.
-          eapply RComp.
-          eapply RCossa.
-          eapply RLeft.
+          eapply AComp.
+          eapply AuAssoc.
+          eapply ALeft.
           apply take_arrange.
 
       destruct case_RCast.
@@ -370,14 +370,14 @@ Section HaskSkolemizer.
         rewrite H0.
         simpl.
         eapply nd_comp.
-        eapply nd_prod; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RCanR ].
+        eapply nd_prod; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR ].
         eapply nd_rule.
         eapply SFlat.
         eapply RArrange.
-        eapply RLeft.
+        eapply ALeft.
         eapply take_unarrange.
 
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply RAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AAssoc ].
         eapply nd_rule; eapply SFlat; apply RWhere.
 
       destruct case_RLet.
@@ -393,17 +393,17 @@ Section HaskSkolemizer.
         rewrite H0.
 
         eapply nd_comp.
-        eapply nd_prod; [ eapply nd_rule; eapply SFlat; eapply RArrange; eapply RCanR | eapply nd_id ].
+        eapply nd_prod; [ eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR | eapply nd_id ].
 
         set (@RLet Γ Δ Σ₁ (Σ₂,,(take_arg_types_as_tree σ₂ @@@ (h::lev))) σ₁ (drop_arg_types_as_tree σ₂) (h::lev)) as q.
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply RAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AAssoc ].
         eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply q ].
         apply nd_prod.
           apply nd_id.
           apply nd_rule.
           eapply SFlat.
           eapply RArrange.
-          eapply RCossa.
+          eapply AuAssoc.
 
       destruct case_RWhere.
         simpl.
@@ -418,16 +418,16 @@ Section HaskSkolemizer.
         rewrite H0.
 
         eapply nd_comp.
-        eapply nd_prod; [ apply nd_id | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RCanR ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RAssoc ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RLeft; eapply RAssoc ].
+        eapply nd_prod; [ apply nd_id | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply AAssoc ].
         eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RWhere ].
         apply nd_prod; [ idtac | eapply nd_id ].
         eapply nd_rule; apply SFlat; eapply RArrange.
-        eapply RComp.
-        eapply RCossa.
-        apply RLeft.
-        eapply RCossa.
+        eapply AComp.
+        eapply AuAssoc.
+        apply ALeft.
+        eapply AuAssoc.
 
       destruct case_RVoid.
         simpl.
@@ -435,7 +435,7 @@ Section HaskSkolemizer.
         apply nd_rule.
         apply SFlat.
         apply RVoid.
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply RuCanL ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AuCanL ].
         apply nd_rule.
         apply SFlat.
         apply RVoid.

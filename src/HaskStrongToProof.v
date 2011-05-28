@@ -621,16 +621,16 @@ Definition factorContextLeft
             (* where the leaf is v *)
             apply inr.
               subst.
-              apply RuCanR.
+              apply AuCanR.
 
             (* where the leaf is NOT v *)
             apply inl.
-              apply RuCanL.
+              apply AuCanL.
   
         (* empty leaf *)
         destruct case_None.
           apply inl; simpl in *.
-          apply RuCanR.
+          apply AuCanR.
   
       (* branch *)
       refine (
@@ -650,45 +650,45 @@ Definition factorContextLeft
     destruct case_Neither.
       apply inl.
       simpl.
-      eapply RComp; [idtac | apply RuCanL ].
-        exact (RComp
+      eapply AComp; [idtac | apply AuCanL ].
+        exact (AComp
           (* order will not matter because these are central as morphisms *)
-          (RRight _ (RComp lpf (RCanL _)))
-          (RLeft  _ (RComp rpf (RCanL _)))).
+          (ARight _ (AComp lpf (ACanL _)))
+          (ALeft  _ (AComp rpf (ACanL _)))).
 
     destruct case_Right.
       apply inr.
       unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
       fold (stripOutVars (v::nil)).
-      eapply RComp; [ idtac | eapply pivotContext' ].
-      eapply RComp.
-      eapply RRight.
-      eapply RComp.
+      eapply AComp; [ idtac | eapply pivotContext' ].
+      eapply AComp.
+      eapply ARight.
+      eapply AComp.
       apply lpf.
-      apply RCanL.
-      eapply RLeft.
+      apply ACanL.
+      eapply ALeft.
       apply rpf.
 
     destruct case_Left.
       apply inr.
       fold (stripOutVars (v::nil)).
       simpl.
-      eapply RComp.
-      eapply RLeft.
-      eapply RComp.
+      eapply AComp.
+      eapply ALeft.
+      eapply AComp.
       apply rpf.
       simpl.
-      eapply RCanL.
-      eapply RComp; [ idtac | eapply RCossa ].
-      eapply RRight.
+      eapply ACanL.
+      eapply AComp; [ idtac | eapply AuAssoc ].
+      eapply ARight.
       apply lpf.
 
     destruct case_Both.
       apply inr.
       simpl.
-      eapply RComp; [ idtac | eapply RRight; eapply RCont ].
-      eapply RComp; [ eapply RRight; eapply lpf | idtac ].
-      eapply RComp; [ eapply RLeft; eapply rpf | idtac ].
+      eapply AComp; [ idtac | eapply ARight; eapply ACont ].
+      eapply AComp; [ eapply ARight; eapply lpf | idtac ].
+      eapply AComp; [ eapply ALeft; eapply rpf | idtac ].
       clear lpf rpf.
       simpl.
       apply arrangeSwapMiddle.
@@ -726,16 +726,16 @@ Definition factorContextRight
             (* where the leaf is v *)
             apply inr.
               subst.
-              apply RuCanL.
+              apply AuCanL.
 
             (* where the leaf is NOT v *)
             apply inl.
-              apply RuCanR.
+              apply AuCanR.
   
         (* empty leaf *)
         destruct case_None.
           apply inl; simpl in *.
-          apply RuCanR.
+          apply AuCanR.
   
       (* branch *)
       refine (
@@ -754,51 +754,51 @@ Definition factorContextRight
 
     destruct case_Neither.
       apply inl.
-      eapply RComp; [idtac | apply RuCanR ].
-        exact (RComp
+      eapply AComp; [idtac | apply AuCanR ].
+        exact (AComp
           (* order will not matter because these are central as morphisms *)
-          (RRight _ (RComp lpf (RCanR _)))
-          (RLeft  _ (RComp rpf (RCanR _)))).
+          (ARight _ (AComp lpf (ACanR _)))
+          (ALeft  _ (AComp rpf (ACanR _)))).
 
 
     destruct case_Right.
       apply inr.
       fold (stripOutVars (v::nil)).
-      set (RRight (mapOptionTree ξ ctx2)  (RComp lpf ((RCanR _)))) as q.
+      set (ARight (mapOptionTree ξ ctx2)  (AComp lpf ((ACanR _)))) as q.
       simpl in *.
-      eapply RComp.
+      eapply AComp.
       apply q.
       clear q.
       clear lpf.
       unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
-      eapply RComp; [ idtac | apply RAssoc ].
-      apply RLeft.
+      eapply AComp; [ idtac | apply AAssoc ].
+      apply ALeft.
       apply rpf.
 
     destruct case_Left.
       apply inr.
       unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
       fold (stripOutVars (v::nil)).
-      eapply RComp; [ idtac | eapply pivotContext ].
-      set (RComp rpf (RCanR _ )) as rpf'.
-      set (RLeft ((mapOptionTree ξ (stripOutVars (v :: nil) ctx1),, [ξ v])) rpf') as qq.
+      eapply AComp; [ idtac | eapply pivotContext ].
+      set (AComp rpf (ACanR _ )) as rpf'.
+      set (ALeft ((mapOptionTree ξ (stripOutVars (v :: nil) ctx1),, [ξ v])) rpf') as qq.
       simpl in *.
-      eapply RComp; [ idtac | apply qq ].
+      eapply AComp; [ idtac | apply qq ].
       clear qq rpf' rpf.
-      apply (RRight (mapOptionTree ξ ctx2)).
+      apply (ARight (mapOptionTree ξ ctx2)).
       apply lpf.
 
     destruct case_Both.
       apply inr.
       unfold mapOptionTree in *; simpl; fold (mapOptionTree ξ) in *.
       fold (stripOutVars (v::nil)).
-      eapply RComp; [ idtac | eapply copyAndPivotContext ].
+      eapply AComp; [ idtac | eapply copyAndPivotContext ].
         (* order will not matter because these are central as morphisms *)
-        exact (RComp (RRight _ lpf) (RLeft _ rpf)).
+        exact (AComp (ARight _ lpf) (ALeft _ rpf)).
 
     Defined.
 
-(* same as before, but use RWeak if necessary *)
+(* same as before, but use AWeak if necessary *)
 Definition factorContextLeftAndWeaken  
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
@@ -809,8 +809,8 @@ Definition factorContextLeftAndWeaken
           (mapOptionTree ξ ([v],,(stripOutVars (v::nil) ctx))        ).
   set (factorContextLeft Γ Δ v ctx ξ) as q.
   destruct q; auto.
-  eapply RComp; [ apply a | idtac ].
-  refine (RRight _ (RWeak _)).
+  eapply AComp; [ apply a | idtac ].
+  refine (ARight _ (AWeak _)).
   Defined.
 
 Definition factorContextLeftAndWeaken''
@@ -836,7 +836,7 @@ Definition factorContextLeftAndWeaken''
   unfold mapOptionTree; simpl in *.
     intros.
     rewrite (@stripping_nothing_is_inert Γ); auto.
-    apply RuCanL.
+    apply AuCanL.
     intros.
     unfold mapOptionTree in *.
     simpl in *.
@@ -855,15 +855,15 @@ Definition factorContextLeftAndWeaken''
       unfold stripOutVars in q.
       rewrite q in IHv1'.
       clear q.
-    eapply RComp; [ idtac | eapply RAssoc ].
-    eapply RComp; [ idtac | eapply IHv1' ].
+    eapply AComp; [ idtac | eapply AAssoc ].
+    eapply AComp; [ idtac | eapply IHv1' ].
     clear IHv1'.
     apply IHv2; auto.
     auto.
     auto.
     Defined.
 
-(* same as before, but use RWeak if necessary *)
+(* same as before, but use AWeak if necessary *)
 Definition factorContextRightAndWeaken  
      (Γ:TypeEnv)(Δ:CoercionEnv Γ)
      v      (* variable to be pivoted, if found *)
@@ -874,8 +874,8 @@ Definition factorContextRightAndWeaken
           (mapOptionTree ξ ((stripOutVars (v::nil) ctx),,[v])        ).
   set (factorContextRight Γ Δ v ctx ξ) as q.
   destruct q; auto.
-  eapply RComp; [ apply a | idtac ].
-  refine (RLeft _ (RWeak _)).
+  eapply AComp; [ apply a | idtac ].
+  refine (ALeft _ (AWeak _)).
   Defined.
 
 Definition factorContextRightAndWeaken''
@@ -899,7 +899,7 @@ Definition factorContextRightAndWeaken''
   unfold mapOptionTree; simpl in *.
     intros.
     rewrite (@stripping_nothing_is_inert Γ); auto.
-    apply RuCanR.
+    apply AuCanR.
     intros.
     unfold mapOptionTree in *.
     simpl in *.
@@ -918,14 +918,14 @@ Definition factorContextRightAndWeaken''
     fold X in IHv2'.
     set (distinct_app _ _ _ H) as H'.
     destruct H' as [H1 H2].
-    set (RComp (IHv1 _ H1) (IHv2' H2)) as qq.
-    eapply RComp.
+    set (AComp (IHv1 _ H1) (IHv2' H2)) as qq.
+    eapply AComp.
       apply qq.
       clear qq IHv2' IHv2 IHv1.
       rewrite strip_swap_lemma.
       rewrite strip_twice_lemma.
       rewrite (notin_strip_inert' v1 (leaves v2)).
-        apply RCossa.
+        apply AuAssoc.
         apply distinct_swap.
         auto.
     Defined.

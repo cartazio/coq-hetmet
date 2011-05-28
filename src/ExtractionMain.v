@@ -237,7 +237,7 @@ Section core2proof.
     ND Rule 
        [ Γ > Δ > Σ             |- [a ---> s  ]@lev ]
        [ Γ > Δ > [a @@ lev],,Σ |-       [ s ]@lev ].
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RApp ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
@@ -252,7 +252,7 @@ Section core2proof.
     intro pf.
     eapply nd_comp.
     apply pf.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply RCanR ].
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanR ].
     apply curry.
     Defined.
 
@@ -268,8 +268,8 @@ Section core2proof.
     eapply nd_comp.
     eapply nd_rule.
     eapply RArrange.
-    eapply RCanR.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply RExch ].
+    eapply ACanR.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     apply curry.
     Defined.
 

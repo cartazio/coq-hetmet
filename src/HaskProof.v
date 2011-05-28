@@ -67,7 +67,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 | RJoin  : ∀ Γ Δ Σ₁ Σ₂ τ₁ τ₂ l,   Rule ([Γ > Δ > Σ₁ |- τ₁ @l],,[Γ > Δ > Σ₂ |- τ₂ @l])         [Γ>Δ>  Σ₁,,Σ₂  |- τ₁,,τ₂       @l ]
 
-(* order is important here; we want to be able to skolemize without introducing new RExch'es *)
+(* order is important here; we want to be able to skolemize without introducing new AExch'es *)
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁ |- [tx--->te]@l],,[Γ>Δ> Σ₂ |- [tx]@l])  [Γ>Δ> Σ₁,,Σ₂ |- [te]@l]
 
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁ |- [σ₁]@l],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂]@l ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   ]@l]

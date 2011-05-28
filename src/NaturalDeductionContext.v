@@ -14,19 +14,19 @@ Section NaturalDeductionContext.
 
   (* Figure 3, production $\vdash_E$, Uniform rules *)
   Inductive Arrange {T} : Tree ??T -> Tree ??T -> Type :=
-  | RId     : forall a        ,                Arrange           a                  a
-  | RCanL   : forall a        ,                Arrange  (    [],,a   )      (       a   )
-  | RCanR   : forall a        ,                Arrange  (    a,,[]   )      (       a   )
-  | RuCanL  : forall a        ,                Arrange  (       a    )      (  [],,a    )
-  | RuCanR  : forall a        ,                Arrange  (       a    )      (  a,,[]    )
-  | RAssoc  : forall a b c    ,                Arrange  (a,,(b,,c)   )      ((a,,b),,c  )
-  | RCossa  : forall a b c    ,                Arrange  ((a,,b),,c   )      ( a,,(b,,c) )
-  | RExch   : forall a b      ,                Arrange  (   (b,,a)   )      (  (a,,b)   )
-  | RWeak   : forall a        ,                Arrange  (       []   )      (       a   )
-  | RCont   : forall a        ,                Arrange  (  (a,,a)    )      (       a   )
-  | RLeft   : forall {h}{c} x , Arrange h c -> Arrange  (    x,,h    )      (       x,,c)
-  | RRight  : forall {h}{c} x , Arrange h c -> Arrange  (    h,,x    )      (       c,,x)
-  | RComp   : forall {a}{b}{c}, Arrange a b -> Arrange b c -> Arrange a c
+  | AId     : forall a        ,                Arrange           a                  a
+  | ACanL   : forall a        ,                Arrange  (    [],,a   )      (       a   )
+  | ACanR   : forall a        ,                Arrange  (    a,,[]   )      (       a   )
+  | AuCanL  : forall a        ,                Arrange  (       a    )      (  [],,a    )
+  | AuCanR  : forall a        ,                Arrange  (       a    )      (  a,,[]    )
+  | AAssoc  : forall a b c    ,                Arrange  (a,,(b,,c)   )      ((a,,b),,c  )
+  | AuAssoc  : forall a b c    ,                Arrange  ((a,,b),,c   )      ( a,,(b,,c) )
+  | AExch   : forall a b      ,                Arrange  (   (b,,a)   )      (  (a,,b)   )
+  | AWeak   : forall a        ,                Arrange  (       []   )      (       a   )
+  | ACont   : forall a        ,                Arrange  (  (a,,a)    )      (       a   )
+  | ALeft   : forall {h}{c} x , Arrange h c -> Arrange  (    x,,h    )      (       x,,c)
+  | ARight  : forall {h}{c} x , Arrange h c -> Arrange  (    h,,x    )      (       c,,x)
+  | AComp   : forall {a}{b}{c}, Arrange a b -> Arrange b c -> Arrange a c
   .
   
   (* "Arrange" objects are parametric in the type of the leaves of the tree *)
@@ -36,51 +36,51 @@ Section NaturalDeductionContext.
       Arrange (mapOptionTree f Σ₁) (mapOptionTree f Σ₂).
     intros.
     induction X; simpl.
-    apply RId.
-    apply RCanL.
-    apply RCanR.
-    apply RuCanL.
-    apply RuCanR.
-    apply RAssoc.
-    apply RCossa.
-    apply RExch.
-    apply RWeak.
-    apply RCont.
-    apply RLeft; auto.
-    apply RRight; auto.
-    eapply RComp; [ apply IHX1 | apply IHX2 ].
+    apply AId.
+    apply ACanL.
+    apply ACanR.
+    apply AuCanL.
+    apply AuCanR.
+    apply AAssoc.
+    apply AuAssoc.
+    apply AExch.
+    apply AWeak.
+    apply ACont.
+    apply ALeft; auto.
+    apply ARight; auto.
+    eapply AComp; [ apply IHX1 | apply IHX2 ].
     Defined.
   
   (* a frequently-used Arrange - swap the middle two elements of a four-element sequence *)
   Definition arrangeSwapMiddle {T} (a b c d:Tree ??T) :
     Arrange ((a,,b),,(c,,d)) ((a,,c),,(b,,d)).
-    eapply RComp.
-    apply RCossa.
-    eapply RComp.
-    eapply RLeft.
-    eapply RComp.
-    eapply RAssoc.
-    eapply RRight.
-    apply RExch.
-    eapply RComp.
-    eapply RLeft.
-    eapply RCossa.
-    eapply RAssoc.
+    eapply AComp.
+    apply AuAssoc.
+    eapply AComp.
+    eapply ALeft.
+    eapply AComp.
+    eapply AAssoc.
+    eapply ARight.
+    apply AExch.
+    eapply AComp.
+    eapply ALeft.
+    eapply AuAssoc.
+    eapply AAssoc.
     Defined.
 
-  (* like RExch, but works on nodes which are an Assoc away from being adjacent *)
+  (* like AExch, but works on nodes which are an Assoc away from being adjacent *)
   Definition pivotContext {T} a b c : @Arrange T ((a,,b),,c) ((a,,c),,b) :=
-    RComp (RComp (RCossa _ _ _) (RLeft a (RExch c b))) (RAssoc _ _ _).
+    AComp (AComp (AuAssoc _ _ _) (ALeft a (AExch c b))) (AAssoc _ _ _).
 
-  (* like RExch, but works on nodes which are an Assoc away from being adjacent *)  
+  (* like AExch, but works on nodes which are an Assoc away from being adjacent *)  
   Definition pivotContext' {T} a b c : @Arrange T (a,,(b,,c)) (b,,(a,,c)) :=
-    RComp (RComp (RAssoc _ _ _) (RRight c (RExch b a))) (RCossa _ _ _).
+    AComp (AComp (AAssoc _ _ _) (ARight c (AExch b a))) (AuAssoc _ _ _).
   
   Definition copyAndPivotContext {T} a b c : @Arrange T ((a,,b),,(c,,b)) ((a,,c),,b).
-    eapply RComp; [ idtac | apply (RLeft (a,,c) (RCont b)) ].
-    eapply RComp; [ idtac | apply RCossa ]. 
-    eapply RComp; [ idtac | apply (RRight b (pivotContext a b c)) ].
-    apply RAssoc.
+    eapply AComp; [ idtac | apply (ALeft (a,,c) (ACont b)) ].
+    eapply AComp; [ idtac | apply AuAssoc ]. 
+    eapply AComp; [ idtac | apply (ARight b (pivotContext a b c)) ].
+    apply AAssoc.
     Defined.
 
   (* given any set of TreeFlags on a tree, we can Arrange all of the flagged nodes into the left subtree *)
@@ -93,16 +93,16 @@ Section NaturalDeductionContext.
       destruct a.
       simpl.
       destruct (f t); simpl.
-      apply RuCanL.
-      apply RuCanR.
+      apply AuCanL.
+      apply AuCanR.
       simpl.
-      apply RuCanL.
+      apply AuCanL.
       simpl in *.
-      eapply RComp; [ idtac | apply arrangeSwapMiddle ].
-      eapply RComp.
-      eapply RLeft.
+      eapply AComp; [ idtac | apply arrangeSwapMiddle ].
+      eapply AComp.
+      eapply ALeft.
       apply IHΣ2.
-      eapply RRight.
+      eapply ARight.
       apply IHΣ1.
       Defined.
 
@@ -116,16 +116,16 @@ Section NaturalDeductionContext.
       destruct a.
       simpl.
       destruct (f t); simpl.
-      apply RCanL.
-      apply RCanR.
+      apply ACanL.
+      apply ACanR.
       simpl.
-      apply RCanL.
+      apply ACanL.
       simpl in *.
-      eapply RComp; [ apply arrangeSwapMiddle | idtac ].
-      eapply RComp.
-      eapply RLeft.
+      eapply AComp; [ apply arrangeSwapMiddle | idtac ].
+      eapply AComp.
+      eapply ALeft.
       apply IHΣ2.
-      eapply RRight.
+      eapply ARight.
       apply IHΣ1.
       Defined.
 
@@ -164,17 +164,17 @@ Section NaturalDeductionContext.
     induction q; intros.
       simpl in H.
       rewrite H.
-      apply RId.
+      apply AId.
     simpl in *.
     destruct t; try destruct o; inversion H.
       set (IHq1 _ H1) as x1.
       set (IHq2 _ H2) as x2.
-      eapply RComp.
-        eapply RRight.
+      eapply AComp.
+        eapply ARight.
         rewrite <- H1.
         apply x1.
-      eapply RComp.
-        apply RCanL.
+      eapply AComp.
+        apply ACanL.
         rewrite <- H2.
         apply x2.
       Defined.
@@ -187,21 +187,21 @@ Section NaturalDeductionContext.
     induction q; intros.
       simpl in H.
       rewrite H.
-      apply RId.
+      apply AId.
     simpl in *.
     destruct t; try destruct o; inversion H.
       set (IHq1 _ H1) as x1.
       set (IHq2 _ H2) as x2.
-      eapply RComp.
-        apply RuCanL.
-      eapply RComp.
-        eapply RRight.
+      eapply AComp.
+        apply AuCanL.
+      eapply AComp.
+        eapply ARight.
         apply x1.
-      eapply RComp.
-        eapply RLeft.
+      eapply AComp.
+        eapply ALeft.
         apply x2.
       rewrite H.
-      apply RId.
+      apply AId.
       Defined.
 
   (* given an Arrange from Σ₁ to Σ₂ and any predicate on tree nodes, we can construct an Arrange from (dropT Σ₁) to (dropT Σ₂) *)
@@ -210,38 +210,38 @@ Section NaturalDeductionContext.
 
     refine ((fix arrangeTake t1 t2 (arr:Arrange t1 t2) :=
       match arr as R in Arrange A B return Arrange (dropT (mkFlags pred A)) (dropT (mkFlags pred B)) with
-        | RId  a               => let case_RId := tt    in RId _
-        | RCanL  a             => let case_RCanL := tt  in _
-        | RCanR  a             => let case_RCanR := tt  in _
-        | RuCanL a             => let case_RuCanL := tt in _
-        | RuCanR a             => let case_RuCanR := tt in _
-        | RAssoc a b c         => let case_RAssoc := tt in RAssoc _ _ _
-        | RCossa a b c         => let case_RCossa := tt in RCossa _ _ _
-        | RExch  a b           => let case_RExch := tt  in RExch _ _
-        | RWeak  a             => let case_RWeak := tt  in _
-        | RCont  a             => let case_RCont := tt  in _
-        | RLeft  a b c r'      => let case_RLeft := tt  in RLeft  _ (arrangeTake _ _ r')
-        | RRight a b c r'      => let case_RRight := tt in RRight _ (arrangeTake _ _ r')
-        | RComp  a b c r1 r2   => let case_RComp := tt  in RComp (arrangeTake _ _ r1) (arrangeTake _ _ r2)
+        | AId  a               => let case_AId := tt    in AId _
+        | ACanL  a             => let case_ACanL := tt  in _
+        | ACanR  a             => let case_ACanR := tt  in _
+        | AuCanL a             => let case_AuCanL := tt in _
+        | AuCanR a             => let case_AuCanR := tt in _
+        | AAssoc a b c         => let case_AAssoc := tt in AAssoc _ _ _
+        | AuAssoc a b c         => let case_AuAssoc := tt in AuAssoc _ _ _
+        | AExch  a b           => let case_AExch := tt  in AExch _ _
+        | AWeak  a             => let case_AWeak := tt  in _
+        | ACont  a             => let case_ACont := tt  in _
+        | ALeft  a b c r'      => let case_ALeft := tt  in ALeft  _ (arrangeTake _ _ r')
+        | ARight a b c r'      => let case_ARight := tt in ARight _ (arrangeTake _ _ r')
+        | AComp  a b c r1 r2   => let case_AComp := tt  in AComp (arrangeTake _ _ r1) (arrangeTake _ _ r2)
       end)); clear arrangeTake; intros.
 
-    destruct case_RCanL.
-      simpl; destruct (pred None); simpl; apply RCanL.
+    destruct case_ACanL.
+      simpl; destruct (pred None); simpl; apply ACanL.
 
-    destruct case_RCanR.
-      simpl; destruct (pred None); simpl; apply RCanR.
+    destruct case_ACanR.
+      simpl; destruct (pred None); simpl; apply ACanR.
 
-    destruct case_RuCanL.
-      simpl; destruct (pred None); simpl; apply RuCanL.
+    destruct case_AuCanL.
+      simpl; destruct (pred None); simpl; apply AuCanL.
 
-    destruct case_RuCanR.
-      simpl; destruct (pred None); simpl; apply RuCanR.
+    destruct case_AuCanR.
+      simpl; destruct (pred None); simpl; apply AuCanR.
 
-    destruct case_RWeak.
-      simpl; destruct (pred None); simpl; apply RWeak.
+    destruct case_AWeak.
+      simpl; destruct (pred None); simpl; apply AWeak.
 
-    destruct case_RCont.
-      simpl; destruct (pred None); simpl; apply RCont.
+    destruct case_ACont.
+      simpl; destruct (pred None); simpl; apply ACont.
 
       Defined.
 

@@ -73,10 +73,10 @@ Section HaskProgrammingLanguage.
       apply nd_id.
       eapply nd_rule.
       set (@org_fc) as ofc.
-      set (RArrange Γ Δ _ _ _ (RuCanL [l0])) as rule.
-      apply org_fc with (r:=RArrange _ _ _ _ _ (RuCanL [_])).
+      set (RArrange Γ Δ _ _ _ (AuCanL [l0])) as rule.
+      apply org_fc with (r:=RArrange _ _ _ _ _ (AuCanL [_])).
       auto.
-      eapply nd_comp; [ idtac | eapply nd_rule; apply org_fc with (r:=RArrange _ _ _ _ _ (RCanL _)) ].
+      eapply nd_comp; [ idtac | eapply nd_rule; apply org_fc with (r:=RArrange _ _ _ _ _ (ACanL _)) ].
       apply nd_rule.
       destruct l.
       destruct l0.
@@ -148,23 +148,23 @@ Section HaskProgrammingLanguage.
   ; cnd_expand_right := fun a b c => SystemFCa_right c a b }.
     (*
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ ((RArrange _ _ _ _ _ (RCossa _ _ _)))).
+      apply (org_fc _ _ _ _ ((RArrange _ _ _ _ _ (AuAssoc _ _ _)))).
       auto.
 
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (RAssoc _ _ _))); auto.
+      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (AAssoc _ _ _))); auto.
 
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (RCanL _))); auto.
+      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (ACanL _))); auto.
 
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (RCanR _))); auto.
+      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (ACanR _))); auto.
 
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (RuCanL _))); auto.
+      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (AuCanL _))); auto.
 
     intros; apply nd_rule. simpl.
-      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (RuCanR _))); auto.
+      apply (org_fc _ _ _ _ (RArrange _ _ _ _ _ (AuCanR _))); auto.
       *)
       admit.
       admit.

@@ -238,49 +238,49 @@ Section HaskProofToStrong.
     ujudg2exprType Γ ξ Δ H t l ->
     ujudg2exprType Γ ξ Δ C t l
  with
-          | RLeft   h c ctx r => let case_RLeft  := tt in (fun e => _) (urule2expr _ _ _ _ r)
-          | RRight  h c ctx r => let case_RRight := tt in (fun e => _) (urule2expr _ _ _ _ r)
-          | RId     a       => let case_RId    := tt in _
-          | RCanL   a       => let case_RCanL  := tt in _
-          | RCanR   a       => let case_RCanR  := tt in _
-          | RuCanL  a       => let case_RuCanL := tt in _
-          | RuCanR  a       => let case_RuCanR := tt in _
-          | RAssoc  a b c   => let case_RAssoc := tt in _
-          | RCossa  a b c   => let case_RCossa := tt in _
-          | RExch   a b     => let case_RExch  := tt in _
-          | RWeak   a       => let case_RWeak  := tt in _
-          | RCont   a       => let case_RCont  := tt in _
-          | RComp   a b c f g => let case_RComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ _ f) (urule2expr _ _ _ _ g)
+          | ALeft   h c ctx r => let case_ALeft  := tt in (fun e => _) (urule2expr _ _ _ _ r)
+          | ARight  h c ctx r => let case_ARight := tt in (fun e => _) (urule2expr _ _ _ _ r)
+          | AId     a       => let case_AId    := tt in _
+          | ACanL   a       => let case_ACanL  := tt in _
+          | ACanR   a       => let case_ACanR  := tt in _
+          | AuCanL  a       => let case_AuCanL := tt in _
+          | AuCanR  a       => let case_AuCanR := tt in _
+          | AAssoc  a b c   => let case_AAssoc := tt in _
+          | AuAssoc  a b c   => let case_AuAssoc := tt in _
+          | AExch   a b     => let case_AExch  := tt in _
+          | AWeak   a       => let case_AWeak  := tt in _
+          | ACont   a       => let case_ACont  := tt in _
+          | AComp   a b c f g => let case_AComp  := tt in (fun e1 e2 => _) (urule2expr _ _ _ _ f) (urule2expr _ _ _ _ g)
           end); clear urule2expr; intros.
 
-      destruct case_RId.
+      destruct case_AId.
         apply X.
 
-      destruct case_RCanL.
+      destruct case_ACanL.
         simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X ([],,vars)).
         simpl; rewrite <- H; auto.
 
-      destruct case_RCanR.
+      destruct case_ACanR.
         simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X (vars,,[])).
         simpl; rewrite <- H; auto.
 
-      destruct case_RuCanL.
+      destruct case_AuCanL.
         simpl; unfold ujudg2exprType; intros.
         destruct vars; try destruct o; inversion H.
         simpl in X.
         apply (X vars2); auto.
 
-      destruct case_RuCanR.
+      destruct case_AuCanR.
         simpl; unfold ujudg2exprType; intros.
         destruct vars; try destruct o; inversion H.
         simpl in X.
         apply (X vars1); auto.
 
-      destruct case_RAssoc.
+      destruct case_AAssoc.
         simpl; unfold ujudg2exprType; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
@@ -288,7 +288,7 @@ Section HaskProofToStrong.
         apply (X (vars1_1,,(vars1_2,,vars2))).
         subst; auto.
 
-      destruct case_RCossa.
+      destruct case_AuAssoc.
         simpl; unfold ujudg2exprType; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
@@ -296,20 +296,20 @@ Section HaskProofToStrong.
         apply (X ((vars1,,vars2_1),,vars2_2)).
         subst; auto.
 
-      destruct case_RExch.
+      destruct case_AExch.
         simpl; unfold ujudg2exprType ; intros.
         simpl in X.
         destruct vars; try destruct o; inversion H.
         apply (X (vars2,,vars1)).
         inversion H; subst; auto.
         
-      destruct case_RWeak.
+      destruct case_AWeak.
         simpl; unfold ujudg2exprType; intros.
         simpl in X.
         apply (X []).
         auto.
         
-      destruct case_RCont.
+      destruct case_ACont.
         simpl; unfold ujudg2exprType ; intros.
         simpl in X.
         apply (X (vars,,vars)).
@@ -317,7 +317,7 @@ Section HaskProofToStrong.
         rewrite <- H.
         auto.
 
-      destruct case_RLeft.
+      destruct case_ALeft.
         intro vars; unfold ujudg2exprType; intro H.
         destruct vars; try destruct o; inversion H.
         apply (fun q => e ξ q vars2 H2).
@@ -332,7 +332,7 @@ Section HaskProofToStrong.
           simpl.
           reflexivity.
 
-      destruct case_RRight.
+      destruct case_ARight.
         intro vars; unfold ujudg2exprType; intro H.
         destruct vars; try destruct o; inversion H.
         apply (fun q => e ξ q vars1 H1).
@@ -347,7 +347,7 @@ Section HaskProofToStrong.
           simpl.
           reflexivity.
 
-      destruct case_RComp.
+      destruct case_AComp.
         apply e2.
         apply e1.
         apply X.
