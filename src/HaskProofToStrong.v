@@ -6,6 +6,7 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import NaturalDeduction.
+Require Import NaturalDeductionContext.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.

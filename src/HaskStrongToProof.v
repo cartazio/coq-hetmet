@@ -6,6 +6,7 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import NaturalDeduction.
+Require Import NaturalDeductionContext.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Specif.
@@ -15,20 +16,7 @@ Require Import HaskStrong.
 Require Import HaskProof.
 
 Section HaskStrongToProof.
-
-Definition pivotContext {T} a b c : @Arrange T ((a,,b),,c) ((a,,c),,b) :=
-  RComp (RComp (RCossa _ _ _) (RLeft a (RExch c b))) (RAssoc _ _ _).
-
-Definition pivotContext' {T} a b c : @Arrange T (a,,(b,,c)) (b,,(a,,c)) :=
-  RComp (RComp (RAssoc _ _ _) (RRight c (RExch b a))) (RCossa _ _ _).
-
-Definition copyAndPivotContext {T} a b c : @Arrange T ((a,,b),,(c,,b)) ((a,,c),,b).
-  eapply RComp; [ idtac | apply (RLeft (a,,c) (RCont b)) ].
-  eapply RComp; [ idtac | apply RCossa ]. 
-  eapply RComp; [ idtac | apply (RRight b (pivotContext a b c)) ].
-  apply RAssoc.
-  Defined.
-  
+ 
 Context {VV:Type}{eqd_vv:EqDecidable VV}.
 
 (* maintenance of Xi *)

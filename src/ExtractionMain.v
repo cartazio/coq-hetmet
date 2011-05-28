@@ -13,6 +13,7 @@ Require Import Preamble.
 Require Import General.
 
 Require Import NaturalDeduction.
+Require Import NaturalDeductionContext.
 
 Require Import HaskKinds.
 Require Import HaskLiterals.

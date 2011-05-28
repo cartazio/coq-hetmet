@@ -9,6 +9,7 @@ Generalizable All Variables.
 Require Import Preamble.
 Require Import General.
 Require Import NaturalDeduction.
+Require Import NaturalDeductionContext.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 
@@ -45,52 +46,6 @@ Set Printing Width 130.
  *)
 Section HaskFlattener.
 
-  Definition getlev {Γ}{κ}(lht:LeveledHaskType Γ κ) : HaskLevel Γ :=
-    match lht with t @@ l => l end.
-
-  Definition arrange :
-    forall {T} (Σ:Tree ??T) (f:T -> bool),
-      Arrange Σ (dropT (mkFlags (liftBoolFunc false f) Σ),,( (dropT (mkFlags (liftBoolFunc false (bnot ○ f)) Σ)))).
-    intros.
-    induction Σ.
-      simpl.
-      destruct a.
-      simpl.
-      destruct (f t); simpl.
-      apply RuCanL.
-      apply RuCanR.
-      simpl.
-      apply RuCanL.
-      simpl in *.
-      eapply RComp; [ idtac | apply arrangeSwapMiddle ].
-      eapply RComp.
-      eapply RLeft.
-      apply IHΣ2.
-      eapply RRight.
-      apply IHΣ1.
-      Defined.
-
-  Definition arrange' :
-    forall {T} (Σ:Tree ??T) (f:T -> bool),
-      Arrange (dropT (mkFlags (liftBoolFunc false f) Σ),,( (dropT (mkFlags (liftBoolFunc false (bnot ○ f)) Σ)))) Σ.
-    intros.
-    induction Σ.
-      simpl.
-      destruct a.
-      simpl.
-      destruct (f t); simpl.
-      apply RCanL.
-      apply RCanR.
-      simpl.
-      apply RCanL.
-      simpl in *.
-      eapply RComp; [ apply arrangeSwapMiddle | idtac ].
-      eapply RComp.
-      eapply RLeft.
-      apply IHΣ2.
-      eapply RRight.
-      apply IHΣ1.
-      Defined.
 
   Ltac eqd_dec_refl' :=
     match goal with
