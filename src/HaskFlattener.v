@@ -132,29 +132,11 @@ Section HaskFlattener.
     rewrite <- IHx2 at 2.
     reflexivity.
     Qed.
-(*
-  Lemma drop_lev_lemma' : forall Γ (lev:HaskLevel Γ) x, drop_lev lev (x @@@ lev) = [].
-    intros.
-    induction x.
-    destruct a; simpl; try reflexivity.
-    apply drop_lev_lemma.
-    simpl.
-    change (@drop_lev _ lev (x1 @@@ lev ,, x2 @@@ lev))
-      with ((@drop_lev _ lev (x1 @@@ lev)) ,, (@drop_lev _ lev (x2 @@@ lev))).
-    simpl.
-    rewrite IHx1.
-    rewrite IHx2.
-    reflexivity.
-    Qed.
-*)
+
   Ltac drop_simplify :=
     match goal with
       | [ |- context[@drop_lev ?G ?L [ ?X @@ ?L ] ] ] =>
         rewrite (drop_lev_lemma G L X)
-(*
-      | [ |- context[@drop_lev ?G ?L [ ?X @@@ ?L ] ] ] =>
-        rewrite (drop_lev_lemma' G L X)
-*)
       | [ |- context[@drop_lev ?G (?E :: ?L) [ ?X @@ (?E :: ?L) ] ] ] =>
         rewrite (drop_lev_lemma_s G L E X)
       | [ |- context[@drop_lev ?G ?N (?A,,?B)] ] =>
@@ -582,7 +564,7 @@ Section HaskFlattener.
 
     intros.
     unfold drop_lev.
-    set (@arrange' _ succ (levelMatch (ec::nil))) as q.
+    set (@arrangeUnPartition _ succ (levelMatch (ec::nil))) as q.
     set (arrangeMap _ _ flatten_leveled_type q) as y.
     eapply nd_comp.
     Focus 2.
@@ -632,59 +614,6 @@ Section HaskFlattener.
       apply IHsucc2.
     Defined.
 
-  Definition arrange_empty_tree : forall {T}{A}(q:Tree A)(t:Tree ??T),
-    t = mapTree (fun _:A => None) q ->
-    Arrange t [].
-    intros T A q.
-    induction q; intros.
-      simpl in H.
-      rewrite H.
-      apply RId.
-    simpl in *.
-    destruct t; try destruct o; inversion H.
-      set (IHq1 _ H1) as x1.
-      set (IHq2 _ H2) as x2.
-      eapply RComp.
-        eapply RRight.
-        rewrite <- H1.
-        apply x1.
-      eapply RComp.
-        apply RCanL.
-        rewrite <- H2.
-        apply x2.
-      Defined.
-
-(*  Definition unarrange_empty_tree : forall {T}{A}(t:Tree ??T)(q:Tree A),
-    t = mapTree (fun _:A => None) q ->
-    Arrange [] t.
-  Defined.*)
-
-  Definition decide_tree_empty : forall {T:Type}(t:Tree ??T),
-    sum { q:Tree unit & t = mapTree (fun _ => None) q } unit.
-    intro T.
-    refine (fix foo t :=
-      match t with
-        | T_Leaf x => _
-        | T_Branch b1 b2 => let b1' := foo b1 in let b2' := foo b2 in _
-      end).
-    intros.
-    destruct x.
-    right; apply tt.
-    left.
-      exists (T_Leaf tt).
-      auto.
-    destruct b1'.
-    destruct b2'.
-    destruct s.
-    destruct s0.
-    subst.
-    left.
-    exists (x,,x0).
-    reflexivity.
-    right; auto.
-    right; auto.
-    Defined.
-
   Definition arrange_esc : forall Γ Δ ec succ t,
    ND Rule
      [Γ > Δ > mapOptionTree (flatten_leveled_type ) succ |- [t]@nil]
@@ -692,7 +621,7 @@ Section HaskFlattener.
       [(@ga_mk _ (v2t ec) [] (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: nil) succ))) @@  nil],,
       mapOptionTree (flatten_leveled_type ) (drop_lev (ec :: nil) succ)  |- [t]@nil].
     intros.
-    set (@arrange _ succ (levelMatch (ec::nil))) as q.
+    set (@arrangePartition _ succ (levelMatch (ec::nil))) as q.
     set (@drop_lev Γ (ec::nil) succ) as q'.
     assert (@drop_lev Γ (ec::nil) succ=q') as H.
       reflexivity.
@@ -722,7 +651,7 @@ Section HaskFlattener.
     apply RArrange.
     eapply RComp; [ idtac | apply RCanR ].
     apply RLeft.
-    apply (@arrange_empty_tree _ _ _ _ e).
+    apply (@arrangeCancelEmptyTree _ _ _ _ e).
    
     eapply nd_comp.
       eapply nd_rule.
@@ -768,12 +697,6 @@ Section HaskFlattener.
       apply (Prelude_error "escapifying code with multi-leaf antecedents is not supported").
 *)
       Defined.
-
-  Lemma mapOptionTree_distributes
-    : forall T R (a b:Tree ??T) (f:T->R),
-      mapOptionTree f (a,,b) = (mapOptionTree f a),,(mapOptionTree f b).
-    reflexivity.
-    Qed.
 
   Lemma unlev_relev : forall {Γ}(t:Tree ??(HaskType Γ ★)) lev, mapOptionTree unlev (t @@@ lev) = t.
     intros.

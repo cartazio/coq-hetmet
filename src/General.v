@@ -106,6 +106,11 @@ Fixpoint treeReduce {T:Type}{R:Type}(mapLeaf:T->R)(mergeBranches:R->R->R) (t:Tre
   end.
 Definition treeDecomposition {D T:Type} (mapLeaf:T->D) (mergeBranches:D->D->D) :=
   forall d:D, { tt:Tree T & d = treeReduce mapLeaf mergeBranches tt }.
+Lemma mapOptionTree_distributes
+  : forall T R (a b:Tree ??T) (f:T->R),
+    mapOptionTree f (a,,b) = (mapOptionTree f a),,(mapOptionTree f b).
+  reflexivity.
+  Qed.
 
 Fixpoint reduceTree {T}(unit:T)(merge:T -> T -> T)(tt:Tree ??T) : T :=
   match tt with
@@ -518,6 +523,12 @@ Fixpoint takeT {T}{Σ:Tree T}(tf:TreeFlags Σ) : ??(Tree T) :=
                         | Some b2' => Some (b1',,b2')
                       end
       end
+  end.
+
+Definition takeT' {T}{Σ:Tree ??T}(tf:TreeFlags Σ) : Tree ??T :=
+  match takeT tf with
+    | None   => []
+    | Some x => x
   end.
 
 (* lift a function T->bool to a function (option T)->bool by yielding (None |-> b) *)
