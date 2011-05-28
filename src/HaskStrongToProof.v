@@ -520,8 +520,8 @@ Lemma update_xiv_lemma `{EQD_VV:EqDecidable VV} Γ ξ (lev:HaskLevel Γ)(varstyp
   apply q.
   Qed.
 
-Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ??VV :=
-  match exp as E in Expr Γ Δ ξ τ with
+Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}{l'}(exp:Expr Γ' Δ' ξ' τ' l') : Tree ??VV :=
+  match exp as E in Expr Γ Δ ξ τ l with
   | EGlobal  Γ Δ ξ _ _ _                          => []
   | EVar     Γ Δ ξ ev                             => [ev]
   | ELit     Γ Δ ξ lit lev                        => []
@@ -531,7 +531,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
   | EEsc     Γ Δ ξ ec t lev e                     => expr2antecedent e
   | EBrak    Γ Δ ξ ec t lev e                     => expr2antecedent e
   | ECast    Γ Δ ξ γ t1 t2 lev      e             => expr2antecedent e
-  | ENote    Γ Δ ξ t n e                          => expr2antecedent e
+  | ENote    Γ Δ ξ t l n e                        => expr2antecedent e
   | ETyLam   Γ Δ ξ κ σ l e                        => expr2antecedent e
   | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => expr2antecedent e
   | ECoApp   Γ Δ κ γ σ₁ σ₂ σ ξ l      e           => expr2antecedent e
@@ -546,7 +546,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}(exp:Expr Γ' Δ' ξ' τ') : Tree ?
                             & Expr (sac_gamma sac Γ)
                                    (sac_delta sac Γ atypes (weakCK'' Δ))
                                    (scbwv_xi scb ξ l)
-                                   (weakLT' (tbranches@@l)) } }
+                                   (weakT' tbranches) (weakL' l)} }
       ): Tree ??VV :=
       match alts with
         | T_Leaf None     => []
@@ -566,7 +566,7 @@ Definition mkProofCaseBranch {Γ}{Δ}{ξ}{l}{tc}{tbranches}{atypes}
                             & Expr (sac_gamma sac Γ)
                                    (sac_delta sac Γ atypes (weakCK'' Δ))
                                    (scbwv_xi scb ξ l)
-                                   (weakLT' (tbranches@@l)) } })
+                                   (weakT' tbranches) (weakL' l) } })
   : { sac : _ & ProofCaseBranch tc Γ Δ l tbranches atypes sac }.
   destruct alt.
   exists x.
@@ -1067,7 +1067,7 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
             ??{sac : StrongAltCon &
               {scb : StrongCaseBranchWithVVs VV eqd_vv tc atypes sac &
               Expr (sac_gamma sac Γ) (sac_delta sac Γ atypes (weakCK'' Δ))
-                (scbwv_xi scb ξ l) (weakLT' (tbranches @@  l))}}),
+                (scbwv_xi scb ξ l) (weakT' tbranches) (weakL' l)}}),
 
       (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x))
         (mapOptionTree mkProofCaseBranch alts'))
@@ -1094,40 +1094,40 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
   Qed.
 
 Definition expr2proof  :
-  forall Γ Δ ξ τ (e:Expr Γ Δ ξ τ),
-    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [unlev τ] @ getlev τ].
+  forall Γ Δ ξ τ l (e:Expr Γ Δ ξ τ l),
+    ND Rule [] [Γ > Δ > mapOptionTree ξ (expr2antecedent e) |- [τ] @ l].
 
-  refine (fix expr2proof Γ' Δ' ξ' τ' (exp:Expr Γ' Δ' ξ' τ') {struct exp}
-    : ND Rule [] [Γ' > Δ' > mapOptionTree ξ' (expr2antecedent exp) |- [unlev τ'] @ getlev τ'] :=
-    match exp as E in Expr Γ Δ ξ τ with
+  refine (fix expr2proof Γ' Δ' ξ' τ' l' (exp:Expr Γ' Δ' ξ' τ' l') {struct exp}
+    : ND Rule [] [Γ' > Δ' > mapOptionTree ξ' (expr2antecedent exp) |- [τ'] @ l'] :=
+    match exp as E in Expr Γ Δ ξ τ l with
     | EGlobal  Γ Δ ξ     g v lev                    => let case_EGlobal := tt in _
     | EVar     Γ Δ ξ ev                             => let case_EVar := tt in _
     | ELit     Γ Δ ξ lit lev                        => let case_ELit := tt in _
     | EApp     Γ Δ ξ t1 t2 lev e1 e2                => let case_EApp := tt in 
-                                                        (fun e1' e2' => _) (expr2proof _ _ _ _ e1) (expr2proof _ _ _ _ e2)
-    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+                                                        (fun e1' e2' => _) (expr2proof _ _ _ _ _ e1) (expr2proof _ _ _ _ _ e2)
+    | ELam     Γ Δ ξ t1 t2 lev v    e               => let case_ELam := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ELet     Γ Δ ξ tv t      v lev ev ebody       => let case_ELet := tt in 
-                                                       (fun pf_let pf_body => _) (expr2proof _ _ _ _ ev) (expr2proof _ _ _ _ ebody) 
+                                                       (fun pf_let pf_body => _) (expr2proof _ _ _ _ _ ev) (expr2proof _ _ _ _ _ ebody) 
     | ELetRec  Γ Δ ξ lev t tree disti branches ebody =>
       let ξ' := update_xi ξ lev (leaves tree) in
-      let case_ELetRec := tt in  (fun e' subproofs => _) (expr2proof _ _ _ _ ebody) 
+      let case_ELetRec := tt in  (fun e' subproofs => _) (expr2proof _ _ _ _ _ ebody) 
         ((fix subproofs Γ'' Δ'' ξ'' lev'' (tree':Tree ??(VV * HaskType Γ'' ★))
         (branches':ELetRecBindings Γ'' Δ'' ξ'' lev'' tree')
         : LetRecSubproofs Γ'' Δ'' ξ'' lev'' tree' branches' :=
         match branches' as B in ELetRecBindings G D X L T return LetRecSubproofs G D X L T B with
           | ELR_nil    Γ Δ ξ lev  => lrsp_nil _ _ _ _
-          | ELR_leaf   Γ Δ ξ l v t e => lrsp_leaf Γ Δ ξ l v t e (expr2proof _ _ _ _ e)
+          | ELR_leaf   Γ Δ ξ l v t e => lrsp_leaf Γ Δ ξ l v t e (expr2proof _ _ _ _ _ e)
           | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => lrsp_cons _ _ _ _ _ _ _ _ (subproofs _ _ _ _ _ b1) (subproofs _ _ _ _ _ b2)
         end
         ) _ _ _ _ tree branches)
-    | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ENote    Γ Δ ξ t n e                          => let case_ENote   := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
-    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+    | EEsc     Γ Δ ξ ec t lev e                     => let case_EEsc    := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ENote    Γ Δ ξ t _ n e                        => let case_ENote   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ECase    Γ Δ ξ l tc tbranches atypes e alts' => 
       let dcsp :=
         ((fix mkdcsp (alts:
@@ -1135,7 +1135,7 @@ Definition expr2proof  :
                             & Expr (sac_gamma sac Γ)
                                    (sac_delta sac Γ atypes (weakCK'' Δ))
                                    (scbwv_xi scb ξ l)
-                                   (weakLT' (tbranches@@l)) } })
+                                   (weakT' tbranches) (weakL' l) } })
           : ND Rule [] (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) alts) :=
         match alts as ALTS return ND Rule [] 
           (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) ALTS) with
@@ -1144,12 +1144,12 @@ Definition expr2proof  :
           | T_Leaf (Some x)  =>
             match x as X return ND Rule [] [pcb_judg (projT2 (mkProofCaseBranch X))] with
             existT sac (existT scbx ex) =>
-            (fun e' => let case_leaf := tt in _) (expr2proof _ _ _ _ ex)
+            (fun e' => let case_leaf := tt in _) (expr2proof _ _ _ _ _ ex)
         end
         end) alts')
-        in let case_ECase := tt in (fun e' => _) (expr2proof _ _ _ _ e)
+        in let case_ECase := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     end
-  ); clear exp ξ' τ' Γ' Δ' expr2proof; try clear mkdcsp.
+  ); clear exp ξ' τ' Γ' Δ' l' expr2proof; try clear mkdcsp.
 
     destruct case_EGlobal.
       apply nd_rule.
@@ -1228,7 +1228,6 @@ Definition expr2proof  :
       auto.
 
     destruct case_ENote.
-      destruct t.
       eapply nd_comp; [ idtac | eapply nd_rule; apply RNote ].
       apply e'.
       auto.

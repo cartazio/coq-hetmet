@@ -28,10 +28,10 @@ Section HaskProofToStrong.
   Definition judg2exprType (j:Judg) : Type :=
     match j with
       (Γ > Δ > Σ |- τ @ l) => forall (ξ:ExprVarResolver Γ) vars, Σ = mapOptionTree ξ vars ->
-        FreshM (ITree _ (fun t => Expr Γ Δ ξ (t @@ l)) τ)
+        FreshM (ITree _ (fun t => Expr Γ Δ ξ t l) τ)
       end.
 
-  Definition justOne Γ Δ ξ τ : ITree _ (fun t => Expr Γ Δ ξ t) [τ] -> Expr Γ Δ ξ τ.
+  Definition justOne Γ Δ ξ τ l : ITree _ (fun t => Expr Γ Δ ξ t l) [τ] -> Expr Γ Δ ξ τ l.
     intros.
     inversion X; auto.
     Defined.
@@ -223,7 +223,7 @@ Section HaskProofToStrong.
     Defined.
 
   Definition ujudg2exprType Γ (ξ:ExprVarResolver Γ)(Δ:CoercionEnv Γ) Σ τ l : Type :=
-    forall vars, Σ = mapOptionTree ξ vars -> FreshM (ITree _ (fun t => Expr Γ Δ ξ (t@@l)) τ).
+    forall vars, Σ = mapOptionTree ξ vars -> FreshM (ITree _ (fun t => Expr Γ Δ ξ t l) τ).
 
   Definition urule2expr  : forall Γ Δ h j t l (r:@Arrange _ h j) (ξ:VV -> LeveledHaskType Γ ★),
     ujudg2exprType Γ ξ Δ h t l ->
@@ -354,7 +354,7 @@ Section HaskProofToStrong.
 
   Definition letrec_helper Γ Δ l (varstypes:Tree ??(VV * HaskType Γ ★)) ξ' :
     ITree (HaskType Γ ★)
-         (fun t : HaskType Γ ★ => Expr Γ Δ ξ' (t @@ l))
+         (fun t : HaskType Γ ★ => Expr Γ Δ ξ' t l)
          (mapOptionTree (unlev ○ ξ' ○ (@fst _ _)) varstypes)
          -> ELetRecBindings Γ Δ ξ' l varstypes.
     intros.
@@ -421,7 +421,8 @@ Section HaskProofToStrong.
      prod (judg2exprType (pcb_judg (projT2 pcb))) {vars' : Tree ??VV & pcb_freevars (projT2 pcb) = mapOptionTree ξ vars'} ->
      ((fun sac => FreshM
        { scb : StrongCaseBranchWithVVs VV eqdec_vv tc avars sac
-         & Expr (sac_gamma sac Γ) (sac_delta sac Γ avars (weakCK'' Δ)) (scbwv_xi scb ξ lev) (weakLT' (tbranches @@  lev)) }) (projT1 pcb)).
+         & Expr (sac_gamma sac Γ) (sac_delta sac Γ avars (weakCK'' Δ)) (scbwv_xi scb ξ lev)
+         (weakT' tbranches) (weakL' lev) }) (projT1 pcb)).
     intro pcb.
     intro X.
     simpl in X.
@@ -567,8 +568,11 @@ Section HaskProofToStrong.
 
   destruct case_RVar.
     apply ILeaf; simpl; intros; refine (return ILeaf _ _).
-    destruct vars; simpl in H; inversion H; destruct o. inversion H1. rewrite H2.
-    apply EVar.
+    destruct vars; simpl in H; inversion H; destruct o. inversion H1.
+    set (@EVar _ _ _ Δ ξ v) as q.
+    rewrite <- H2 in q.
+    simpl in q.
+    apply q.
     inversion H.
 
   destruct case_RGlobal.
@@ -852,9 +856,9 @@ Section HaskProofToStrong.
     admit.
     Defined.
 
-  Definition proof2expr Γ Δ τ Σ (ξ0: VV -> LeveledHaskType Γ ★)
-    {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [unlev τ] @ getlev τ] ->
-    FreshM (???{ ξ : _ & Expr Γ Δ ξ τ}).
+  Definition proof2expr Γ Δ τ l Σ (ξ0: VV -> LeveledHaskType Γ ★)
+    {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [τ] @ l] ->
+    FreshM (???{ ξ : _ & Expr Γ Δ ξ τ l}).
     intro pf.
     set (mkSIND systemfc_all_rules_one_conclusion _ _ _ pf (scnd_weak [])) as cnd.
     apply closed2expr in cnd.
@@ -872,7 +876,6 @@ Section HaskProofToStrong.
     exists ξ.
     apply ileaf in it.
     simpl in it.
-    destruct τ.
     apply it.
     apply INone.
     Defined.

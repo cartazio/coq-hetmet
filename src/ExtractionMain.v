@@ -132,7 +132,7 @@ Section core2proof.
                     OK (eol+++eol+++eol+++
                         "\begin{preview}"+++eol+++
                         "$\displaystyle "+++
-                        toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ e))+++
+                        toString (nd_ml_toLatexMath (@expr2proof _ _ _ _ _ _ _ e))+++
                         " $"+++eol+++
                         "\end{preview}"+++eol+++eol+++eol)
                   )))))))).
@@ -432,9 +432,9 @@ Section core2proof.
 
                       (addErrorMessage ("HaskStrong...")
                         (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
-                                            hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ e)
+                                            hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ _ e)
                          in (* insert HaskProof-to-HaskProof manipulations here *)
-                         OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ@@nil) _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
+                         OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ) nil _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                          >>= fun e' =>
                            (snd e') >>= fun e'' =>
                          strongExprToWeakExpr hetmet_brak' hetmet_esc'

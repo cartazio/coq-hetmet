@@ -107,10 +107,10 @@ Section HaskStrongToWeak.
       | (vv,wev)::rest => update_chi (update_chi' χ rest) vv wev
     end.
 
-  Fixpoint exprToWeakExpr {Γ}{Δ}{ξ}{τ}(χ:VV->???WeakExprVar)(exp:@Expr _ eqVV Γ Δ ξ τ)
+  Fixpoint exprToWeakExpr {Γ}{Δ}{ξ}{τ}{l}(χ:VV->???WeakExprVar)(exp:@Expr _ eqVV Γ Δ ξ τ l)
     : InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ
     -> UniqM WeakExpr :=
-    match exp as E in @Expr _ _ G D X L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> UniqM WeakExpr with
+    match exp as E in @Expr _ _ G D X T L return InstantiatedTypeEnv (fun _ => WeakTypeVar) G -> UniqM WeakExpr with
     | EVar  Γ' _ ξ' ev              => fun ite => match χ ev with OK v => return WEVar v | Error s => failM s end
     | EGlobal Γ' _ ξ'   g v lev     => fun ite => bind tv' = mapM (ilist_to_list (ilmap (fun κ x => typeToWeakType x ite) v))
                                                 ; return (fold_left (fun x y => WETyApp x y) tv' (WEVar g))
@@ -133,7 +133,7 @@ Section HaskStrongToWeak.
     | EBrak Γ' _ _ ec t _ e         => fun ite => bind t' = typeToWeakType t ite
                                                 ; bind e' = exprToWeakExpr χ e ite
                                                 ; return WEBrak hetmet_brak (ec _ ite) e' t'
-    | ENote _ _ _ _ n e             => fun ite => bind e' = exprToWeakExpr χ e ite
+    | ENote _ _ _ _ _ n e           => fun ite => bind e' = exprToWeakExpr χ e ite
                                                 ; return WENote n e'
     | ETyApp  Γ Δ κ σ τ ξ l       e => fun ite => bind t' = typeToWeakType τ ite
                                                 ; bind e' = exprToWeakExpr χ e ite
@@ -158,7 +158,7 @@ Section HaskStrongToWeak.
                   ; bind tbranches' = @typeToWeakType Γ _ tbranches ite
                   ; bind escrut'    = exprToWeakExpr χ escrut ite
                   ; bind branches'  =
-                      ((fix caseBranches (tree:Tree ??{sac : _ & { scb : StrongCaseBranchWithVVs VV _ _ _ sac & Expr _ _ _ _ } })
+                      ((fix caseBranches (tree:Tree ??{sac : _ & { scb : StrongCaseBranchWithVVs VV _ _ _ sac & Expr _ _ _ _ _ } })
                             : UniqM (Tree ??(WeakAltCon*list WeakTypeVar*list WeakCoerVar*list WeakExprVar*WeakExpr)) :=
                             match tree with
                               | T_Leaf None           => return []
@@ -208,7 +208,7 @@ Section HaskStrongToWeak.
   end.
 
 
-  Fixpoint strongExprToWeakExpr (us:UniqSupply){Γ}{Δ}{ξ}{τ}(exp:@Expr _ eqVV Γ Δ ξ τ)
+  Fixpoint strongExprToWeakExpr (us:UniqSupply){Γ}{Δ}{ξ}{τ}{l}(exp:@Expr _ eqVV Γ Δ ξ τ l)
     (ite:InstantiatedTypeEnv (fun _ => WeakTypeVar) Γ)
     : ???WeakExpr :=
     match exprToWeakExpr (fun v => Error ("unbound variable " +++ toString v)) exp ite with
