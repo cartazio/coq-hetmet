@@ -509,6 +509,242 @@ Section HaskProofToStrong.
 
     Defined.
 
+  Lemma manyFresh : forall Γ Σ (ξ0:VV -> LeveledHaskType Γ ★),
+    FreshM { vars : _ & { ξ : VV -> LeveledHaskType Γ ★ & Σ = mapOptionTree ξ vars } }.
+    intros Γ Σ.
+    induction Σ; intro ξ.
+    destruct a.
+    destruct l as [τ l].
+    set (fresh_lemma' Γ [τ] [] [] ξ l (refl_equal _)) as q.
+    refine (q >>>= fun q' => return _).
+    apply FreshMon.
+    clear q.
+    destruct q' as [varstypes [pf1 [pf2 distpf]]].
+    exists (mapOptionTree (@fst _ _) varstypes).
+    exists (update_xi ξ l (leaves varstypes)).
+    symmetry; auto.
+    refine (return _).
+    exists [].
+    exists ξ; auto.
+    refine (bind f1 = IHΣ1 ξ ; _).
+    apply FreshMon.
+    destruct f1 as [vars1 [ξ1 pf1]].
+    refine (bind f2 = IHΣ2 ξ1 ; _).
+    apply FreshMon.
+    destruct f2 as [vars2 [ξ2 pf22]].
+    refine (return _).
+    exists (vars1,,vars2).
+    exists ξ2.
+    simpl.
+    rewrite pf22.
+    rewrite pf1.
+    admit.         (* freshness assumption *)
+    Defined.
+
+  Definition rlet Γ Δ Σ₁ Σ₂ σ₁ σ₂ p :
+    forall (X_ : ITree Judg judg2exprType
+         ([Γ > Δ > Σ₁ |- [σ₁] @ p],, [Γ > Δ > [σ₁ @@  p],, Σ₂ |- [σ₂] @ p])),
+   ITree Judg judg2exprType [Γ > Δ > Σ₁,, Σ₂ |- [σ₂] @ p].
+    intros.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+
+    refine (fresh_lemma _ ξ _ _ σ₁ p H2 >>>= (fun pf => _)).
+    apply FreshMon.
+
+    destruct pf as [ vnew [ pf1 pf2 ]].
+    set (update_xi ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
+    inversion X_.
+    apply ileaf in X.
+    apply ileaf in X0.
+    simpl in *.
+
+    refine (X ξ vars1 _ >>>= fun X0' => _).
+    apply FreshMon.
+    simpl.
+    auto.
+
+    refine (X0 ξ' ([vnew],,vars2) _ >>>= fun X1' => _).
+    apply FreshMon.
+    simpl.
+    rewrite pf2.
+    rewrite pf1.
+    reflexivity.
+    apply FreshMon.
+
+    apply ILeaf.
+    apply ileaf in X1'.
+    apply ileaf in X0'.
+    simpl in *.
+    apply ELet with (ev:=vnew)(tv:=σ₁).
+    apply X0'.
+    apply X1'.
+    Defined.
+
+  Definition vartree Γ Δ Σ lev ξ :
+    forall vars, Σ @@@ lev = mapOptionTree ξ vars ->
+    ITree (HaskType Γ ★) (fun t : HaskType Γ ★ => Expr Γ Δ ξ t lev) Σ.
+    induction Σ; intros.
+    destruct a.
+    intros; simpl in *.
+    apply ILeaf.
+    destruct vars; try destruct o; inversion H.
+    set (EVar Γ Δ ξ v) as q.
+    rewrite <- H1 in q.
+    apply q.
+    intros.
+    apply INone.
+    intros.
+    destruct vars; try destruct o; inversion H.
+    apply IBranch.
+    eapply IHΣ1.
+    apply H1.
+    eapply IHΣ2.
+    apply H2.
+    Defined.
+
+
+  Definition rdrop  Γ Δ Σ₁ Σ₁₂ a lev :
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- a,,Σ₁₂ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- a @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *.
+    intros.
+    set (X ξ vars H) as q.
+    simpl in q.
+    refine (q >>>= fun q' => return _).
+    apply FreshMon.
+    inversion q'.
+    apply X0.
+    Defined.
+
+  Definition rdrop'  Γ Δ Σ₁ Σ₁₂ a lev :
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- Σ₁₂,,a @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- a @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *.
+    intros.
+    set (X ξ vars H) as q.
+    simpl in q.
+    refine (q >>>= fun q' => return _).
+    apply FreshMon.
+    inversion q'.
+    auto.
+    Defined.
+
+  Definition rdrop''  Γ Δ Σ₁ Σ₁₂ lev :
+    ITree Judg judg2exprType [Γ > Δ > [],,Σ₁ |- Σ₁₂ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- Σ₁₂ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    eapply X with (vars:=[],,vars).
+    rewrite H; reflexivity.
+    Defined.
+
+  Definition rdrop'''  Γ Δ a Σ₁ Σ₁₂ lev :
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |- Σ₁₂ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > a,,Σ₁ |- Σ₁₂ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+    eapply X with (vars:=vars2).
+    auto.
+    Defined.
+
+  Definition rassoc  Γ Δ Σ₁ a b c lev :
+    ITree Judg judg2exprType [Γ > Δ > ((a,,b),,c) |- Σ₁ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > (a,,(b,,c)) |- Σ₁ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+    destruct vars2; try destruct o; inversion H2.
+    apply X with (vars:=(vars1,,vars2_1),,vars2_2).
+    subst; reflexivity.
+    Defined.
+
+  Definition rassoc'  Γ Δ Σ₁ a b c lev :
+    ITree Judg judg2exprType [Γ > Δ > (a,,(b,,c)) |- Σ₁ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > ((a,,b),,c) |- Σ₁ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+    destruct vars1; try destruct o; inversion H1.
+    apply X with (vars:=vars1_1,,(vars1_2,,vars2)).
+    subst; reflexivity.
+    Defined.
+
+  Definition swapr  Γ Δ Σ₁ a b c lev :
+    ITree Judg judg2exprType [Γ > Δ > ((a,,b),,c) |- Σ₁ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > ((b,,a),,c) |- Σ₁ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+    destruct vars1; try destruct o; inversion H1.
+    apply X with (vars:=(vars1_2,,vars1_1),,vars2).
+    subst; reflexivity.
+    Defined.
+
+  Definition rdup  Γ Δ Σ₁ a  c lev :
+    ITree Judg judg2exprType [Γ > Δ > ((a,,a),,c) |- Σ₁ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > (a,,c) |- Σ₁ @ lev].
+    intros.
+    apply ileaf in X.
+    apply ILeaf.
+    simpl in *; intros.
+    destruct vars; try destruct o; inversion H.
+    apply X with (vars:=(vars1,,vars1),,vars2).    (* is this allowed? *)
+    subst; reflexivity.
+    Defined.
+
+  (* holy cow this is ugly *)
+  Definition rcut Γ Δ  Σ₃ lev  Σ₁₂  :
+    forall Σ₁ Σ₂,
+    ITree Judg judg2exprType [Γ > Δ > Σ₁ |-  Σ₁₂ @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ >  Σ₁₂ @@@ lev,,Σ₂ |- [Σ₃] @ lev] ->
+    ITree Judg judg2exprType [Γ > Δ > Σ₁,,Σ₂ |- [Σ₃] @ lev].
+
+    induction Σ₁₂.
+    intros.
+    destruct a.
+
+    eapply rlet.
+    apply IBranch.
+    apply X.
+    apply X0.
+
+    simpl in X0.
+    apply rdrop'' in X0.
+    apply rdrop'''.
+    apply X0.
+
+    intros.
+    simpl in X0.
+    apply rassoc in X0.
+    set (IHΣ₁₂1 _ _ (rdrop  _ _ _ _ _ _ X) X0) as q.
+    set (IHΣ₁₂2 _ (Σ₁,,Σ₂) (rdrop' _ _ _ _ _ _ X)) as q'.
+    apply rassoc' in q.
+    apply swapr in q.
+    apply rassoc in q.
+    set (q' q) as q''.
+    apply rassoc' in q''.
+    apply rdup in q''.
+    apply q''.
+    Defined.
 
   Definition rule2expr : forall h j (r:Rule h j), ITree _ judg2exprType h -> ITree _ judg2exprType j.
 
@@ -528,6 +764,9 @@ Section HaskProofToStrong.
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
+      | RCut    Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l    => let case_RCut := tt          in _
+      | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
+      | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
       | RJoin   Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid   _ _ l                 => let case_RVoid := tt   in _
@@ -645,40 +884,8 @@ Section HaskProofToStrong.
     apply (EApp _ _ _ _ _ _ q1' q2').
 
   destruct case_RLet.
-    apply ILeaf.
-    simpl in *; intros.
-    destruct vars; try destruct o; inversion H.
-
-    refine (fresh_lemma _ ξ _ _ σ₁ p H2 >>>= (fun pf => _)).
-    apply FreshMon.
-
-    destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_xi ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
-    inversion X_.
-    apply ileaf in X.
-    apply ileaf in X0.
-    simpl in *.
-
-    refine (X ξ vars1 _ >>>= fun X0' => _).
-    apply FreshMon.
-    simpl.
-    auto.
-
-    refine (X0 ξ' ([vnew],,vars2) _ >>>= fun X1' => _).
-    apply FreshMon.
-    simpl.
-    rewrite pf2.
-    rewrite pf1.
-    reflexivity.
-    apply FreshMon.
-
-    apply ILeaf.
-    apply ileaf in X1'.
-    apply ileaf in X0'.
-    simpl in *.
-    apply ELet with (ev:=vnew)(tv:=σ₁).
-    apply X0'.
-    apply X1'.
+    eapply rlet.
+    apply X_.
 
   destruct case_RWhere.
     apply ILeaf.
@@ -719,6 +926,57 @@ Section HaskProofToStrong.
     apply ELet with (ev:=vnew)(tv:=σ₁).
     apply X1'.
     apply X0'.
+
+  destruct case_RCut.
+    inversion X_.
+    subst.
+    clear X_.
+    induction Σ₃.
+    destruct a.
+    subst.
+    eapply rcut.
+    apply X.
+    apply X0.
+
+    apply ILeaf.
+    simpl.
+    intros.
+    refine (return _).
+    apply INone.
+    set (IHΣ₃1 (rdrop  _ _ _ _ _ _ X0)) as q1.
+    set (IHΣ₃2 (rdrop' _ _ _ _ _ _ X0)) as q2.
+    apply ileaf in q1.
+    apply ileaf in q2.
+    simpl in *.
+    apply ILeaf.
+    simpl.
+    intros.
+    refine (q1 _ _ H >>>= fun q1' => q2 _ _ H >>>= fun q2' => return _).
+    apply FreshMon.
+    apply FreshMon.
+    apply IBranch; auto.
+
+  destruct case_RLeft.
+    apply ILeaf.
+    simpl; intros.
+    destruct vars; try destruct o; inversion H.
+    refine (X_ _ _ H2 >>>= fun X' => return _).
+    apply FreshMon.
+    apply IBranch.
+    eapply vartree.
+    apply H1.
+    apply X'.
+
+  destruct case_RRight.
+    apply ILeaf.
+    simpl; intros.
+    destruct vars; try destruct o; inversion H.
+    refine (X_ _ _ H1 >>>= fun X' => return _).
+    apply FreshMon.
+    apply IBranch.
+    apply X'.
+    eapply vartree.
+    apply H2.
 
   destruct case_RVoid.
     apply ILeaf; simpl; intros.
@@ -824,38 +1082,6 @@ Section HaskProofToStrong.
     | scnd_comp   x h c cnd' r  => let case_rule   := tt in fun q => rule2expr _ _ r (closed2expr _ _ cnd' q)
     | scnd_branch _ _ _ c1 c2   => let case_branch := tt in fun q => IBranch _ _ (closed2expr _ _ c1 q) (closed2expr _ _ c2 q)
     end.
-
-  Lemma manyFresh : forall Γ Σ (ξ0:VV -> LeveledHaskType Γ ★),
-    FreshM { vars : _ & { ξ : VV -> LeveledHaskType Γ ★ & Σ = mapOptionTree ξ vars } }.
-    intros Γ Σ.
-    induction Σ; intro ξ.
-    destruct a.
-    destruct l as [τ l].
-    set (fresh_lemma' Γ [τ] [] [] ξ l (refl_equal _)) as q.
-    refine (q >>>= fun q' => return _).
-    apply FreshMon.
-    clear q.
-    destruct q' as [varstypes [pf1 [pf2 distpf]]].
-    exists (mapOptionTree (@fst _ _) varstypes).
-    exists (update_xi ξ l (leaves varstypes)).
-    symmetry; auto.
-    refine (return _).
-    exists [].
-    exists ξ; auto.
-    refine (bind f1 = IHΣ1 ξ ; _).
-    apply FreshMon.
-    destruct f1 as [vars1 [ξ1 pf1]].
-    refine (bind f2 = IHΣ2 ξ1 ; _).
-    apply FreshMon.
-    destruct f2 as [vars2 [ξ2 pf22]].
-    refine (return _).
-    exists (vars1,,vars2).
-    exists ξ2.
-    simpl.
-    rewrite pf22.
-    rewrite pf1.
-    admit.
-    Defined.
 
   Definition proof2expr Γ Δ τ l Σ (ξ0: VV -> LeveledHaskType Γ ★)
     {zz:ToString VV} : ND Rule [] [Γ > Δ > Σ |- [τ] @ l] ->

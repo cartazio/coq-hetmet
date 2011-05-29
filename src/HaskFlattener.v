@@ -784,6 +784,21 @@ Section HaskFlattener.
     admit.
     Qed.
 
+  Lemma drop_to_nothing : forall (Γ:TypeEnv) Σ (lev:HaskLevel Γ),
+    drop_lev lev (Σ @@@ lev) = mapTree (fun _ => None) (mapTree (fun _ => tt) Σ).
+    intros.
+    induction Σ.
+    destruct a; simpl.
+    drop_simplify.
+    auto.
+    drop_simplify.
+    auto.
+    simpl.
+    rewrite <- IHΣ1.
+    rewrite <- IHΣ2.
+    reflexivity.
+    Qed.
+
   Definition flatten_proof :
     forall  {h}{c},
       ND SRule h c ->
@@ -816,6 +831,9 @@ Section HaskFlattener.
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
       | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
+      | RCut    Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l    => let case_RCut := tt          in _
+      | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
+      | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev   => let case_RWhere := tt          in _
       | RJoin    Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid    _ _       l           => let case_RVoid := tt   in _
@@ -999,6 +1017,125 @@ Section HaskFlattener.
       apply RArrange.
       apply ALeft.
       apply ACanL.
+
+    destruct case_RCut.
+      simpl.
+      destruct l as [|ec lev]; simpl.
+        apply nd_rule.
+        replace (mapOptionTree flatten_leveled_type (Σ₁₂ @@@ nil)) with (mapOptionTree flatten_type Σ₁₂ @@@ nil).
+        apply RCut.
+        induction Σ₁₂; try destruct a; auto.
+        simpl.
+        rewrite <- IHΣ₁₂1.
+        rewrite <- IHΣ₁₂2.
+        reflexivity.
+      simpl.
+      repeat drop_simplify.
+      simpl.
+      repeat take_simplify.
+      simpl.
+      set (drop_lev (ec :: lev) (Σ₁₂ @@@ (ec :: lev))) as x1.
+      rewrite take_lemma'.
+      rewrite mapOptionTree_compose.
+      rewrite mapOptionTree_compose.
+      rewrite mapOptionTree_compose.
+      rewrite unlev_relev.
+      rewrite <- mapOptionTree_compose.
+      rewrite <- mapOptionTree_compose.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ]. 
+      apply nd_prod.
+      apply nd_id.
+      eapply nd_comp.
+      eapply nd_rule.
+      eapply RArrange.
+      eapply ARight.
+      unfold x1.
+      rewrite drop_to_nothing.
+      apply arrangeCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ₁₂)).
+      admit. (* OK *)
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ACanL | idtac ].
+      set (mapOptionTree flatten_type Σ₁₂) as a.
+      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₁)) as b.
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₂)) as c.
+      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₂)) as d.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply nd_prod.
+      simpl.
+      eapply ga_first.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
+      simpl.
+      apply precompose.
+
+    destruct case_RLeft.
+      simpl.
+      destruct l as [|ec lev].
+      simpl.
+        replace (mapOptionTree flatten_leveled_type (Σ @@@ nil)) with (mapOptionTree flatten_type Σ @@@ nil).
+        apply nd_rule.
+        apply RLeft.
+        induction Σ; try destruct a; auto.
+        simpl.
+        rewrite <- IHΣ1.
+        rewrite <- IHΣ2.
+        reflexivity.
+      repeat drop_simplify.
+        rewrite drop_to_nothing.
+        simpl.
+        eapply nd_comp.
+        Focus 2.
+        eapply nd_rule.
+        eapply RArrange.
+        eapply ARight.
+        apply arrangeUnCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ)).
+        admit (* FIXME *).
+        idtac.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanL ].
+        apply boost.
+        take_simplify.
+        simpl.
+        replace (take_lev (ec :: lev) (Σ @@@ (ec :: lev))) with (Σ @@@ (ec::lev)).
+        rewrite mapOptionTree_compose.
+        rewrite mapOptionTree_compose.
+        rewrite unlev_relev.
+        apply ga_second.
+      rewrite take_lemma'.
+      reflexivity.
+        
+    destruct case_RRight.
+      simpl.
+      destruct l as [|ec lev].
+      simpl.
+        replace (mapOptionTree flatten_leveled_type (Σ @@@ nil)) with (mapOptionTree flatten_type Σ @@@ nil).
+        apply nd_rule.
+        apply RRight.
+        induction Σ; try destruct a; auto.
+        simpl.
+        rewrite <- IHΣ1.
+        rewrite <- IHΣ2.
+        reflexivity.
+      repeat drop_simplify.
+        rewrite drop_to_nothing.
+        simpl.
+        eapply nd_comp.
+        Focus 2.
+        eapply nd_rule.
+        eapply RArrange.
+        eapply ALeft.
+        apply arrangeUnCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ)).
+        admit (* FIXME *).
+        idtac.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
+        apply boost.
+        take_simplify.
+        simpl.
+        replace (take_lev (ec :: lev) (Σ @@@ (ec :: lev))) with (Σ @@@ (ec::lev)).
+        rewrite mapOptionTree_compose.
+        rewrite mapOptionTree_compose.
+        rewrite unlev_relev.
+        apply ga_first.
+      rewrite take_lemma'.
+      reflexivity.
 
     destruct case_RVoid.
       simpl.

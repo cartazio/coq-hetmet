@@ -232,6 +232,9 @@ Section HaskSkolemizer.
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
       | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
+      | RCut    Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l    => let case_RCut := tt          in _
+      | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
+      | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev => let case_RWhere := tt          in _
       | RJoin    Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid    _ _           l       => let case_RVoid := tt   in _
@@ -428,6 +431,73 @@ Section HaskSkolemizer.
         eapply AuAssoc.
         apply ALeft.
         eapply AuAssoc.
+
+      destruct case_RCut.
+        simpl; destruct l; [ apply nd_rule; apply SFlat; apply RCut | idtac ].
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ₃) as Σ₃''.
+        set (mapOptionTree drop_arg_types_as_tree Σ₃) as Σ₃'''.
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ₁₂) as Σ₁₂''.
+        set (mapOptionTree drop_arg_types_as_tree Σ₁₂) as Σ₁₂'''.
+        destruct (decide_tree_empty Σ₁₂''); [ idtac | apply (Prelude_error "used RCut on a variable with function type") ].
+        destruct (eqd_dec Σ₁₂ Σ₁₂'''); [ idtac | apply (Prelude_error "used RCut on a variable with function type") ].
+        rewrite <- e.
+        eapply nd_comp.
+        eapply nd_prod; [ apply nd_id | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AuAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RCut ].
+        apply nd_prod.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR ].
+        apply nd_rule.
+        apply SFlat.
+        apply RArrange.
+        apply ALeft.
+        destruct s.
+        eapply arrangeCancelEmptyTree with (q:=x).
+        rewrite e0.
+        admit.   (* FIXME, but not serious *)
+        apply nd_id.
+
+      destruct case_RLeft.
+        simpl; destruct l; [ apply nd_rule; apply SFlat; apply RLeft | idtac ].
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ₂) as Σ₂'.
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ) as Σ'.
+        set (mapOptionTree drop_arg_types_as_tree Σ₂) as Σ₂''.
+        set (mapOptionTree drop_arg_types_as_tree Σ) as Σ''.
+        destruct (decide_tree_empty (Σ' @@@ (h::l)));
+          [ idtac | apply (Prelude_error "used RLeft on a variable with function type") ].
+        destruct (eqd_dec Σ Σ''); [ idtac | apply (Prelude_error "used RLeft on a variable with function type") ].
+        rewrite <- e.
+        clear Σ'' e.
+        destruct s.
+        set (arrangeUnCancelEmptyTree _ _ e) as q.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply ARight; eapply q ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply AuCanL; eapply q ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AAssoc ].
+        apply nd_rule.
+        eapply SFlat.
+        eapply RLeft.
+        
+      destruct case_RRight.
+        simpl; destruct l; [ apply nd_rule; apply SFlat; apply RRight | idtac ].
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ₂) as Σ₂'.
+        set (mapOptionTreeAndFlatten take_arg_types_as_tree Σ) as Σ'.
+        set (mapOptionTree drop_arg_types_as_tree Σ₂) as Σ₂''.
+        set (mapOptionTree drop_arg_types_as_tree Σ) as Σ''.
+        destruct (decide_tree_empty (Σ' @@@ (h::l)));
+          [ idtac | apply (Prelude_error "used RRight on a variable with function type") ].
+        destruct (eqd_dec Σ Σ''); [ idtac | apply (Prelude_error "used RRight on a variable with function type") ].
+        rewrite <- e.
+        clear Σ'' e.
+        destruct s.
+        set (arrangeUnCancelEmptyTree _ _ e) as q.
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply ALeft; eapply q ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply AuCanR ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AAssoc ].
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply AExch ].  (* yuck *)
+        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AuAssoc ].
+        eapply nd_rule.
+        eapply SFlat.
+        apply RRight.
 
       destruct case_RVoid.
         simpl.

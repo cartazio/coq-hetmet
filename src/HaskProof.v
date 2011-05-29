@@ -73,6 +73,10 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁ |- [σ₁]@l],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂]@l ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   ]@l]
 | RWhere         : ∀ Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,([σ₁@@l],,Σ₃) |- [σ₂]@l ],,[Γ>Δ> Σ₂ |- [σ₁]@l])     [Γ>Δ> Σ₁,,(Σ₂,,Σ₃) |- [σ₂ ]@l]
 
+| RCut           : ∀ Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l,  Rule ([Γ>Δ> Σ₁ |- Σ₁₂ @l],,[Γ>Δ> (Σ₁₂@@@l),,Σ₂ |- Σ₃@l ]) [Γ>Δ> Σ₁,,Σ₂ |- Σ₃@l]
+| RLeft          : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> (Σ@@@l),,Σ₁ |- Σ,,Σ₂@l]
+| RRight         : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> Σ₁,,(Σ@@@l) |- Σ₂,,Σ@l]
+
 | RVoid    : ∀ Γ Δ l,               Rule [] [Γ > Δ > [] |- [] @l ]
 
 | RAppT   : forall Γ Δ Σ κ σ (τ:HaskType Γ κ) l,      Rule [Γ>Δ> Σ   |- [HaskTAll κ σ]@l]      [Γ>Δ>    Σ     |- [substT σ τ]@l]
@@ -128,6 +132,9 @@ Lemma no_rules_with_multiple_conclusions : forall c h,
     try apply no_urules_with_empty_conclusion in u; try apply u.
     destruct X0; destruct s; inversion e.
     auto.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
+    destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
