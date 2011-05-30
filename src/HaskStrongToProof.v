@@ -961,10 +961,13 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
       destruct q.
       simpl in *.
       apply n.
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
-    eapply nd_comp; [ apply nd_llecnac | idtac ].
-    apply nd_prod; auto.
-  Defined.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply nd_prod.
+      apply IHX1.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLeft ].
+      apply IHX2.
+      Defined.
 
 Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
     forall branches body (dist:distinct (leaves (mapOptionTree (@fst _ _) tree))),
@@ -1015,10 +1018,14 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   simpl.
 
   set (letRecSubproofsToND _ _ _ _ _ branches lrsp) as q.
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RJoin ].
-    eapply nd_comp; [ apply nd_rlecnac | idtac ].
-    apply nd_prod; auto.
-    Defined.
+
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+      eapply nd_comp; [ apply nd_llecnac | idtac ].
+      apply nd_prod.
+      apply q.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLeft ].
+      apply pf.
+      Defined.
 
 Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _}{sac} :
   forall scb:StrongCaseBranchWithVVs _ _ tc atypes sac,

@@ -194,7 +194,6 @@ Fixpoint nd_ruleToRawLatexMath {h}{c}(r:Rule h c) : string :=
     | RLeft         _ _ _ _ _ _       => "Left"
     | RRight        _ _ _ _ _ _       => "Right"
     | RWhere        _ _ _ _ _ _ _ _   => "Where"
-    | RJoin         _ _ _ _ _ _ _     => "RJoin"
     | RLetRec       _ _ _ _ _ _       => "LetRec"
     | RCase         _ _ _ _ _ _ _ _   => "Case"
     | RBrak         _ _ _ _ _ _       => "Brak"
@@ -223,7 +222,8 @@ Fixpoint nd_hideRule {h}{c}(r:Rule h c) : bool :=
   match r with
     | RArrange _    _ _ _ _ _ r => nd_hideURule r
     | RVoid _  _ _         => true
-    | RJoin _ _ _ _ _ _ _ => true
+    | RLeft _ _ _ _  _ _         => true
+    | RRight _  _ _ _ _ _        => true
     | _                         => false
   end.
 

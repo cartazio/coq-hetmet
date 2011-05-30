@@ -236,7 +236,6 @@ Section HaskSkolemizer.
       | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev => let case_RWhere := tt          in _
-      | RJoin    Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid    _ _           l       => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev     => let case_RBrak := tt         in _
       | REsc     Γ Δ t ec succ lev     => let case_REsc := tt          in _
@@ -350,14 +349,6 @@ Section HaskSkolemizer.
         apply RCast.
         apply γ.
         apply (Prelude_error "found RCast at level >0").
-
-      destruct case_RJoin.
-        simpl.
-        destruct l.
-        apply nd_rule.
-        apply SFlat.
-        apply RJoin.
-        apply (Prelude_error "found RJoin at level >0").
 
       destruct case_RApp.
         simpl.

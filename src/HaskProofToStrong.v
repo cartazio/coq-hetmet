@@ -768,7 +768,6 @@ Section HaskProofToStrong.
       | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
-      | RJoin   Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid   _ _ l                 => let case_RVoid := tt   in _
       | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
       | REsc    Σ a b c n m           => let case_REsc := tt          in _
@@ -848,19 +847,6 @@ Section HaskProofToStrong.
     apply x.
     apply ileaf in X. simpl in X.
     apply X.
-
-  destruct case_RJoin.
-    apply ILeaf; simpl; intros.
-    inversion X_.
-    apply ileaf in X.
-    apply ileaf in X0.
-    simpl in *.
-    destruct vars; inversion H.
-    destruct o; inversion H3.
-    refine (X ξ vars1 H3 >>>= fun X' => X0 ξ vars2 H4 >>>= fun X0' => return _).
-    apply FreshMon.
-    apply FreshMon.
-    apply IBranch; auto.
 
   destruct case_RApp.    
     apply ILeaf.
