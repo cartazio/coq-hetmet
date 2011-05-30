@@ -19,6 +19,7 @@ Require Import HaskWeakToCore.
 Require Import HaskStrongTypes.
 Require Import HaskStrong.
 Require Import HaskCoreVars.
+Require Import HaskCoreToWeak.
 Require Import HaskCoreTypes.
 
 Open Scope string_scope.

@@ -50,19 +50,12 @@ cmpAlts (a1,_,_) (a2,_,_)         = Data.Ord.compare a2 a1
 sortAlts :: [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)] -> [(CoreSyn.AltCon,[Var.Var],CoreSyn.Expr Var.Var)]
 sortAlts x = Data.List.sortBy (\a b -> if a `CoreSyn.ltAlt` b then Data.Ord.LT else Data.Ord.GT) x
 
-coreVarToWeakVar :: Var.Var -> WeakVar
-coreVarToWeakVar v | Id.isId     v = WExprVar (WeakExprVar v (errOrFail (coreTypeToWeakType (Var.varType v))))
-coreVarToWeakVar v | Var.isTyVar v = WTypeVar (WeakTypeVar v (coreKindToKind (Var.varType v)))
-coreVarToWeakVar v | Var.isCoVar v
-  = WCoerVar (WeakCoerVar v
-                          (errOrFail (coreTypeToWeakType (Prelude.fst (Coercion.coercionKind (Var.varType v)))))
-                          (errOrFail (coreTypeToWeakType (Prelude.snd (Coercion.coercionKind (Var.varType v))))))
-coreVarToWeakVar _                 =
-   Prelude.error "Var.Var that is neither an expression variable, type variable, nor coercion variable!"
-
-errOrFail :: OrError t -> t
-errOrFail (OK x)    = x
-errOrFail (Error s) = Prelude.error s
+coreVarToWeakVar :: Var.Var -> CoreVarToWeakVarResult
+coreVarToWeakVar v | Id.isId     v = CVTWVR_EVar  (Var.varType v)
+coreVarToWeakVar v | Var.isTyVar v = CVTWVR_TyVar (coreKindToKind (Var.varType v))
+coreVarToWeakVar v | Var.isCoVar v = CVTWVR_CoVar (Prelude.fst (Coercion.coercionKind (Var.varType v)))
+                                                  (Prelude.snd (Coercion.coercionKind (Var.varType v)))
+coreVarToWeakVar _                 = Prelude.error "Var.Var that is neither an expression, type variable, nor coercion variable!"
 
 rawTyFunKind :: TyCon.TyCon -> ( [Kind] , Kind )
 rawTyFunKind tc = ((Prelude.map coreKindToKind (Prelude.take (TyCon.tyConArity tc) argk))
@@ -141,11 +134,9 @@ coreViewDeep t =
                                Prelude.Nothing     -> TypeRep.PredTy p
                                Prelude.Just    t'  -> t'
 
-coreCoercionToWeakCoercion :: Type.Type -> WeakCoercion
-coreCoercionToWeakCoercion c =
- WCoUnsafe (errOrFail (coreTypeToWeakType t1)) (errOrFail (coreTypeToWeakType t2))
-   where
-    (t1,t2) = Coercion.coercionKind c
+getSourceAndTargetTypesOfCoercion :: Type.Type -> (Type.Type,Type.Type)
+getSourceAndTargetTypesOfCoercion c = Coercion.coercionKind (Coercion.typeKind c)
+
 {-
 -- REMEMBER: cotycon applications may be oversaturated
  case c of

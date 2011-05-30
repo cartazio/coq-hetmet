@@ -14,6 +14,11 @@ Require Import HaskCoreVars.
 Require Import HaskCoreTypes.
 Require Import HaskWeakTypes.
 
+Inductive CoreVarToWeakVarResult : Type :=
+| CVTWVR_EVar  : CoreType ->             CoreVarToWeakVarResult
+| CVTWVR_TyVar : Kind     ->             CoreVarToWeakVarResult
+| CVTWVR_CoVar : CoreType -> CoreType -> CoreVarToWeakVarResult.
+
 (* a WeakExprVar just wraps a CoreVar and tags it with the type of its value *)
 Inductive WeakExprVar := weakExprVar : CoreVar -> WeakType -> WeakExprVar.
 
@@ -42,12 +47,8 @@ Definition haskLiteralToWeakType lit : WeakType :=
   WTyCon (haskLiteralToTyCon lit).
   Coercion haskLiteralToWeakType : HaskLiteral >-> WeakType.
 
-Variable coreVarToWeakVar  : CoreVar  -> WeakVar.   Extract Inlined Constant coreVarToWeakVar    => "coreVarToWeakVar".
-Variable getTyConTyVars_   : CoreTyCon   -> list CoreVar.  Extract Inlined Constant getTyConTyVars_   => "getTyConTyVars".
-Definition tyConTyVars (tc:CoreTyCon) :=
-  filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (getTyConTyVars_ tc)).
-  Opaque tyConTyVars.
-Definition tyConKind (tc:TyCon) : list Kind := map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc).
+Variable coreVarToWeakVar  : CoreVar     -> CoreVarToWeakVarResult. Extract Inlined Constant coreVarToWeakVar => "coreVarToWeakVar".
+Variable getTyConTyVars_   : CoreTyCon   -> list CoreVar.           Extract Inlined Constant getTyConTyVars_  => "getTyConTyVars".
 
 Variable rawTyFunKind : CoreTyCon -> ((list Kind) * Kind). Extract Inlined Constant rawTyFunKind => "rawTyFunKind".
 
