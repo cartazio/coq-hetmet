@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -XModalTypes -fcoqpass -dcore-lint #-}
+{-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint #-}
 module Demo (demo) where
 
 

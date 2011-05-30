@@ -275,6 +275,8 @@ Section core2proof.
 
   Section coqPassCoreToCore.
     Context
+    (do_flatten : bool)
+    (do_skolemize : bool)
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
     (hetmet_flatten : CoreVar)
@@ -432,18 +434,41 @@ Section core2proof.
                     ((weakExprToStrongExpr Γ Δ φ ψ ξ (fun _ => true) τ nil we) >>= fun e =>
 
                       (addErrorMessage ("HaskStrong...")
-                        (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
-                                            hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ _ e)
-                         in (* insert HaskProof-to-HaskProof manipulations here *)
-                         OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ) nil _ (fun _ => Prelude_error "unbound unique") _ haskProof) O)
-                         >>= fun e' =>
-                           (snd e') >>= fun e'' =>
-                         strongExprToWeakExpr hetmet_brak' hetmet_esc'
-                           mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
-                           (projT2 e'') INil
-                         >>= fun q =>
-                           OK (weakExprToCoreExpr q)
-                    )))))))))).
+                        (if do_skolemize
+                        then
+                             (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
+                                                 hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ _ e)
+                              in (* insert HaskProof-to-HaskProof manipulations here *)
+                              OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ) nil _
+                                (fun _ => Prelude_error "unbound unique") _ haskProof) O)
+                              >>= fun e' => (snd e') >>= fun e'' =>
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                                mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
+                                (projT2 e'') INil
+                              >>= fun q => OK (weakExprToCoreExpr q))
+                        else (if do_flatten
+                        then
+                          (let haskProof := flatten_proof (*hetmet_flatten' hetmet_unflatten'
+                                                 hetmet_flattened_id' my_ga*) (@expr2proof _ _ _ _ _ _ _ e)
+                              in (* insert HaskProof-to-HaskProof manipulations here *)
+                              OK ((@proof2expr nat _ FreshNat _ _ τ nil _
+                                (fun _ => Prelude_error "unbound unique") _ haskProof) O)
+                              >>= fun e' => (snd e') >>= fun e'' =>
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                                mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
+                                (projT2 e'') INil
+                              >>= fun q => OK (weakExprToCoreExpr q))
+                        else
+                          (let haskProof := @expr2proof _ _ _ _ _ _ _ e
+                              in (* insert HaskProof-to-HaskProof manipulations here *)
+                              OK ((@proof2expr nat _ FreshNat _ _ τ nil _
+                                (fun _ => Prelude_error "unbound unique") _ haskProof) O)
+                              >>= fun e' => (snd e') >>= fun e'' =>
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                                mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
+                                (projT2 e'') INil
+                              >>= fun q => OK (weakExprToCoreExpr q))))
+                  ))))))))).
 
     Definition coreToCoreExpr (ce:@CoreExpr CoreVar) : (@CoreExpr CoreVar) :=
       match coreToCoreExpr' ce with
@@ -473,6 +498,8 @@ Section core2proof.
   End coqPassCoreToCore.
 
     Definition coqPassCoreToCore 
+    (do_flatten  : bool)
+    (do_skolemize  : bool)
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
     (hetmet_flatten   : CoreVar)
@@ -502,6 +529,8 @@ Section core2proof.
     (hetmet_pga_curryl : CoreVar)
     (hetmet_pga_curryr : CoreVar) : list (@CoreBind CoreVar) :=
     coqPassCoreToCore'
+       do_flatten
+       do_skolemize
        hetmet_brak  
        hetmet_esc   
        hetmet_flatten

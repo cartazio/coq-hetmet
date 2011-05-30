@@ -799,7 +799,7 @@ Section HaskFlattener.
     reflexivity.
     Qed.
 
-  Definition flatten_proof :
+  Definition flatten_skolemized_proof :
     forall  {h}{c},
       ND SRule h c ->
       ND  Rule (mapOptionTree (flatten_judgment ) h) (mapOptionTree (flatten_judgment ) c).
@@ -1315,6 +1315,13 @@ Section HaskFlattener.
       apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
       Defined.
 
+  Definition flatten_proof :
+    forall  {h}{c},
+      ND  Rule h c ->
+      ND  Rule h c.
+    apply (Prelude_error "sorry, non-skolemized flattening isn't implemented").
+    Defined.
+
   Definition skolemize_and_flatten_proof :
     forall  {h}{c},
       ND  Rule h c ->
@@ -1324,7 +1331,7 @@ Section HaskFlattener.
     intros.
     rewrite mapOptionTree_compose.
     rewrite mapOptionTree_compose.
-    apply flatten_proof.
+    apply flatten_skolemized_proof.
     apply skolemize_proof.
     apply X.
     Defined.
