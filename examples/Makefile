@@ -4,11 +4,23 @@ open:
 	make demo
 	open .build/test.pdf
 
+#sanity += BiGArrow.hs
+#sanity += CircuitExample.hs
+sanity += CommandSyntaxExample.hs
+sanity += DotProduct.hs
+sanity += GArrowTutorial.hs
+sanity += GArrowVerilog.hs
+sanity += ImmutableHeap.hs
+sanity += IsomorphismForCodeTypes.hs
+sanity += LambdaCalculusInterpreter.hs
+sanity += TypeSafeRun.hs
+sanity += Unflattening.hs
+
 sanity:
 	../../../inplace/bin/ghc-stage2 -dcore-lint -fforce-recomp -fcoqpass -ddump-coqpass -ddump-to-file \
-		`ls *.hs | grep -v Regex | grep -v Unify.hs | grep -v GArrowTikZ.hs ` +RTS -K500M 
-	../../../inplace/bin/ghc-stage2 -dcore-lint -fforce-recomp \
-		RegexMatcher.hs Unify.hs GArrowTikZ.hs
+		$(sanity) \
+	        +RTS -K500M 
+
 
 demo:
 	mkdir -p .build
