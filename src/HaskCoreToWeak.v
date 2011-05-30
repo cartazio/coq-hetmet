@@ -18,8 +18,8 @@ Require Import HaskWeak.
 
 Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
 Variable coreViewDeep : CoreType  -> CoreType.        Extract Inlined Constant coreViewDeep => "coreViewDeep".
-Variable coreCoercionToWeakCoercion : CoreCoercion -> WeakCoercion.
-  Extract Inlined Constant coreCoercionToWeakCoercion => "coreCoercionToWeakCoercion".
+Variable getSourceAndTargetTypesOfCoercion : CoreCoercion -> (CoreType * CoreType).
+  Extract Inlined Constant getSourceAndTargetTypesOfCoercion => "getSourceAndTargetTypesOfCoercion".
 
 (* extracts the Name from a CoreVar *)
 Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
@@ -35,12 +35,16 @@ Definition mkTyFunApplication (tf:TyFun)(lwt:list WeakType) : ???WeakType :=
     let (args,rest) := argsrest in
       OK (fold_left (fun x y => WAppTy x y) rest (WTyFunApp tf args)).
 
+(* a hack to evade the guardedness check of Fixpoint *)
+Variable coreTypeToWeakTypeCheat' : CoreType -> ???WeakType.
+Extract Inlined Constant coreTypeToWeakTypeCheat' => "coreTypeToWeakType'".
+
 Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
   match ct with
   | TyVarTy  cv              => match coreVarToWeakVar cv with
-                                  | WExprVar _  => Error "encountered expression variable in a type"
-                                  | WTypeVar tv => OK (WTyVarTy tv)
-                                  | WCoerVar _  => Error "encountered coercion variable in a type"
+                                  | CVTWVR_EVar  ct    => Error "encountered expression variable in a type"
+                                  | CVTWVR_TyVar k     => OK (WTyVarTy (weakTypeVar cv k))
+                                  | CVTWVR_CoVar t1 t2 => Error "encountered coercion variable in a type"
                                 end
 
   | AppTy    t1 t2           => coreTypeToWeakType' t2 >>= fun t2' => coreTypeToWeakType' t1 >>= fun t1' => OK (WAppTy t1' t2')
@@ -56,11 +60,12 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                          then match lct with
                                 | ((TyVarTy ec)::tbody::nil) =>
                                   match coreVarToWeakVar ec with
-                                    | WTypeVar ec' => coreTypeToWeakType' tbody >>= fun tbody' => OK (WCodeTy ec' tbody')
-                                    | WExprVar _  => Error "encountered expression variable in a modal box type"
-                                    | WCoerVar _  => Error "encountered coercion variable in a modal box type"
+                                    | CVTWVR_EVar  ct    => Error "encountered expression variable in a modal box type"
+                                    | CVTWVR_CoVar t1 t2 => Error "encountered coercion variable in a modal box type"
+                                    | CVTWVR_TyVar k     => coreTypeToWeakType' tbody >>= fun tbody' => 
+                                                              OK (WCodeTy (weakTypeVar ec k) tbody')
                                   end
-                                | _                           => Error ("mis-applied modal box tycon: " +++ toString ct)
+                                | _                      => Error ("mis-applied modal box tycon: " +++ toString ct)
                               end
                          else let tc' := if eqd_dec tc ArrowTyCon
                                          then WFunTyCon
@@ -75,11 +80,12 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
                                 coreTypeToWeakType' t2 >>= fun t2' => 
                                   OK (WAppTy (WAppTy WFunTyCon t1') t2')
   | ForAllTy cv t            => match coreVarToWeakVar cv with
-                                  | WExprVar _  => Error "encountered expression variable in a type abstraction"
-                                  | WTypeVar tv => coreTypeToWeakType' t >>= fun t' => OK (WForAllTy tv t')
-                                  | WCoerVar (weakCoerVar v t1' t2') => 
-                                        coreTypeToWeakType' t >>= fun t3' => 
-                                          OK (WCoFunTy t1' t2' t3')
+                                  | CVTWVR_EVar  ct    => Error "encountered expression variable in a type abstraction"
+                                  | CVTWVR_TyVar k     => coreTypeToWeakType' t >>= fun t' => OK (WForAllTy (weakTypeVar cv k) t')
+                                  | CVTWVR_CoVar t1 t2 => coreTypeToWeakTypeCheat' t1 >>= fun t1' => 
+                                                            coreTypeToWeakTypeCheat' t2 >>= fun t2' => 
+                                                              coreTypeToWeakType' t >>= fun t3' => 
+                                                                OK (WCoFunTy t1' t2' t3')
                                 end
   | PredTy (ClassP  cl lct) => ((fix rec tl := match tl with 
                                                   | nil => OK nil
@@ -93,18 +99,35 @@ Fixpoint coreTypeToWeakType' (ct:CoreType) : ???WeakType :=
 Definition coreTypeToWeakType t :=
   addErrorMessage ("during coreTypeToWeakType on " +++ toString t +++ eol) (coreTypeToWeakType' (coreViewDeep t)).
 
+Definition coreVarToWeakVar' (cv:CoreVar) : ???WeakVar :=
+  addErrorMessage ("during coreVarToWeakVar on " +++ toString cv +++ eol)
+  match coreVarToWeakVar cv with
+    | CVTWVR_EVar  ct    => coreTypeToWeakType ct >>= fun t' => OK (WExprVar (weakExprVar cv t'))
+    | CVTWVR_TyVar k     =>                                     OK (WTypeVar (weakTypeVar cv k))
+    | CVTWVR_CoVar t1 t2 =>
+      (* this will choke if given a coercion-between-coercions (EqPred (EqPred c1 c2) (EqPred c3 c4)) *)
+      addErrorMessage ("with t2=" +++ toString t2 +++ eol)
+      ((coreTypeToWeakType t2) >>= fun t2' =>
+      addErrorMessage ("with t1=" +++ toString t1 +++ eol)
+      (coreTypeToWeakType t1) >>= fun t1' =>
+                                OK (WCoerVar (weakCoerVar cv t1' t2')))
+  end.
+Definition tyConTyVars (tc:CoreTyCon) :=
+  filter (map (fun x => match coreVarToWeakVar' x with OK (WTypeVar v) => Some v | _ => None end) (getTyConTyVars_ tc)).
+  Opaque tyConTyVars.
+Definition tyConKind (tc:TyCon) : list Kind := map (fun (x:WeakTypeVar) => x:Kind) (tyConTyVars tc).
+
 (* detects our crude Core-encoding of modal type introduction/elimination forms *)
 Definition isBrak (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_brak_name (coreVarCoreName v) then
-      match coreVarToWeakVar ec with
-        | WExprVar _  => None
-        | WCoerVar _  => None
-        | WTypeVar tv => match coreVarToWeakVar v with
-                           | WExprVar v' => Some (v',tv,tbody)
+      match coreVarToWeakVar' ec with
+        | OK (WTypeVar tv) => match coreVarToWeakVar' v with
+                           | OK (WExprVar v') => Some (v',tv,tbody)
                            | _ => None
                          end
+        | _  => None
       end else None
   | _ => None
 end.
@@ -113,13 +136,12 @@ Definition isEsc (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreTyp
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_esc_name (coreVarCoreName v) then
-      match coreVarToWeakVar ec with
-        | WExprVar _  => None
-        | WTypeVar tv => match coreVarToWeakVar v with
-                           | WExprVar v' => Some (v',tv,tbody)
+      match coreVarToWeakVar' ec with
+        | OK (WTypeVar tv) => match coreVarToWeakVar' v with
+                           | OK (WExprVar v') => Some (v',tv,tbody)
                            | _ => None
                          end
-        | WCoerVar _  => None
+        | _  => None
       end else None
   | _ => None
 end.
@@ -128,13 +150,12 @@ Definition isCSP (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreTyp
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
     => if coreName_eq hetmet_csp_name (coreVarCoreName v) then
-      match coreVarToWeakVar ec with
-        | WExprVar _  => None
-        | WTypeVar tv => match coreVarToWeakVar v with
-                           | WExprVar v' => Some (v',tv,tbody)
+      match coreVarToWeakVar' ec with
+        | OK (WTypeVar tv) => match coreVarToWeakVar' v with
+                           | OK (WExprVar v') => Some (v',tv,tbody)
                            | _ => None
                          end
-        | WCoerVar _  => None
+        | _  => None
       end else None
   | _ => None
 end.
@@ -148,15 +169,32 @@ Fixpoint expectTyConApp (wt:WeakType)(acc:list WeakType) : ???(TyCon * list Weak
     | _                => Error ("expectTyConApp encountered " +++ toString wt)
   end.
 
+(* expects to see an EType with a coercion payload *)
+Definition coreExprToWeakCoercion t1 t2 (ce:@CoreExpr CoreVar) : ???WeakCoercion :=
+  match ce with
+    | CoreEType t => (*OK (coreCoercionToWeakCoercion t)*) OK (WCoUnsafe t1 t2)
+    | _           => Error ("coreExprToWeakCoercion got a " +++ toString ce)
+  end.
+
+(* expects to see an EType *)
+Definition coreExprToWeakType (ce:@CoreExpr CoreVar) : ???WeakType := 
+  match ce with
+    | CoreEType t => coreTypeToWeakType t
+    | _           => Error ("coreExprToWeakType got a " +++ toString ce)
+  end.
+
 Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
   match ce with
     | CoreELit   lit   => OK (WELit lit)
     | CoreENote  n e   => coreExprToWeakExpr e >>= fun e' => OK (WENote n e')
     | CoreEType  t     => Error "encountered CoreEType in a position where an Expr should have been"
     | CoreECast  e co  => coreExprToWeakExpr e >>= fun e' =>
-                              OK (WECast e' (coreCoercionToWeakCoercion co))
+                            let (ct1,ct2) := getSourceAndTargetTypesOfCoercion co
+                             in coreTypeToWeakType ct1 >>= fun t1 =>
+                                  coreTypeToWeakType ct2 >>= fun t2 =>
+                                    OK (WECast e' (WCoUnsafe t1 t2))
 
-    | CoreEVar   v     => match coreVarToWeakVar v with
+    | CoreEVar   v     => coreVarToWeakVar' v >>= fun v' => match v' with
                             | WExprVar ev => OK (WEVar ev)
                             | WTypeVar _  => Error "found a type variable inside an EVar!"
                             | WCoerVar _  => Error "found a coercion variable inside an EVar!"
@@ -189,20 +227,25 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                                          end
                           end
 
-    | CoreELam   v e => match coreVarToWeakVar v with
+    | CoreELam   v e => coreVarToWeakVar' v >>= fun v' => match v' with
                          | WExprVar ev => coreExprToWeakExpr e >>= fun e' => OK (WELam   ev e')
                          | WTypeVar tv => coreExprToWeakExpr e >>= fun e' => OK (WETyLam tv e')
                          | WCoerVar cv => coreExprToWeakExpr e >>= fun e' => OK (WECoLam cv e')
                        end
 
-    | CoreELet   (CoreNonRec v ve) e => match coreVarToWeakVar v with
+    | CoreELet   (CoreNonRec v ve) e => coreVarToWeakVar' v >>= fun v' => match v' with
                          | WExprVar ev => coreExprToWeakExpr ve >>= fun ve' =>
                                             coreExprToWeakExpr e  >>= fun e'  => OK (WELet ev ve' e')
-                         | WTypeVar _ => match e with
-                                              | CoreEType t => Error "saw a type-let"
+                         | WTypeVar tv => match e with
+                                              | CoreEType t => coreExprToWeakExpr e >>= fun e'  =>
+                                                                 coreExprToWeakType ve >>= fun ty' =>
+                                                                   OK (WETyApp (WETyLam tv e') ty')
                                               | _           => Error "saw (ELet <tyvar> e) where e!=EType"
                                             end
-                         | WCoerVar _ => Error "saw an (ELet <coercionVar>)"
+                         | WCoerVar (weakCoerVar cv t1 t2) =>
+                                       coreExprToWeakExpr e  >>= fun e'  =>
+                                           coreExprToWeakCoercion t1 t2 ve >>= fun co' =>
+                                              OK (WECoApp (WECoLam (weakCoerVar cv t1 t2) e') co')
                        end
 
     | CoreELet   (CoreRec rb)      e =>
@@ -210,7 +253,7 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
         match cel with
           | nil => OK nil
           | (v',e')::t => coreExprToWeakExprList t >>= fun t' =>
-            match coreVarToWeakVar v' with
+            coreVarToWeakVar' v' >>= fun v'' => match v'' with
               | WExprVar ev => coreExprToWeakExpr e' >>= fun e' => OK ((ev,e')::t')
               | WTypeVar _  => Error "found a type variable in a recursive let"
               | WCoerVar _  => Error "found a coercion variable in a recursive let"
@@ -220,7 +263,7 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
       OK (WELetRec (unleaves' rb') e')
 
     | CoreECase  e v tbranches alts => 
-      match coreVarToWeakVar v with
+      coreVarToWeakVar' v >>= fun v' => match v' with
         | WTypeVar _  => Error "found a type variable in a case"
         | WCoerVar _  => Error "found a coercion variable in a case"
         | WExprVar ev => 
@@ -237,11 +280,11 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                     match alt with
                       | DEFAULT                => OK ((WeakDEFAULT,nil,nil,nil,e')::rest')
                       | LitAlt lit             => OK ((WeakLitAlt lit,nil,nil,nil,e')::rest')
-                      | DataAlt dc             => let vars := map coreVarToWeakVar vars in
+                      | DataAlt dc             => let vars := map coreVarToWeakVar' vars in
                         OK (((WeakDataAlt dc),
-                        (filter (map (fun x => match x with WTypeVar v => Some v | _ => None end) vars)),
-                        (filter (map (fun x => match x with WCoerVar v => Some v | _ => None end) vars)),
-                        (filter (map (fun x => match x with WExprVar v => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with OK (WTypeVar v) => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with OK (WCoerVar v) => Some v | _ => None end) vars)),
+                        (filter (map (fun x => match x with OK (WExprVar v) => Some v | _ => None end) vars)),
                         e')::rest')
                     end
             end) alts)
@@ -251,7 +294,3 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                   OK (WECase ev scrutinee tbranches' tc lt (unleaves branches))
       end
   end.
-
-
-
-

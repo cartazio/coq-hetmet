@@ -13,6 +13,7 @@ Require Import HaskLiterals.
 Require Import HaskTyCons.
 Require Import HaskStrongTypes.
 Require Import HaskWeakVars.
+Require Import HaskCoreToWeak.
 Require Import HaskCoreVars.
 
 Section HaskStrong.

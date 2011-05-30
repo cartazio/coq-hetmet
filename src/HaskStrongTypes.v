@@ -23,7 +23,7 @@ Variable dataConEqTheta_   : CoreDataCon -> list PredType. Extract Inlined Const
 Variable dataConOrigArgTys_: CoreDataCon -> list CoreType. Extract Inlined Constant dataConOrigArgTys_=>"DataCon.dataConOrigArgTys".
 
 Definition dataConExTyVars cdc :=
-  filter (map (fun x => match coreVarToWeakVar x with WTypeVar v => Some v | _ => None end) (dataConExVars_ cdc)).
+  filter (map (fun x => match coreVarToWeakVar' x with OK (WTypeVar v) => Some v | _ => None end) (dataConExVars_ cdc)).
   Opaque dataConExTyVars.
 Definition dataConCoerKinds cdc :=
   filter (map (fun x => match x with EqPred t1 t2 =>

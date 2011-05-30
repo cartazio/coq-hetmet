@@ -92,14 +92,15 @@ Section core2proof.
   (* We need to be able to resolve unbound exprvars, but we can be sure their types will have no
    * free tyvars in them *)
   Definition ξ (cv:CoreVar) : LeveledHaskType Γ ★ :=
-    match coreVarToWeakVar cv with
-      | WExprVar wev => match weakTypeToTypeOfKind φ wev ★ with
+    match coreVarToWeakVar' cv with
+      | OK (WExprVar wev) => match weakTypeToTypeOfKind φ wev ★ with
                           | Error s => Prelude_error ("Error converting weakType of top-level variable "+++
                                                          toString cv+++": " +++ s)
                           | OK    t => t @@ nil
                         end
-      | WTypeVar _   => Prelude_error "top-level xi got a type variable"
-      | WCoerVar _   => Prelude_error "top-level xi got a coercion variable"
+      | OK (WTypeVar _)   => Prelude_error "top-level xi got a type variable"
+      | OK (WCoerVar _)   => Prelude_error "top-level xi got a coercion variable"
+      | Error s           => Prelude_error s
     end.
 
   Definition header : string :=
@@ -228,8 +229,9 @@ Section core2proof.
   End CoreToCore.
 
   Definition coreVarToWeakExprVarOrError cv :=
-    match coreVarToWeakVar cv with
-      | WExprVar wv => wv
+    match addErrorMessage ("in coreVarToWeakExprVarOrError" +++ eol) (coreVarToWeakVar' cv) with
+      | OK (WExprVar wv) => wv
+      | Error s     => Prelude_error s
       | _           => Prelude_error "IMPOSSIBLE"
     end.
 
