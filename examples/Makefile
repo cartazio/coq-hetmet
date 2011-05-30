@@ -16,10 +16,10 @@ sanity += LambdaCalculusInterpreter.hs
 sanity += TypeSafeRun.hs
 sanity += Unflattening.hs
 
+sanity_opts = -dcore-lint -fforce-recomp -fcoqpass -ddump-coqpass -ddump-to-file
+
 sanity:
-	../../../inplace/bin/ghc-stage2 -dcore-lint -fforce-recomp -fcoqpass -ddump-coqpass -ddump-to-file \
-		$(sanity) \
-	        +RTS -K500M 
+	for A in $(sanity); do ../../../inplace/bin/ghc-stage2 $(sanity_opts) $$A +RTS -K500M || exit -1; done
 
 
 demo:
