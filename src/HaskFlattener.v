@@ -835,7 +835,6 @@ Section HaskFlattener.
       | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev   => let case_RWhere := tt          in _
-      | RJoin    Γ p lri m x q l       => let case_RJoin := tt in _
       | RVoid    _ _       l           => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev           => let case_RBrak := tt         in _
       | REsc     Γ Δ t ec succ lev           => let case_REsc := tt          in _
@@ -930,12 +929,6 @@ Section HaskFlattener.
       simpl.
       apply flatten_coercion; auto.
       apply (Prelude_error "RCast at level >0; casting inside of code brackets is currently not supported").
-
-    destruct case_RJoin.
-      simpl.
-      destruct l;
-        [ apply nd_rule; apply RJoin | idtac ];
-        apply (Prelude_error "RJoin at depth >0").
 
     destruct case_RApp.
       simpl.
