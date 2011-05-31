@@ -288,7 +288,7 @@ Section HaskFlattener.
     ND Rule [ Γ > Δ > ant |- [x]@lev ] [ Γ > Δ > ant      |- [y]@lev ].
     intros.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
+    eapply nd_comp; [ idtac | apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
@@ -304,7 +304,7 @@ Section HaskFlattener.
       [ Γ > Δ > a                           |- [@ga_mk _ ec y z ]@lev ]
       [ Γ > Δ > a,,[@ga_mk _ ec x y @@ lev] |- [@ga_mk _ ec x z ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ idtac | eapply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
@@ -327,7 +327,7 @@ Section HaskFlattener.
       [ Γ > Δ > a                           |- [@ga_mk _ ec x y ]@lev ]
       [ Γ > Δ > a,,[@ga_mk _ ec y z @@ lev] |- [@ga_mk _ ec x z ]@lev ].
     intros.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ idtac | eapply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
@@ -348,7 +348,7 @@ Section HaskFlattener.
             [ Γ > Δ > Σ                    |- [@ga_mk Γ ec (a,,c) (b,,c) ]@lev ].
     intros.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
+    eapply nd_comp; [ idtac | apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
@@ -371,7 +371,7 @@ Section HaskFlattener.
      [ Γ > Δ > Σ                    |- [@ga_mk Γ ec (c,,a) (c,,b) ]@lev ].
     intros.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanR ].
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
+    eapply nd_comp; [ idtac | apply RLet ].
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
     apply nd_id.
@@ -394,12 +394,12 @@ Section HaskFlattener.
      [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec x       b ]@l ].
      intros.
      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
-     eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+     eapply nd_comp; [ idtac | eapply RLet ].
      eapply nd_comp; [ apply nd_llecnac | idtac ].
      apply nd_prod.
      apply ga_first.
 
-     eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+     eapply nd_comp; [ idtac | eapply RLet ].
      eapply nd_comp; [ apply nd_llecnac | idtac ].
      apply nd_prod.
      apply postcompose.
@@ -450,14 +450,14 @@ Section HaskFlattener.
           set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) b)) as b' in *.
           set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) c)) as c' in *.
           eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
-          eapply nd_comp; [ idtac | eapply nd_rule; apply
+          eapply nd_comp; [ idtac | apply
              (@RLet Γ Δ [] [] (@ga_mk _ (v2t ec) a' b') (@ga_mk _ (v2t ec) a' c')) ].
           eapply nd_comp; [ apply nd_llecnac | idtac ].
           apply nd_prod.
           apply r2'.
           eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
           eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
-          eapply nd_comp; [ idtac | eapply nd_rule;  apply RLet ].
+          eapply nd_comp; [ idtac | apply RLet ].
           eapply nd_comp; [ apply nd_llecnac | idtac ].
           eapply nd_prod.
           apply r1'.
@@ -537,13 +537,13 @@ Section HaskFlattener.
     intro pfb.
     apply secondify with (c:=a)  in pfb.
     apply firstify  with (c:=[])  in pfa.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ idtac | eapply RLet ].
     eapply nd_comp; [ eapply nd_llecnac | idtac ].
     apply nd_prod.
     apply pfa.
     clear pfa.
 
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ idtac | eapply RLet ].
     eapply nd_comp; [ apply nd_llecnac | idtac ].
     apply nd_prod.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
@@ -576,7 +576,7 @@ Section HaskFlattener.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     simpl.
     eapply nd_comp; [ apply nd_llecnac | idtac ].
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+    eapply nd_comp; [ idtac | eapply RLet ].
     apply nd_prod.
     Focus 2.
     apply nd_id.
@@ -643,7 +643,7 @@ Section HaskFlattener.
     simpl.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AExch ].
     set (fun z z' => @RLet Γ Δ z (mapOptionTree flatten_leveled_type q') t z' nil) as q''.
-    eapply nd_comp; [ idtac | eapply nd_rule; apply RLet ].
+    eapply nd_comp; [ idtac | apply RLet ].
     clear q''.
     eapply nd_comp; [ apply nd_rlecnac | idtac ].
     apply nd_prod.
@@ -830,11 +830,9 @@ Section HaskFlattener.
       | RAppCo   Γ Δ Σ κ σ₁ σ₂ γ σ lev => let case_RAppCo := tt        in _
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
-      | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
       | RCut     Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l  => let case_RCut := tt          in _
       | RLeft    Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
-      | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev   => let case_RWhere := tt          in _
       | RVoid    _ _       l           => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev           => let case_RBrak := tt         in _
       | REsc     Γ Δ t ec succ lev           => let case_REsc := tt          in _
@@ -957,59 +955,6 @@ Section HaskFlattener.
   Notation "!<[]> x" := (flatten_type _ x) (at level 1).
   Notation "!<[@]> x" := (mapOptionTree flatten_leveled_type x) (at level 1).
 *)
-
-    destruct case_RLet.
-      simpl.
-      destruct lev as [|ec lev]; simpl; [ apply nd_rule; apply RLet; auto | idtac ].
-      repeat drop_simplify.
-      repeat take_simplify.
-      simpl.
-
-      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₁)) as Σ₁'.
-      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₂)) as Σ₂'.
-      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₁)) as Σ₁''.
-      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₂)) as Σ₂''.
-
-      eapply nd_comp.
-      eapply nd_prod; [ idtac | apply nd_id ].
-      eapply boost.
-      apply (ga_first _ _ _ _ _ _ Σ₂').
-
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
-      apply nd_prod.
-      apply nd_id.
-      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ACanL | idtac ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch (* okay *)].
-      apply precompose.
-
-    destruct case_RWhere.
-      simpl.
-      destruct lev as [|ec lev]; simpl; [ apply nd_rule; apply RWhere; auto | idtac ].
-      repeat take_simplify.
-      repeat drop_simplify.
-      simpl.
-
-      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₁)) as Σ₁'.
-      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₂)) as Σ₂'.
-      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₃)) as Σ₃'.
-      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₁)) as Σ₁''.
-      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₂)) as Σ₂''.
-      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₃)) as Σ₃''.
-
-      eapply nd_comp.
-      eapply nd_prod; [ eapply nd_id | idtac ].
-      eapply (first_nd _ _ _ _ _ _ Σ₃').
-      eapply nd_comp.
-      eapply nd_prod; [ eapply nd_id | idtac ].
-      eapply (second_nd _ _ _ _ _ _ Σ₁').
-
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RWhere ].
-      apply nd_prod; [ idtac | apply nd_id ].
-      eapply nd_comp; [ idtac | eapply precompose' ].
-      apply nd_rule.
-      apply RArrange.
-      apply ALeft.
-      apply ACanL.
 
     destruct case_RCut.
       simpl.
@@ -1277,7 +1222,7 @@ Section HaskFlattener.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AuCanR ].
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanL ].
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+      eapply nd_comp; [ idtac | eapply RLet ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod; [ idtac | eapply boost ].
       induction x.

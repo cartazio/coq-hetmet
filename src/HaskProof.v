@@ -68,9 +68,6 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 (* order is important here; we want to be able to skolemize without introducing new AExch'es *)
 | RApp           : ∀ Γ Δ Σ₁ Σ₂ tx te l,  Rule ([Γ>Δ> Σ₁ |- [tx--->te]@l],,[Γ>Δ> Σ₂ |- [tx]@l])  [Γ>Δ> Σ₁,,Σ₂ |- [te]@l]
 
-| RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁ |- [σ₁]@l],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂]@l ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   ]@l]
-| RWhere         : ∀ Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,([σ₁@@l],,Σ₃) |- [σ₂]@l ],,[Γ>Δ> Σ₂ |- [σ₁]@l])     [Γ>Δ> Σ₁,,(Σ₂,,Σ₃) |- [σ₂ ]@l]
-
 | RCut           : ∀ Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l, Rule ([Γ>Δ> Σ₁ |- Σ₁₂ @l],,[Γ>Δ> Σ,,((Σ₁₂@@@l),,Σ₂) |- Σ₃@l ]) [Γ>Δ> Σ,,(Σ₁,,Σ₂) |- Σ₃@l]
 | RLeft          : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> (Σ@@@l),,Σ₁ |- Σ,,Σ₂@l]
 | RRight         : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> Σ₁,,(Σ@@@l) |- Σ₂,,Σ@l]
@@ -109,6 +106,23 @@ Definition RCut'  : ∀ Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l,
   apply AuCanL.
   Defined.
 
+Definition RLet : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,
+  ND Rule ([Γ>Δ> Σ₁ |- [σ₁]@l],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂]@l ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   ]@l].
+  intros.
+  eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
+  eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+  apply nd_prod.
+  apply nd_id.
+  eapply nd_rule; eapply RArrange; eapply AuCanL.
+  Defined.
+
+Definition RWhere : ∀ Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ l,
+  ND Rule ([Γ>Δ> Σ₁,,([σ₁@@l],,Σ₃) |- [σ₂]@l ],,[Γ>Δ> Σ₂ |- [σ₁]@l])     [Γ>Δ> Σ₁,,(Σ₂,,Σ₃) |- [σ₂ ]@l].
+  intros.
+  eapply nd_comp; [ apply nd_exch | idtac ].
+  eapply nd_rule; eapply RCut.
+  Defined.
+
 (* A rule is considered "flat" if it is neither RBrak nor REsc *)
 (* TODO: change this to (if RBrak/REsc -> False) *)
 Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
@@ -123,7 +137,6 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RAppCo           : ∀ Γ Δ  Σ σ₁ σ₂ σ γ q l,  Rule_Flat (RAppCo Γ Δ  Σ  σ₁ σ₂ σ γ  q l)
 | Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2   , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2   )
 | Flat_RApp             : ∀ Γ Δ  Σ tx te   p     l,  Rule_Flat (RApp Γ Δ  Σ tx te   p l)
-| Flat_RLet             : ∀ Γ Δ  Σ σ₁ σ₂   p     l,  Rule_Flat (RLet Γ Δ  Σ σ₁ σ₂   p l)
 | Flat_RVoid      : ∀ q a                  l,  Rule_Flat (RVoid q a l)
 | Flat_RCase            : ∀ Σ Γ  T κlen κ θ l x  , Rule_Flat (RCase Σ Γ T κlen κ θ l x)
 | Flat_RLetRec          : ∀ Γ Δ Σ₁ τ₁ τ₂ lev,      Rule_Flat (RLetRec Γ Δ Σ₁ τ₁ τ₂ lev).
@@ -140,8 +153,6 @@ Lemma no_rules_with_multiple_conclusions : forall c h,
     try apply no_urules_with_empty_conclusion in u; try apply u.
     destruct X0; destruct s; inversion e.
     auto.
-    destruct X0; destruct s; inversion e.
-    destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.
     destruct X0; destruct s; inversion e.

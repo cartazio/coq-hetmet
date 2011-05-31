@@ -231,11 +231,9 @@ Section HaskSkolemizer.
       | RAppCo   Γ Δ Σ κ σ₁ σ₂ γ σ lev => let case_RAppCo := tt        in _
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
-      | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
       | RCut     Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l  => let case_RCut := tt          in _
       | RLeft    Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
-      | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev => let case_RWhere := tt          in _
       | RVoid    _ _           l       => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev     => let case_RBrak := tt         in _
       | REsc     Γ Δ t ec succ lev     => let case_REsc := tt          in _
@@ -372,56 +370,8 @@ Section HaskSkolemizer.
         eapply take_unarrange.
 
         eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AAssoc ].
-        eapply nd_rule; eapply SFlat; apply RWhere.
-
-      destruct case_RLet.
-        simpl.
-        destruct lev.
-        apply nd_rule.
-        apply SFlat.
-        apply RLet.
-        set (check_hof σ₁) as hof_tx.
-        destruct hof_tx; [ apply (Prelude_error "attempt to let-bind a higher-order function at depth>0") | idtac ].
-        destruct a.
-        rewrite H.
-        rewrite H0.
-
-        eapply nd_comp.
-        eapply nd_prod; [ eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR | eapply nd_id ].
-
-        set (@RLet Γ Δ Σ₁ (Σ₂,,(take_arg_types_as_tree σ₂ @@@ (h::lev))) σ₁ (drop_arg_types_as_tree σ₂) (h::lev)) as q.
-        eapply nd_comp; [ idtac | eapply nd_rule; apply SFlat; eapply RArrange; apply AAssoc ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply q ].
-        apply nd_prod.
-          apply nd_id.
-          apply nd_rule.
-          eapply SFlat.
-          eapply RArrange.
-          eapply AuAssoc.
-
-      destruct case_RWhere.
-        simpl.
-        destruct lev.
-        apply nd_rule.
-        apply SFlat.
-        apply RWhere.
-        set (check_hof σ₁) as hof_tx.
-        destruct hof_tx; [ apply (Prelude_error "attempt to let-bind a higher-order function at depth>0") | idtac ].
-        destruct a.
-        rewrite H.
-        rewrite H0.
-
-        eapply nd_comp.
-        eapply nd_prod; [ apply nd_id | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ACanR ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply AAssoc ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RArrange; eapply ALeft; eapply AAssoc ].
-        eapply nd_comp; [ idtac | eapply nd_rule; eapply SFlat; eapply RWhere ].
-        apply nd_prod; [ idtac | eapply nd_id ].
-        eapply nd_rule; apply SFlat; eapply RArrange.
-        eapply AComp.
-        eapply AuAssoc.
-        apply ALeft.
-        eapply AuAssoc.
+        eapply nd_comp; [ apply nd_exch | idtac ].
+        eapply nd_rule; eapply SFlat; eapply RCut.
 
       destruct case_RCut.
         simpl; destruct l; [ apply nd_rule; apply SFlat; apply RCut | idtac ].

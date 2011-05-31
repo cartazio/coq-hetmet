@@ -1189,7 +1189,7 @@ Definition expr2proof  :
         inversion H.
 
     destruct case_ELet; intros; simpl in *.
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RLet ].
+      eapply nd_comp; [ idtac | eapply RLet ].
       eapply nd_comp; [ apply nd_rlecnac | idtac ].
       apply nd_prod.
       apply pf_let.

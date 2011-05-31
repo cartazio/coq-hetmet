@@ -763,11 +763,9 @@ Section HaskProofToStrong.
       | RAppCo  Γ Δ Σ κ σ₁ σ₂ γ σ l   => let case_RAppCo := tt        in _
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
-      | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
       | RCut    Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l  => let case_RCut := tt          in _
       | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
-      | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
       | RVoid   _ _ l                 => let case_RVoid := tt   in _
       | RBrak   Σ a b c n m           => let case_RBrak := tt         in _
       | REsc    Σ a b c n m           => let case_REsc := tt          in _
@@ -868,50 +866,6 @@ Section HaskProofToStrong.
     apply ileaf in q2'.
     simpl in *.
     apply (EApp _ _ _ _ _ _ q1' q2').
-
-  destruct case_RLet.
-    eapply rlet.
-    apply X_.
-
-  destruct case_RWhere.
-    apply ILeaf.
-    simpl in *; intros.
-    destruct vars;  try destruct o; inversion H.
-    destruct vars2; try destruct o; inversion H2.
-    clear H2.
-
-    assert ((Σ₁,,Σ₃) = mapOptionTree ξ (vars1,,vars2_2)) as H13; simpl; subst; auto.
-    refine (fresh_lemma _ ξ _ _ σ₁ p H13 >>>= (fun pf => _)).
-    apply FreshMon.
-
-    destruct pf as [ vnew [ pf1 pf2 ]].
-    set (update_xi ξ p (((vnew, σ₁ )) :: nil)) as ξ' in *.
-    inversion X_.
-    apply ileaf in X.
-    apply ileaf in X0.
-    simpl in *.
-
-    refine (X ξ' (vars1,,([vnew],,vars2_2)) _ >>>= fun X0' => _).
-    apply FreshMon.
-    simpl.
-    inversion pf1.
-    rewrite H3.
-    rewrite H4.
-    rewrite pf2.
-    reflexivity.
-
-    refine (X0 ξ vars2_1 _ >>>= fun X1' => _).
-    apply FreshMon.
-    reflexivity.
-    apply FreshMon.
-
-    apply ILeaf.
-    apply ileaf in X0'.
-    apply ileaf in X1'.
-    simpl in *.
-    apply ELet with (ev:=vnew)(tv:=σ₁).
-    apply X1'.
-    apply X0'.
 
   destruct case_RCut.
     apply rassoc.
