@@ -831,9 +831,9 @@ Section HaskFlattener.
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
       | RApp     Γ Δ Σ₁ Σ₂ tx te lev   => let case_RApp := tt          in _
       | RLet     Γ Δ Σ₁ Σ₂ σ₁ σ₂ lev   => let case_RLet := tt          in _
-      | RCut    Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l    => let case_RCut := tt          in _
-      | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
-      | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
+      | RCut     Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l  => let case_RCut := tt          in _
+      | RLeft    Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
+      | RRight   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere   Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ lev   => let case_RWhere := tt          in _
       | RVoid    _ _       l           => let case_RVoid := tt   in _
       | RBrak    Γ Δ t ec succ lev           => let case_RBrak := tt         in _
@@ -1022,17 +1022,17 @@ Section HaskFlattener.
         rewrite <- IHΣ₁₂1.
         rewrite <- IHΣ₁₂2.
         reflexivity.
-      simpl.
-      repeat drop_simplify.
-      simpl.
-      repeat take_simplify.
+      simpl; repeat drop_simplify.
+      simpl; repeat take_simplify.
       simpl.
       set (drop_lev (ec :: lev) (Σ₁₂ @@@ (ec :: lev))) as x1.
       rewrite take_lemma'.
       rewrite mapOptionTree_compose.
       rewrite mapOptionTree_compose.
       rewrite mapOptionTree_compose.
+      rewrite mapOptionTree_compose.
       rewrite unlev_relev.
+      rewrite <- mapOptionTree_compose.
       rewrite <- mapOptionTree_compose.
       rewrite <- mapOptionTree_compose.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ]. 
@@ -1041,22 +1041,27 @@ Section HaskFlattener.
       eapply nd_comp.
       eapply nd_rule.
       eapply RArrange.
+      eapply ALeft.
       eapply ARight.
       unfold x1.
       rewrite drop_to_nothing.
       apply arrangeCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ₁₂)).
       admit. (* OK *)
-      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ACanL | idtac ].
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ALeft; eapply ACanL | idtac ].
       set (mapOptionTree flatten_type Σ₁₂) as a.
       set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₁)) as b.
       set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ₂)) as c.
       set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₂)) as d.
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: lev) Σ)) as e.
+      set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ)) as f.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod.
       simpl.
-      eapply ga_first.
-      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
+      eapply secondify.
+      apply ga_first.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ALeft; eapply AExch ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuAssoc ].
       simpl.
       apply precompose.
 

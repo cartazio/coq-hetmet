@@ -764,7 +764,7 @@ Section HaskProofToStrong.
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
       | RApp    Γ Δ Σ₁ Σ₂ tx te p     => let case_RApp := tt          in _
       | RLet    Γ Δ Σ₁ Σ₂ σ₁ σ₂ p     => let case_RLet := tt          in _
-      | RCut    Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l    => let case_RCut := tt          in _
+      | RCut    Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l  => let case_RCut := tt          in _
       | RLeft   Γ Δ Σ₁ Σ₂  Σ     l    => let case_RLeft := tt in _
       | RRight  Γ Δ Σ₁ Σ₂  Σ     l    => let case_RRight := tt in _
       | RWhere  Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ p  => let case_RWhere := tt          in _
@@ -914,9 +914,18 @@ Section HaskProofToStrong.
     apply X0'.
 
   destruct case_RCut.
+    apply rassoc.
+    apply swapr.
+    apply rassoc'.
+
     inversion X_.
     subst.
     clear X_.
+
+    apply rassoc' in X0.
+    apply swapr in X0.
+    apply rassoc in X0.
+
     induction Σ₃.
     destruct a.
     subst.
