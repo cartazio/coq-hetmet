@@ -961,7 +961,7 @@ Lemma letRecSubproofsToND Γ Δ ξ lev tree branches :
       destruct q.
       simpl in *.
       apply n.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+    eapply nd_comp; [ idtac | eapply RCut' ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod.
       apply IHX1.
@@ -1019,7 +1019,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
 
   set (letRecSubproofsToND _ _ _ _ _ branches lrsp) as q.
 
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+    eapply nd_comp; [ idtac | eapply RCut' ].
       eapply nd_comp; [ apply nd_llecnac | idtac ].
       apply nd_prod.
       apply q.

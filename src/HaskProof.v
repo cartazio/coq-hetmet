@@ -71,7 +71,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RLet           : ∀ Γ Δ Σ₁ Σ₂ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁ |- [σ₁]@l],,[Γ>Δ> [σ₁@@l],,Σ₂ |- [σ₂]@l ])     [Γ>Δ> Σ₁,,Σ₂ |- [σ₂   ]@l]
 | RWhere         : ∀ Γ Δ Σ₁ Σ₂ Σ₃ σ₁ σ₂ l,  Rule ([Γ>Δ> Σ₁,,([σ₁@@l],,Σ₃) |- [σ₂]@l ],,[Γ>Δ> Σ₂ |- [σ₁]@l])     [Γ>Δ> Σ₁,,(Σ₂,,Σ₃) |- [σ₂ ]@l]
 
-| RCut           : ∀ Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l,  Rule ([Γ>Δ> Σ₁ |- Σ₁₂ @l],,[Γ>Δ> (Σ₁₂@@@l),,Σ₂ |- Σ₃@l ]) [Γ>Δ> Σ₁,,Σ₂ |- Σ₃@l]
+| RCut           : ∀ Γ Δ Σ Σ₁ Σ₁₂ Σ₂ Σ₃ l, Rule ([Γ>Δ> Σ₁ |- Σ₁₂ @l],,[Γ>Δ> Σ,,((Σ₁₂@@@l),,Σ₂) |- Σ₃@l ]) [Γ>Δ> Σ,,(Σ₁,,Σ₂) |- Σ₃@l]
 | RLeft          : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> (Σ@@@l),,Σ₁ |- Σ,,Σ₂@l]
 | RRight         : ∀ Γ Δ Σ₁ Σ₂  Σ     l,  Rule  [Γ>Δ> Σ₁ |- Σ₂  @l]                                 [Γ>Δ> Σ₁,,(Σ@@@l) |- Σ₂,,Σ@l]
 
@@ -97,6 +97,17 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
                         [Γ > Δ > (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x)) alts),,Σ |- [ tbranches ] @ lev]
 .
 
+Definition RCut'  : ∀ Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l,
+  ND Rule ([Γ>Δ> Σ₁ |- Σ₁₂ @l],,[Γ>Δ> (Σ₁₂@@@l),,Σ₂ |- Σ₃@l ]) [Γ>Δ> Σ₁,,Σ₂ |- Σ₃@l].
+  intros.
+  eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply ACanL ].
+  eapply nd_comp; [ idtac | eapply nd_rule; eapply RCut ].
+  apply nd_prod.
+  apply nd_id.
+  apply nd_rule.
+  apply RArrange.
+  apply AuCanL.
+  Defined.
 
 (* A rule is considered "flat" if it is neither RBrak nor REsc *)
 (* TODO: change this to (if RBrak/REsc -> False) *)
