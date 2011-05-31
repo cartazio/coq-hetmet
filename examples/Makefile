@@ -14,7 +14,7 @@ sanity += ImmutableHeap.hs
 sanity += IsomorphismForCodeTypes.hs
 sanity += LambdaCalculusInterpreter.hs
 sanity += TypeSafeRun.hs
-sanity += Unflattening.hs
+#sanity += Unflattening.hs
 
 sanity_opts  = -dcore-lint -fforce-recomp -fcoqpass -ddump-coqpass -ddump-to-file
 sanity_opts += -fsimpleopt-before-flatten
