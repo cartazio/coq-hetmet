@@ -25,13 +25,6 @@ Variable sortAlts  : forall {a}{b}, list (@triple CoreAltCon a b) -> list (@trip
   Extract Inlined Constant sortAlts => "sortAlts".
   Implicit Arguments sortAlts [[a][b]].
 
-Variable mkUnsafeCoercion : CoreType -> CoreType -> CoreCoercion.
-    Extract Inlined Constant mkUnsafeCoercion => "Coercion.mkUnsafeCoercion".
-
-(* Coercion and Type are actually the same thing in GHC, but we don't tell Coq about that.  This lets us get around it. *)
-Variable coreCoercionsAreReallyTypes : CoreCoercion -> CoreType.
-  Extract Inlined Constant coreCoercionsAreReallyTypes => "(\x -> x)".
-
 Definition weakAltConToCoreAltCon (wa:WeakAltCon) : CoreAltCon :=
   match wa with
   | WeakDataAlt cdc => DataAlt cdc
@@ -59,7 +52,7 @@ Fixpoint weakTypeToCoreType (wt:WeakType) : CoreType :=
   end.
 
 Definition weakCoercionToCoreCoercion (wc:WeakCoercion) : CoreCoercion :=
-  mkUnsafeCoercion (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
+  CoreCoercionUnsafeCo (weakTypeToCoreType (fst (weakCoercionTypes wc))) (weakTypeToCoreType (snd (weakCoercionTypes wc))).
 
 Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   match me with
@@ -67,8 +60,7 @@ Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
   | WELit   lit                          => CoreELit  lit
   | WEApp   e1 e2                        => CoreEApp     (weakExprToCoreExpr e1) (weakExprToCoreExpr e2)
   | WETyApp e t                          => CoreEApp     (weakExprToCoreExpr e ) (CoreEType (weakTypeToCoreType t))
-  | WECoApp e co                         => CoreEApp     (weakExprToCoreExpr e )
-                                                           (CoreEType (coreCoercionsAreReallyTypes (weakCoercionToCoreCoercion co)))
+  | WECoApp e co                         => CoreEApp     (weakExprToCoreExpr e ) (CoreECoercion (weakCoercionToCoreCoercion co))
   | WENote  n e                          => CoreENote n  (weakExprToCoreExpr e )
   | WELam   (weakExprVar ev _  ) e       => CoreELam  ev (weakExprToCoreExpr e )
   | WETyLam (weakTypeVar tv _  ) e       => CoreELam  tv (weakExprToCoreExpr e )

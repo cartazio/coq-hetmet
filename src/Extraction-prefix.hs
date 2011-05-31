@@ -2,6 +2,7 @@
 module CoqPass ( coqPassCoreToString, coqPassCoreToCore )
 where
 import qualified Unique
+import qualified Kind
 import qualified UniqSupply
 import qualified MkCore
 import qualified TysWiredIn
@@ -18,6 +19,7 @@ import qualified TyCon
 import qualified Coercion
 import qualified Var
 import qualified Id
+import qualified Pair
 import qualified FastString
 import qualified BasicTypes
 import qualified DataCon
@@ -53,8 +55,7 @@ sortAlts x = Data.List.sortBy (\a b -> if a `CoreSyn.ltAlt` b then Data.Ord.LT e
 coreVarToWeakVar :: Var.Var -> CoreVarToWeakVarResult
 coreVarToWeakVar v | Id.isId     v = CVTWVR_EVar  (Var.varType v)
 coreVarToWeakVar v | Var.isTyVar v = CVTWVR_TyVar (coreKindToKind (Var.varType v))
-coreVarToWeakVar v | Var.isCoVar v = CVTWVR_CoVar (Prelude.fst (Coercion.coercionKind (Var.varType v)))
-                                                  (Prelude.snd (Coercion.coercionKind (Var.varType v)))
+coreVarToWeakVar v | Coercion.isCoVar v = CVTWVR_CoVar (Prelude.fst (Coercion.coVarKind v)) (Prelude.snd (Coercion.coVarKind v))
 coreVarToWeakVar _                 = Prelude.error "Var.Var that is neither an expression, type variable, nor coercion variable!"
 
 rawTyFunKind :: TyCon.TyCon -> ( [Kind] , Kind )
@@ -88,21 +89,21 @@ sanitizeForLatex ('#':x) = "\\#"++(sanitizeForLatex x)
 sanitizeForLatex (c:x)   = c:(sanitizeForLatex x)
 
 kindToCoreKind :: Kind -> TypeRep.Kind
-kindToCoreKind KindStar          = TypeRep.liftedTypeKind
-kindToCoreKind (KindArrow k1 k2) = Coercion.mkArrowKind (kindToCoreKind k1) (kindToCoreKind k2)
+kindToCoreKind KindStar          = Kind.liftedTypeKind
+kindToCoreKind (KindArrow k1 k2) = Kind.mkArrowKind (kindToCoreKind k1) (kindToCoreKind k2)
 kindToCoreKind k                 = Prelude.error ((Prelude.++)
                                                     "kindToCoreKind does not know how to handle kind "
                                                                                (kindToString k))
 coreKindToKind :: TypeRep.Kind -> Kind
 coreKindToKind k =
-  case Coercion.splitKindFunTy_maybe k of
+  case Kind.splitKindFunTy_maybe k of
       Prelude.Just (k1,k2) -> KindArrow (coreKindToKind k1) (coreKindToKind k2)
       Prelude.Nothing -> 
-                      if (Coercion.isLiftedTypeKind k)   then KindStar
-                 else if (Coercion.isUnliftedTypeKind k) then KindStar
-                 else if (Coercion.isArgTypeKind k)      then KindStar
-                 else if (Coercion.isUbxTupleKind k)     then KindStar
-                 else if (Coercion.isOpenTypeKind k)     then KindStar
+                      if (Kind.isLiftedTypeKind k)   then KindStar
+                 else if (Kind.isUnliftedTypeKind k) then KindStar
+                 else if (Kind.isArgTypeKind k)      then KindStar
+                 else if (Kind.isUbxTupleKind k)     then KindStar
+                 else if (Kind.isOpenTypeKind k)     then KindStar
 --
 -- The "subkinding" in GHC is not dealt with in System FC, and dealing
 -- with it is not actually as simple as you'd think.
@@ -112,8 +113,7 @@ coreKindToKind k =
 --                 else if (Coercion.isArgTypeKind k)      then KindArgType
 --                 else if (Coercion.isUbxTupleKind k)     then KindUnboxedTuple
 --
-                 else if (Coercion.isTySuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-types"
-                 else if (Coercion.isCoSuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-coercions"
+                 else if (Kind.isTySuperKind k)      then Prelude.error "coreKindToKind got the kind-of-the-kind-of-types"
                  else                                         Prelude.error ((Prelude.++) "coreKindToKind got an unknown kind: "
                                                                                (Outputable.showSDoc (Outputable.ppr k)))
 outputableToString :: Outputable.Outputable a => a -> Prelude.String
@@ -134,52 +134,6 @@ coreViewDeep t =
                                Prelude.Nothing     -> TypeRep.PredTy p
                                Prelude.Just    t'  -> t'
 
-getSourceAndTargetTypesOfCoercion :: Type.Type -> (Type.Type,Type.Type)
-getSourceAndTargetTypesOfCoercion c = Coercion.coercionKind (Coercion.typeKind c)
-
-{-
--- REMEMBER: cotycon applications may be oversaturated
- case c of
-  TypeRep.TyVarTy  v     -> WCoVar (WeakCoerVar v (Prelude.error "FIXME") (Prelude.error "FIXME") (Prelude.error "FIXME"))
-  TypeRep.AppTy    t1 t2 -> WCoApp   (coreCoercionToWeakCoercion t1) (coreCoercionToWeakCoercion t2)
-  TypeRep.TyConApp tc t  ->
-      case TyCon.isCoercionTyCon_maybe tc of
-        Prelude.Nothing -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got isCoercionTyCon_maybe " (outputableToString c))
-        Prelude.Just (_, ctcd) ->
-            case (ctcd,t) of
-              (TyCon.CoTrans , [x,y]     ) -> WCoComp   (coreCoercionToWeakCoercion x) (coreCoercionToWeakCoercion y)
-              (TyCon.CoSym   , [x]       ) -> WCoSym    (coreCoercionToWeakCoercion x)
-              (TyCon.CoLeft  , [x]       ) -> WCoLeft   (coreCoercionToWeakCoercion x)
-              (TyCon.CoRight , [x]       ) -> WCoLeft   (coreCoercionToWeakCoercion x)
---            (TyCon.CoUnsafe, [t1, t2 ] ) -> WCoUnsafe (coreTypeToWeakType t1) (coreTypeToWeakType t2)
-              (TyCon.CoTrans , []        ) -> Prelude.error "CoTrans is not in post-publication-appendix SystemFC1"
-              (TyCon.CoCsel1 , []        ) -> Prelude.error "CoCsel1 is not in post-publication-appendix SystemFC1"
-              (TyCon.CoCsel2 , []        ) -> Prelude.error "CoCsel2 is not in post-publication-appendix SystemFC1"
-              (TyCon.CoCselR , []        ) -> Prelude.error "CoCselR is not in post-publication-appendix SystemFC1"
-              (TyCon.CoInst  , []        ) -> Prelude.error "CoInst  is not in post-publication-appendix SystemFC1"
-              (TyCon.CoAxiom _ _ _ , _   ) -> Prelude.error "CoAxiom is not yet implemented (FIXME)"
-              ( _, [ t1 , t2 ]) -> WCoUnsafe (errOrFail (coreTypeToWeakType t1)) (errOrFail (coreTypeToWeakType t2))
-              _ -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got " (outputableToString c))
-  _ -> Prelude.error ((Prelude.++) "coreCoercionToWeakCoercion got " (outputableToString c))
--}
---  TypeRep.ForAllTy v t   -> WCoAll  (Prelude.error "FIXME") (coreTypeToWeakType t)
--- FIXME   x y                                  -> WCoAppT    (coreCoercionToWeakCoercion x) (coreCoercionToWeakType y)
---  CoreSyn.Type t                            -> WCoType   (coreTypeToWeakType t)
-
-{-
-weakCoercionToCoreCoercion :: CoreCoercion -> Type.Type
-| WCoVar     (weakCoerVar _ _ t1 t2) => (t1,t2)
-| WCoType    t                       => Prelude_error "FIXME WCoType"
-| WCoApp     c1 c2                   => Prelude_error "FIXME WCoApp"
-| WCoAppT    c t                     => Prelude_error "FIXME WCoAppT"
-| WCoAll     k f                     => Prelude_error "FIXME WCoAll"
-| WCoSym     c                       => let (t2,t1) := weakCoercionTypes c in (t1,t2)
-| WCoComp    c1 c2                   => Prelude_error "FIXME WCoComp"
-| WCoLeft    c                       => Prelude_error "FIXME WCoLeft"
-| WCoRight   c                       => Prelude_error "FIXME WCoRight"
-| WCoUnsafe  t1 t2                   => (t1,t2)
--}
-
 {-# NOINLINE trace #-}
 trace :: Prelude.String -> a -> a
 trace msg x = x
@@ -192,14 +146,6 @@ trace msg x = x
 --                (Prelude.>>=) (System.IO.hPutStrLn System.IO.stdout msg) (\_ -> Prelude.return x)
 --trace msg x = System.IO.Unsafe.unsafePerformIO $
 --                (Prelude.>>=) (System.IO.hPutStr System.IO.stdout " ") (\_ -> Prelude.return x)
-
-
-{-  -- used for extracting strings WITHOUT the patch for Coq
-bin2ascii =
-  (\ b0 b1 b2 b3 b4 b5 b6 b7 ->
-     let f b i = if b then 1 `shiftL` i else 0
-     in Data.Char.chr (f b0 0 .|. f b1 1 .|. f b2 2 .|. f b3 3 .|. f b4 4 .|. f b5 5 .|. f b6 6 .|. f b7 7))
--}
 
 -- I'm leaving this here (commented out) in case I ever need it again)
 --checkTypeEquality :: Type.Type -> Type.Type -> Prelude.Bool

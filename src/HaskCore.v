@@ -23,6 +23,7 @@ Inductive CoreExpr {b:Type} :=
 | CoreECast  : CoreExpr        ->  CoreCoercion -> CoreExpr
 | CoreENote  : Note            ->  CoreExpr     -> CoreExpr
 | CoreEType  : CoreType                         -> CoreExpr
+| CoreECoercion : CoreCoercion                  -> CoreExpr
 with      CoreBind {b:Type} :=
 | CoreNonRec : b -> CoreExpr         -> CoreBind  
 | CoreRec    : list (b * CoreExpr  ) -> CoreBind.
@@ -36,7 +37,9 @@ Extract Inductive CoreExpr =>
       "CoreSyn.Case"
       "CoreSyn.Cast"
       "CoreSyn.Note"
-      "CoreSyn.Type" ].
+      "CoreSyn.Type"
+      "CoreSyn.Coercion"
+   ].
 Extract Inductive CoreBind =>
   "CoreSyn.Bind" [ "CoreSyn.NonRec" "CoreSyn.Rec" ].
 

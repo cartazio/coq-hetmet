@@ -12,7 +12,9 @@ Require Import HaskCoreVars.
 Require Import HaskLiterals.
 Require Import HaskTyCons.
 
-Variable CoreCoercion        : Type.                      Extract Inlined Constant CoreCoercion          => "Coercion.Coercion".
+Variable CoreCoercionCoAxiom : Type.  Extract Inlined Constant CoreCoercionCoAxiom => "Coercion.CoAxiom".
+Variable Int : Type.                  Extract Inlined Constant Int => "Prelude.Int".
+
 Variable classTyCon          : Class_ -> CoreTyCon.       Extract Inlined Constant classTyCon            => "Class.classTyCon".
 Variable coreTyConToString   : CoreTyCon   -> string.     Extract Inlined Constant coreTyConToString     => "outputableToString".
 Variable coreDataConToString : CoreDataCon -> string.     Extract Inlined Constant coreDataConToString   => "outputableToString".
@@ -34,11 +36,38 @@ Extract Inductive CoreType =>
 Extract Inductive PredType =>
    "TypeRep.PredType" [ "TypeRep.ClassP" "TypeRep.IParam" "TypeRep.EqPred" ].
 
+Inductive CoreCoercion : Type :=
+    CoreCoercionRefl        : CoreType                                 -> CoreCoercion
+  | CoreCoercionTyConAppCo  : CoreTyCon    -> list CoreCoercion        -> CoreCoercion
+  | CoreCoercionAppCo       : CoreCoercion -> CoreCoercion             -> CoreCoercion
+  | CoreCoercionForAllCo    : CoreVar      -> CoreCoercion             -> CoreCoercion
+  | CoreCoercionCoVarCo     : CoreVar                                  -> CoreCoercion
+  | CoreCoercionAxiomInstCo : CoreCoercionCoAxiom -> list CoreCoercion -> CoreCoercion
+  | CoreCoercionUnsafeCo    : CoreType -> CoreType                     -> CoreCoercion
+  | CoreCoercionSymCo       : CoreCoercion                             -> CoreCoercion
+  | CoreCoercionTransCo     : CoreCoercion -> CoreCoercion             -> CoreCoercion
+  | CoreCoercionNthCo       : Int -> CoreCoercion                      -> CoreCoercion
+  | CoreCoercionInstCo      : CoreCoercion -> CoreType                 -> CoreCoercion.
+
+Extract Inductive CoreCoercion =>
+  "Coercion.Coercion" [
+  "Coercion.Refl"
+  "Coercion.TyConAppCo"
+  "Coercion.AppCo"
+  "Coercion.ForAllCo"
+  "Coercion.CoVarCo"
+  "Coercion.AxiomInstCo"
+  "Coercion.UnsafeCo"
+  "Coercion.SymCo"
+  "Coercion.TransCo"
+  "Coercion.NthCo"
+  "Coercion.InstCo" ].
+
 Variable coreNameToString      : CoreName     -> string.    Extract Inlined Constant coreNameToString       => "outputableToString".
 Variable coreCoercionToString  : CoreCoercion -> string.    Extract Inlined Constant coreCoercionToString   => "outputableToString".
 Variable coreCoercionKind : Kind -> CoreType*CoreType.
   Extract Inlined Constant coreCoercionKind => "(Coercion.coercionKind . kindToCoreKind)".
-Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Coercion.typeKind)".
+Variable kindOfCoreType   : CoreType -> Kind.   Extract Inlined Constant kindOfCoreType   => "(coreKindToKind . Kind.typeKind)".
 Variable coreTypeToString : CoreType -> string. Extract Inlined Constant coreTypeToString => "(outputableToString . coreViewDeep)".
 Variable setVarType       : CoreVar -> CoreType -> CoreVar. Extract Inlined Constant setVarType       => "Var.setVarType".
 

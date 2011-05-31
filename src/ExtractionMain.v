@@ -71,7 +71,7 @@ Variable mkSystemName : Unique -> string -> nat -> Name.
 Variable mkTyVar : Name -> Kind -> CoreVar.
   Extract Inlined Constant mkTyVar => "(\n k -> Var.mkTyVar n (kindToCoreKind k))".
 Variable mkCoVar : Name -> CoreType -> CoreType -> CoreVar.
-  Extract Inlined Constant mkCoVar => "(\n t1 t2 -> Var.mkCoVar n (Coercion.mkCoKind t1 t2))".
+  Extract Inlined Constant mkCoVar => "(\n t1 t2 -> Var.mkCoVar n (Coercion.mkCoType t1 t2))".
 Variable mkExVar : Name -> CoreType -> CoreVar.
   Extract Inlined Constant mkExVar => "Id.mkLocalId".
 

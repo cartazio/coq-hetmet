@@ -16,10 +16,10 @@ Require Import HaskWeakVars.
 Require Import HaskWeakTypes.
 Require Import HaskWeak.
 
-Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun. Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
-Variable coreViewDeep : CoreType  -> CoreType.        Extract Inlined Constant coreViewDeep => "coreViewDeep".
-Variable getSourceAndTargetTypesOfCoercion : CoreCoercion -> (CoreType * CoreType).
-  Extract Inlined Constant getSourceAndTargetTypesOfCoercion => "getSourceAndTargetTypesOfCoercion".
+Variable tyConOrTyFun : CoreTyCon -> sum TyCon TyFun.          Extract Inlined Constant tyConOrTyFun => "tyConOrTyFun".
+Variable coreViewDeep : CoreType  -> CoreType.                 Extract Inlined Constant coreViewDeep => "coreViewDeep".
+Variable coercionKind : CoreCoercion -> (CoreType * CoreType).
+   Extract Inlined Constant coercionKind => "(\x -> Pair.unPair (Coercion.coercionKind x))".
 
 (* extracts the Name from a CoreVar *)
 Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant coreVarCoreName  => "Var.varName".
@@ -188,8 +188,9 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
     | CoreELit   lit   => OK (WELit lit)
     | CoreENote  n e   => coreExprToWeakExpr e >>= fun e' => OK (WENote n e')
     | CoreEType  t     => Error "encountered CoreEType in a position where an Expr should have been"
+    | CoreECoercion co => Error "encountered CoreECoercion in a position where an Expr should have been"
     | CoreECast  e co  => coreExprToWeakExpr e >>= fun e' =>
-                            let (ct1,ct2) := getSourceAndTargetTypesOfCoercion co
+                            let (ct1,ct2) := coercionKind co
                              in coreTypeToWeakType ct1 >>= fun t1 =>
                                   coreTypeToWeakType ct2 >>= fun t2 =>
                                     OK (WECast e' (WCoUnsafe t1 t2))
