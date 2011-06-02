@@ -85,7 +85,7 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
    Rule [Γ > ((σ₁∼∼∼σ₂)::Δ)            > Σ |- [σ ]@l]
         [Γ > Δ >                         Σ |- [σ₁∼∼σ₂⇒ σ ]@l]
 
-| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > Σ₁,,(τ₂@@@lev) |- (τ₂,,[τ₁]) @lev ] [Γ > Δ > Σ₁ |- [τ₁] @lev]
+| RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > (τ₂@@@lev),,Σ₁ |- (τ₂,,[τ₁]) @lev ] [Γ > Δ > Σ₁ |- [τ₁] @lev]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
   (alts:Tree ??{ sac : @StrongAltCon tc & @ProofCaseBranch tc Γ Δ lev tbranches avars sac }),
                    Rule

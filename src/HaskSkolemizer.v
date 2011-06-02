@@ -492,7 +492,30 @@ Section HaskSkolemizer.
         apply nd_rule.
         apply SFlat.
         apply (@RLetRec Γ Δ lri x y nil).
-        apply (Prelude_error "RLetRec at depth>0").
+        destruct (decide_tree_empty (mapOptionTreeAndFlatten take_arg_types_as_tree y @@@ (h :: t)));
+          [ idtac | apply (Prelude_error "used LetRec on a set of bindings involving a function type") ].
+        destruct (eqd_dec y (mapOptionTree drop_arg_types_as_tree y));
+          [ idtac | apply (Prelude_error "used LetRec on a set of bindings involving a function type") ].
+        rewrite <- e.
+        clear e.
+        eapply nd_comp.
+          eapply nd_rule.
+          eapply SFlat.
+          eapply RArrange.
+          eapply ALeft.
+          eapply AComp.
+          eapply ARight.
+          destruct s.
+          apply (arrangeCancelEmptyTree _ _ e).
+          apply ACanL.
+        eapply nd_comp.
+          eapply nd_rule.
+          eapply SFlat.
+          eapply RArrange.
+          eapply AuAssoc.
+        eapply nd_rule.
+          eapply SFlat.
+          eapply RLetRec.
 
       destruct case_RCase.
         simpl.

@@ -307,6 +307,8 @@ Section core2proof.
     (hetmet_pga_applyr : CoreVar)
     (hetmet_pga_curryl : CoreVar)
     (hetmet_pga_curryr : CoreVar)
+    (hetmet_pga_loopl : CoreVar)
+    (hetmet_pga_loopr : CoreVar)
     .
 
 
@@ -411,6 +413,8 @@ Section core2proof.
 (*  ; ga_curry     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_curry))*)
 (*  ; ga_apply     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_apply))*)
 (*  ; ga_kappa     := fun Γ Δ ec l a     => fToC1 (nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_kappa)))*)
+    ; ga_loopl     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_loopl (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
+    ; ga_loopr     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_loopr (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
     ; ga_lit       := fun Γ Δ ec l a     => Prelude_error "ga_lit"
     ; ga_curry     := fun Γ Δ ec l a b c => Prelude_error "ga_curry"
     ; ga_apply     := fun Γ Δ ec l a b c => Prelude_error "ga_apply"
@@ -529,7 +533,10 @@ Section core2proof.
     (hetmet_pga_applyl : CoreVar)
     (hetmet_pga_applyr : CoreVar)
     (hetmet_pga_curryl : CoreVar)
-    (hetmet_pga_curryr : CoreVar) : list (@CoreBind CoreVar) :=
+    (hetmet_pga_curryr : CoreVar)
+    (hetmet_pga_loopl : CoreVar)
+    (hetmet_pga_loopr : CoreVar)
+    : list (@CoreBind CoreVar) :=
     coqPassCoreToCore'
        do_flatten
        do_skolemize
@@ -556,6 +563,8 @@ Section core2proof.
        hetmet_pga_copy 
        hetmet_pga_drop 
        hetmet_pga_swap 
+       hetmet_pga_loopl 
+       hetmet_pga_loopr 
        lbinds
        (*
        hetmet_pga_applyl 

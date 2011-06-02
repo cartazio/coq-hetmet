@@ -964,7 +964,7 @@ Section HaskProofToStrong.
     refine (bind ξvars = fresh_lemma' _ y _ _ _ t H; _). apply FreshMon.
     destruct ξvars as [ varstypes [ pf1[ pf2 pfdist]]].
     refine (X_ ((update_xi ξ t (leaves varstypes)))
-      (vars,,(mapOptionTree (@fst _ _) varstypes)) _ >>>= fun X => return _); clear X_.  apply FreshMon.
+      ((mapOptionTree (@fst _ _) varstypes),,vars) _ >>>= fun X => return _); clear X_.  apply FreshMon.
     simpl.
     rewrite pf2.
     rewrite pf1.

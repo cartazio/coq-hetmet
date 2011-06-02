@@ -997,7 +997,7 @@ Lemma letRecSubproofsToND' Γ Δ ξ lev τ tree  :
   eapply nd_comp; [ idtac | eapply nd_rule; apply z ].
   clear z.
 
-  set (@factorContextRightAndWeaken''  Γ Δ  pctx ξ' (eLetRecContext branches,,expr2antecedent body)) as q'.
+  set (@factorContextLeftAndWeaken''  Γ Δ  pctx ξ' (eLetRecContext branches,,expr2antecedent body)) as q'.
   unfold passback in *; clear passback.
   unfold pctx in *; clear pctx.
   set (q' disti) as q''.

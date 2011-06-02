@@ -272,6 +272,8 @@ Section HaskFlattener.
   ; ga_second    : ∀ Γ Δ ec l a b x, ND Rule [] [Γ > Δ >      [@ga_mk Γ ec a b @@l] |- [@ga_mk Γ ec (x,,a) (x,,b) ]@l ]
   ; ga_lit       : ∀ Γ Δ ec l lit  , ND Rule [] [Γ > Δ >                          [] |- [@ga_mk Γ ec [] [literalType lit] ]@l ]
   ; ga_curry     : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec (a,,[b]) [c] @@ l] |- [@ga_mk Γ ec a [b ---> c] ]@ l ]
+  ; ga_loopl     : ∀ Γ Δ ec l x y z, ND Rule [] [Γ > Δ > [@ga_mk Γ ec (z,,x) (z,,y) @@ l] |- [@ga_mk Γ ec x y ]@ l ]
+  ; ga_loopr     : ∀ Γ Δ ec l x y z, ND Rule [] [Γ > Δ > [@ga_mk Γ ec (x,,z) (y,,z) @@ l] |- [@ga_mk Γ ec x y ]@ l ]
   ; ga_comp      : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec a b @@ l],,[@ga_mk Γ ec b c @@ l] |- [@ga_mk Γ ec a c ]@l ] 
   ; ga_apply     : ∀ Γ Δ ec l a a' b c,
                  ND Rule [] [Γ > Δ > [@ga_mk Γ ec a [b ---> c] @@ l],,[@ga_mk Γ ec a' [b] @@ l] |- [@ga_mk Γ ec (a,,a') [c] ]@l ]
@@ -991,7 +993,11 @@ Section HaskFlattener.
       unfold x1.
       rewrite drop_to_nothing.
       apply arrangeCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ₁₂)).
-      admit. (* OK *)
+        induction Σ₁₂; try destruct a; auto.
+        simpl.
+        rewrite <- IHΣ₁₂1 at 2.
+        rewrite <- IHΣ₁₂2 at 2.
+        reflexivity.
       eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply ALeft; eapply ACanL | idtac ].
       set (mapOptionTree flatten_type Σ₁₂) as a.
       set (mapOptionTree (flatten_type ○ unlev) (take_lev (ec :: lev) Σ₁)) as b.
@@ -1031,7 +1037,11 @@ Section HaskFlattener.
         eapply RArrange.
         eapply ARight.
         apply arrangeUnCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ)).
-        admit (* FIXME *).
+          induction Σ; try destruct a; auto.
+          simpl.
+          rewrite <- IHΣ1 at 2.
+          rewrite <- IHΣ2 at 2.
+          reflexivity.
         idtac.
         eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanL ].
         apply boost.
@@ -1066,7 +1076,11 @@ Section HaskFlattener.
         eapply RArrange.
         eapply ALeft.
         apply arrangeUnCancelEmptyTree with (q:=(mapTree (fun _ : ??(HaskType Γ ★) => tt) Σ)).
-        admit (* FIXME *).
+          induction Σ; try destruct a; auto.
+          simpl.
+          rewrite <- IHΣ1 at 2.
+          rewrite <- IHΣ2 at 2.
+          reflexivity.
         idtac.
         eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
         apply boost.
@@ -1082,10 +1096,13 @@ Section HaskFlattener.
 
     destruct case_RVoid.
       simpl.
-      apply nd_rule.
       destruct l.
+      apply nd_rule.
       apply RVoid.
-      apply (Prelude_error "RVoid at level >0").
+      drop_simplify.
+      take_simplify.
+      simpl.
+      apply ga_id.
         
     destruct case_RAppT.
       simpl. destruct lev; simpl.
@@ -1156,7 +1173,31 @@ Section HaskFlattener.
         rewrite IHy1.
         rewrite IHy2.
         reflexivity.
-      apply (Prelude_error "LetRec not supported inside brackets yet (FIXME)").
+      repeat drop_simplify.
+      repeat take_simplify.
+      simpl.
+      rewrite drop_to_nothing.
+      eapply nd_comp.
+        eapply nd_rule.
+        eapply RArrange.
+        eapply AComp.
+        eapply ARight.
+        apply arrangeCancelEmptyTree with (q:=y).
+          induction y; try destruct a; auto.
+          simpl.
+          rewrite <- IHy1.
+          rewrite <- IHy2.
+          reflexivity.
+        apply ACanL.
+        rewrite take_lemma'.
+        set (mapOptionTree (flatten_type ○ unlev) (take_lev (h :: lev) lri)) as lri'.
+        set (mapOptionTree flatten_leveled_type (drop_lev (h :: lev) lri)) as lri''.
+        replace (mapOptionTree (flatten_type ○ unlev) (y @@@ (h :: lev))) with (mapOptionTree flatten_type y).
+        apply boost.
+        apply ga_loopl.
+        rewrite <- mapOptionTree_compose.
+        simpl.
+        reflexivity.
 
     destruct case_RCase.
       simpl.
