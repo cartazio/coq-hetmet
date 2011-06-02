@@ -186,8 +186,24 @@ detect (GAS_const i)  = do { x <- freshM; return $ GASPortShapeWrapper PortUnit 
 detect GAS_merge      = do { x <- freshM
                            ; y <- freshM
                            ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree y)) (PortFree x) GAS_merge }
-detect (GAS_loopl f)  = error "not implemented"
-detect (GAS_loopr f)  = error "not implemented"
+detect (GAS_loopl f)  = do { x <- freshM
+                           ; y <- freshM
+                           ; z <- freshM
+                           ; z' <- freshM    -- remove once I fix the occurs check
+                           ; f' <- detect f
+                           ; unifyM (fst $ shapes f') (PortTensor (PortFree z) (PortFree x))
+                           ; unifyM (snd $ shapes f') (PortTensor (PortFree z') (PortFree y))
+                           ; return $ GASPortShapeWrapper (PortFree x) (PortFree y) (GAS_loopl (GAS_misc f'))
+                           }
+detect (GAS_loopr f)  = do { x <- freshM
+                           ; y <- freshM
+                           ; z <- freshM
+                           ; z' <- freshM    -- remove once I fix the occurs check
+                           ; f' <- detect f
+                           ; unifyM (fst $ shapes f') (PortTensor (PortFree x) (PortFree z))
+                           ; unifyM (snd $ shapes f') (PortTensor (PortFree y) (PortFree z'))
+                           ; return $ GASPortShapeWrapper (PortFree x) (PortFree y) (GAS_loopr (GAS_misc f'))
+                           }
 
-detect (GAS_misc f)   = error "not implemented"
+detect (GAS_misc f)   = error "GAS_misc: not implemented"
 

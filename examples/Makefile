@@ -1,4 +1,4 @@
-ghc_opt := -fwarn-incomplete-patterns -Werror -odir .build -hidir .build 
+ghc_opt := -fwarn-incomplete-patterns -Werror -odir .build -hidir .build
 
 open:
 	make demo

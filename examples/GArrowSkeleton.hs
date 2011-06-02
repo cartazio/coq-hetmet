@@ -81,7 +81,7 @@ type instance GArrowTensor      (GArrowSkeleton m) = (,)
 type instance GArrowUnit        (GArrowSkeleton m) = ()
 type instance GArrowExponent    (GArrowSkeleton m) = (->)
 
-instance GArrowSTKC (GArrowSkeleton m)
+instance GArrowSTKCL (GArrowSkeleton m)
 
 --
 -- | Simple structural equality on skeletons.  NOTE: two skeletons

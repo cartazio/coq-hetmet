@@ -5,10 +5,16 @@ module Demo (demo) where
 --demo con mer = <[ ~~mer ~~(con (2::Int)) ~~(con (12::Int)) ]>
 
 demo const mult =
-   <[ let twelve = ~~(const (12::Int))
-          four   = ~~(const ( 4::Int))
-      in  ~~mult four (~~mult four twelve)
+   <[ let four   = ~~mult four ~~(const  4)
+--          twelve = {- {- ~~mult four -}  ~~(const 12) -} four
+      in  four
     ]>
+
+demo ::
+    forall a c . 
+         (Int -> <[a]>@c) -> 
+        <[a -> a -> a]>@c ->
+        <[a]>@c
 
 {-
 demo const mult =

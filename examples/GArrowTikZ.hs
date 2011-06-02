@@ -81,8 +81,8 @@ data Diagram
   | DiagramBox       TrackIdentifier Tracks BoxRenderer Tracks TrackIdentifier
   | DiagramBypassTop Tracks Diagram
   | DiagramBypassBot        Diagram Tracks
-  -- | DiagramLoopTop   Tracks Diagram
-  -- | DiagramLoopBot          Diagram Tracks
+  | DiagramLoopTop   Tracks Diagram
+  | DiagramLoopBot          Diagram Tracks
 
 -- | get the output tracks of a diagram
 getOut :: Diagram -> Tracks
@@ -90,6 +90,8 @@ getOut (DiagramComp f g)                     = getOut g
 getOut (DiagramBox ptop pin q pout pbot)     = pout
 getOut (DiagramBypassTop p f)                = TT p (getOut f)
 getOut (DiagramBypassBot f p)                = TT (getOut f) p
+getOut (DiagramLoopTop t d)                  = case getOut d of { TT z y -> y ; _ -> error "mismatch" }
+getOut (DiagramLoopBot d t)                  = case getOut d of { TT y z -> y ; _ -> error "mismatch" }
 
 -- | get the input tracks of a diagram
 getIn :: Diagram -> Tracks
@@ -97,6 +99,8 @@ getIn (DiagramComp f g)                      = getIn f
 getIn (DiagramBox ptop pin q pout pbot)      = pin
 getIn (DiagramBypassTop p f)                 = TT p (getIn f)
 getIn (DiagramBypassBot f p)                 = TT (getIn f) p
+getIn (DiagramLoopTop t d)                   = case getIn d of { TT z x -> x ; _ -> error "mismatch" }
+getIn (DiagramLoopBot d t)                   = case getIn d of { TT x z -> x ; _ -> error "mismatch" }
 
 -- | A BoxRenderer is just a routine that, given the dimensions of a
 -- boxes-and-wires box element, knows how to spit out a bunch of TikZ
@@ -264,8 +268,10 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 z x2 z "black"
         ; return $ DiagramBox top (TT x (TT y z)) r (TT (TT x y) z) bot
         }
- mkdiag' (GAS_loopl f)  = error "not implemented"
- mkdiag' (GAS_loopr f)  = error "not implemented"
+ mkdiag' (GAS_loopr  f) = do { (top,(TT _ x),bot) <- alloc inp; f' <- mkdiag' f ; constrainBot f' 1 (uppermost x)
+                             ; return $ DiagramLoopBot f' x  }
+ mkdiag' (GAS_loopl  f) = do { (top,(TT x _),bot) <- alloc inp; f' <- mkdiag' f ; constrainTop (lowermost x) 1 f'
+                             ; return $ DiagramLoopTop x f'  }
  mkdiag' (GAS_misc f )  = mkdiag f
 
  diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
@@ -290,6 +296,8 @@ constrainTop v i (DiagramComp d1 d2)                  = do { constrainTop v i d1
 constrainTop v i (DiagramBypassTop p d)               = constrain v LT (uppermost p) (-1 * i)
 constrainTop v i (DiagramBypassBot d p)               = constrainTop v (i+1) d
 constrainTop v i (DiagramBox ptop pin r pout pbot)    = constrain v LT ptop (-1 * i)
+constrainTop v i (DiagramLoopTop p d)                 = constrain v LT (uppermost p) (-1 * i)
+constrainTop v i (DiagramLoopBot d p)                 = constrainTop v (i+1) d
 
 -- constrain that Ports is at least Int units below the bottommost portion of Diagram
 constrainBot :: Diagram -> Float -> TrackIdentifier -> ConstraintM ()
@@ -297,6 +305,8 @@ constrainBot (DiagramComp d1 d2)                  i v = do { constrainBot d1 i v
 constrainBot (DiagramBypassTop p d)               i v = constrainBot d (i+1) v
 constrainBot (DiagramBypassBot d p)               i v = constrain v GT (lowermost p) 2
 constrainBot (DiagramBox ptop pin r pout pbot)    i v = constrain v GT pbot i
+constrainBot (DiagramLoopTop p d)                 i v = constrainBot d (i+1) v
+constrainBot (DiagramLoopBot d p)                 i v = constrain v GT (lowermost p) 2
 
 -- | The width of a box is easy to calculate
 width :: Diagram -> Float
@@ -304,6 +314,8 @@ width (DiagramComp d1 d2)               = (width d1) + 1 + (width d2)
 width (DiagramBox ptop pin x pout pbot) = 2
 width (DiagramBypassTop p d)            = (width d) + 2
 width (DiagramBypassBot d p)            = (width d) + 2
+width (DiagramLoopTop p d)              = (width d) + 2
+width (DiagramLoopBot d p)              = (width d) + 2
 
 drawWires :: TrackPositions -> Float -> Tracks -> Float -> Tracks -> String -> String
 drawWires tp x1 (TT a b) x2 (TT a' b') color = drawWires tp x1 a x2 a' color ++ drawWires tp x1 b x2 b' color
@@ -335,6 +347,20 @@ tikZ m = tikZ'
                                       ++ tikZ' d (x+1)
                                       ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
                                       ++ drawWires m x p (x+1+width d+1) p "black"
+  tikZ' d'@(DiagramLoopTop p d) x   = let top = getTop d' in
+                                      let bot = getBot d' in
+                                      drawBox  x top (x+width d') bot "gray!50" "loopl"
+                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
+                                      ++ tikZ' d (x+1)
+                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width d+1) p "black"
+  tikZ' d'@(DiagramLoopBot d p) x   = let top = getTop d' in
+                                      let bot = getBot d' in
+                                      drawBox  x top (x+width d') bot "gray!50" "loopr"
+                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
+                                      ++ tikZ' d (x+1)
+                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width d+1) p "black"
   tikZ' d@(DiagramBox ptop pin r pout pbot) x = r m x (m ! ptop) (x + width d) (m ! pbot)
 
   wires x1 t x2 c = wires' x1 t x2 c "-"
@@ -349,12 +375,16 @@ tikZ m = tikZ'
   getTop (DiagramBox ptop _ _ _ _)  = m ! ptop
   getTop (DiagramBypassTop p d)     = (m ! uppermost p) - 1
   getTop (DiagramBypassBot d p)     = getTop d - 1
+  getTop (DiagramLoopTop p d)       = (m ! uppermost p) - 1
+  getTop (DiagramLoopBot d p)       = getTop d - 1
 
   getBot :: Diagram -> Float
   getBot (DiagramComp d1 d2)        = max (getBot d1) (getBot d2)
   getBot (DiagramBox _ _ _ _ pbot)  = m ! pbot
   getBot (DiagramBypassTop p d)     = getBot d + 1
   getBot (DiagramBypassBot d p)     = (m ! lowermost p) + 1
+  getBot (DiagramLoopTop p d)       = getBot d + 1
+  getBot (DiagramLoopBot d p)       = (m ! lowermost p) + 1
 
 -- allocates multiple tracks, adding constraints that they are at least one unit apart
 alloc :: PortShape a -> ConstraintM (TrackIdentifier,Tracks,TrackIdentifier)
