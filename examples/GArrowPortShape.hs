@@ -40,6 +40,11 @@ data PortShape a = PortUnit
                  | PortTensor (PortShape a) (PortShape a)
                  | PortFree a
 
+instance Show a => Show (PortShape a) where
+ show PortUnit           = "U"
+ show (PortTensor p1 p2) = "("++show p1++"*"++show p2++")"
+ show (PortFree x)       = show x
+
 data GArrowPortShape m s a b =
     GASPortPassthrough
       (PortShape s)
@@ -60,7 +65,11 @@ instance Unifiable UPort where
   unify' (PortTensor x1 y1) (PortTensor x2 y2) = mergeU (unify x1 x2) (unify y1 y2)
   unify' PortUnit PortUnit                     = emptyUnifier
   unify' s1 s2                                 = error $ "Unifiable UPort got impossible unification case: "
---                                                          ++ show s1 ++ " and " ++ show s2
+
+  replace uv prep PortUnit                    = PortUnit
+  replace uv prep (PortTensor p1 p2)          = PortTensor (replace uv prep p1) (replace uv prep p2)
+  replace uv prep (PortFree x)                = if x==uv then prep else PortFree x
+
   inject                                       = PortFree
   project (PortFree v)                         = Just v
   project _                                    = Nothing
@@ -182,26 +191,23 @@ detect GAS_unassoc    = do { x <- freshM; y <- freshM; z <- freshM
                            }
 detect (GAS_const i)  = do { x <- freshM; return $ GASPortShapeWrapper PortUnit (PortFree x) (GAS_const i) }
 
--- FIXME: I need to fix the occurs check before I can make these different again
 detect GAS_merge      = do { x <- freshM
-                           ; y <- freshM
-                           ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree y)) (PortFree x) GAS_merge }
+                           ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree x)) (PortFree x) GAS_merge }
+
 detect (GAS_loopl f)  = do { x <- freshM
                            ; y <- freshM
                            ; z <- freshM
-                           ; z' <- freshM    -- remove once I fix the occurs check
                            ; f' <- detect f
                            ; unifyM (fst $ shapes f') (PortTensor (PortFree z) (PortFree x))
-                           ; unifyM (snd $ shapes f') (PortTensor (PortFree z') (PortFree y))
+                           ; unifyM (snd $ shapes f') (PortTensor (PortFree z) (PortFree y))
                            ; return $ GASPortShapeWrapper (PortFree x) (PortFree y) (GAS_loopl (GAS_misc f'))
                            }
 detect (GAS_loopr f)  = do { x <- freshM
                            ; y <- freshM
                            ; z <- freshM
-                           ; z' <- freshM    -- remove once I fix the occurs check
                            ; f' <- detect f
                            ; unifyM (fst $ shapes f') (PortTensor (PortFree x) (PortFree z))
-                           ; unifyM (snd $ shapes f') (PortTensor (PortFree y) (PortFree z'))
+                           ; unifyM (snd $ shapes f') (PortTensor (PortFree y) (PortFree z))
                            ; return $ GASPortShapeWrapper (PortFree x) (PortFree y) (GAS_loopr (GAS_misc f'))
                            }
 
