@@ -90,8 +90,8 @@ getOut (DiagramComp f g)                     = getOut g
 getOut (DiagramBox ptop pin q pout pbot)     = pout
 getOut (DiagramBypassTop p f)                = TT p (getOut f)
 getOut (DiagramBypassBot f p)                = TT (getOut f) p
-getOut (DiagramLoopTop t d)                  = case getOut d of { TT z y -> y ; _ -> error "mismatch" }
-getOut (DiagramLoopBot d t)                  = case getOut d of { TT y z -> y ; _ -> error "mismatch" }
+getOut (DiagramLoopTop t d)                  = case getOut d of { TT z y -> y ; _ -> error "DiagramLoopTop: mismatch" }
+getOut (DiagramLoopBot d t)                  = case getOut d of { TT y z -> y ; _ -> error "DiagramLoopBot: mismatch" }
 
 -- | get the input tracks of a diagram
 getIn :: Diagram -> Tracks
@@ -99,8 +99,8 @@ getIn (DiagramComp f g)                      = getIn f
 getIn (DiagramBox ptop pin q pout pbot)      = pin
 getIn (DiagramBypassTop p f)                 = TT p (getIn f)
 getIn (DiagramBypassBot f p)                 = TT (getIn f) p
-getIn (DiagramLoopTop t d)                   = case getIn d of { TT z x -> x ; _ -> error "mismatch" }
-getIn (DiagramLoopBot d t)                   = case getIn d of { TT x z -> x ; _ -> error "mismatch" }
+getIn (DiagramLoopTop t d)                   = case getIn d of { TT z x -> x ; _ -> error "DiagramLoopTop: mismatch" }
+getIn (DiagramLoopBot d t)                   = case getIn d of { TT x z -> x ; _ -> error "DiagramLoopBot: mismatch" }
 
 -- | A BoxRenderer is just a routine that, given the dimensions of a
 -- boxes-and-wires box element, knows how to spit out a bunch of TikZ
@@ -267,10 +267,14 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 z x2 z "black"
         ; return $ DiagramBox top (TT x (TT y z)) r (TT (TT x y) z) bot
         }
- mkdiag' (GAS_loopr  f) = do { (top,(TT _ x),bot) <- alloc inp; f' <- mkdiag' f ; constrainBot f' 1 (uppermost x)
-                             ; return $ DiagramLoopBot f' x  }
- mkdiag' (GAS_loopl  f) = do { (top,(TT x _),bot) <- alloc inp; f' <- mkdiag' f ; constrainTop (lowermost x) 1 f'
-                             ; return $ DiagramLoopTop x f'  }
+ mkdiag' (GAS_loopl  f) = do { f' <- mkdiag' f
+                             ; l <- allocLoop (case (getIn f') of (TT z _) -> z ; _ -> error "GAS_loopl: mismatch")
+                             ; constrainTop (lowermost l) loopgap f'
+                             ; return $ DiagramLoopTop l f'  }
+ mkdiag' (GAS_loopr  f) = do { f' <- mkdiag' f
+                             ; l <- allocLoop (case (getIn f') of (TT _ z) -> z ; _ -> error "GAS_loopr: mismatch")
+                             ; constrainBot f' loopgap (uppermost l)
+                             ; return $ DiagramLoopBot f' l  }
  mkdiag' (GAS_misc f )  = mkdiag f
 
  diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
@@ -308,19 +312,37 @@ constrainBot (DiagramLoopTop p d)                 i v = constrainBot d (i+1) v
 constrainBot (DiagramLoopBot d p)                 i v = constrain v GT (lowermost p) 2
 
 -- | The width of a box is easy to calculate
-width :: Diagram -> Float
-width (DiagramComp d1 d2)               = (width d1) + 1 + (width d2)
-width (DiagramBox ptop pin x pout pbot) = 2
-width (DiagramBypassTop p d)            = (width d) + 2
-width (DiagramBypassBot d p)            = (width d) + 2
-width (DiagramLoopTop p d)              = (width d) + 2
-width (DiagramLoopBot d p)              = (width d) + 2
+width :: TrackPositions -> Diagram -> Float
+width m (DiagramComp d1 d2)               = (width m d1) + 1 + (width m d2)
+width m (DiagramBox ptop pin x pout pbot) = 2
+width m (DiagramBypassTop p d)            = (width m d) + 2
+width m (DiagramBypassBot d p)            = (width m d) + 2
+width m (DiagramLoopTop p d)              = (width m d) + 2 + 2 * (loopgap + (m ! lowermost p) - (m ! uppermost p))
+width m (DiagramLoopBot d p)              = (width m d) + 2 + 2 * (loopgap + (m ! lowermost p) - (m ! uppermost p))
 
 drawWires :: TrackPositions -> Float -> Tracks -> Float -> Tracks -> String -> String
 drawWires tp x1 (TT a b) x2 (TT a' b') color = drawWires tp x1 a x2 a' color ++ drawWires tp x1 b x2 b' color
 drawWires tp x1 (T a)    x2 (T a')     color = drawLine x1 (tp!a) x2 (tp!a') color     "-"
 drawWires tp x1 (TU a)   x2 (TU a')    color = drawLine x1 (tp!a) x2 (tp!a') "gray!50" "dashed"
 drawWires tp _ _ _ _ _                       = error "drawwires fail"
+
+wirecos :: TrackPositions -> Tracks -> [(Float,Bool)]
+wirecos tp (TT a b) = wirecos tp a ++ wirecos tp b
+wirecos tp (T  a)   = [(tp!a,True)]
+wirecos tp (TU a)   = [(tp!a,False)]
+
+wire90 :: Float -> Float -> (Float,Float,Bool) -> String
+wire90 x y (y1,y2,b) = drawLine' [(x,y1),(x',y1),(x',y2),(x,y2)] color (style++",rounded corners")
+ where
+  color = if b then "black" else "gray!50"
+  style = if b then "-" else "dashed"
+  x'    = x - (y - y1) - loopgap
+
+wire90' x y (y1,y2,b) = drawLine' [(x,y1),(x',y1),(x',y2),(x,y2)] color (style++",rounded corners")
+ where
+  color = if b then "black" else "gray!50"
+  style = if b then "-" else "dashed"
+  x'    = x + (y - y1) + loopgap
 
 tikZ :: TrackPositions ->
         Diagram ->
@@ -329,38 +351,41 @@ tikZ :: TrackPositions ->
 tikZ m = tikZ'
  where
   tikZ'  d@(DiagramComp d1 d2)    x = tikZ' d1 x
-                                      ++ wires' (x+width d1) (getOut d1) (x+width d1+0.5) "black" "->"
-                                      ++ wires' (x+width d1+0.5) (getOut d1) (x+width d1+1) "black" "-"
-                                      ++ tikZ' d2 (x + width d1 + 1)
+                                      ++ wires' (x+width m d1) (getOut d1) (x+width m d1+0.5) "black" "->"
+                                      ++ wires' (x+width m d1+0.5) (getOut d1) (x+width m d1+1) "black" "-"
+                                      ++ tikZ' d2 (x + width m d1 + 1)
   tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width m d') bot "gray!50" "second"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
                                       ++ tikZ' d (x+1)
-                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
-                                      ++ drawWires m x p (x+1+width d+1) p "black"
+                                      ++ drawWires m (x+1+width m d) (getOut d) (x+1+width m d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width m d+1) p "black"
   tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width m d') bot "gray!50" "first"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
                                       ++ tikZ' d (x+1)
-                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
-                                      ++ drawWires m x p (x+1+width d+1) p "black"
+                                      ++ drawWires m (x+1+width m d) (getOut d) (x+1+width m d+1) (getOut d) "black"
+                                      ++ drawWires m x p (x+1+width m d+1) p "black"
   tikZ' d'@(DiagramLoopTop p d) x   = let top = getTop d' in
                                       let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "loopl"
-                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
-                                      ++ tikZ' d (x+1)
-                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
-                                      ++ drawWires m x p (x+1+width d+1) p "black"
-  tikZ' d'@(DiagramLoopBot d p) x   = let top = getTop d' in
-                                      let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "loopr"
-                                      ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
-                                      ++ tikZ' d (x+1)
-                                      ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
-                                      ++ drawWires m x p (x+1+width d+1) p "black"
-  tikZ' d@(DiagramBox ptop pin r pout pbot) x = r m x (m ! ptop) (x + width d) (m ! pbot)
+                                      let gap = loopgap + (m ! lowermost p) - (m ! uppermost p) in
+                                      drawBox  x top (x+width m d') bot "gray!50" "loopl"
+                                      ++ tikZ' d (x+1+gap)
+                                      ++ drawWires m (x+1+gap) p (x+1+gap+width m d) p "black"
+                                      ++ let p'   = case getIn d of TT z _ -> z ; _ -> error "DiagramLoopTop: mismatch"
+                                             pzip = map (\((y,b),(y',_)) -> (y,y',b)) $ zip (wirecos m p) (reverse $ wirecos m p')
+                                         in  concatMap (wire90  (x+1+gap) (m ! lowermost p)) pzip
+                                      ++ let p'   = case getOut d of TT z _ -> z ; _ -> error "DiagramLoopTop: mismatch"
+                                             pzip = map (\((y,b),(y',_)) -> (y,y',b)) $ zip (wirecos m p) (reverse $ wirecos m p')
+                                         in  concatMap (wire90' (x+1+gap+width m d) (m ! lowermost p)) pzip
+                                      ++ let rest = case getIn d of TT _ z -> z ; _ -> error "DiagramLoopTop: mismatch"
+                                         in  drawWires m x rest (x+1+gap) rest "black"
+                                      ++ let rest = case getOut d of TT _ z -> z ; _ -> error "DiagramLoopTop: mismatch"
+                                         in  drawWires m (x+1+gap+width m d) rest (x+width m d') rest "black"
+  tikZ' d'@(DiagramLoopBot d p) x_  = error "not implemented"
+  tikZ' d@(DiagramBox ptop pin r pout pbot) x = r m x (m ! ptop) (x + width m d) (m ! pbot)
 
   wires x1 t x2 c = wires' x1 t x2 c "-"
 
@@ -403,6 +428,17 @@ alloc shape = do { tracks <- alloc' shape
                                   ; constrain (lowermost x1) LT (uppermost x2) (-1)
                                   ; return (TT x1 x2)
                                   }
+
+-- allocates a second set of tracks identical to the first one but constrained only relative to each other (one unit apart)
+-- and upside-down
+allocLoop :: Tracks -> ConstraintM Tracks
+allocLoop (TU _)       = do { T x <- alloc1 ; return (TU x) }
+allocLoop (T  _)       = do { x <- alloc1   ; return x }
+allocLoop (TT t1 t2)   = do { x1 <- allocLoop t2
+                            ; x2 <- allocLoop t1
+                            ; constrain (lowermost x1) LT (uppermost x2) (-1)
+                            ; return (TT x1 x2)
+                            }
 
 do_lp_solve :: [Constraint] -> IO String
 do_lp_solve c = do { let stdin = "min: x1;\n" ++ (foldl (++) "" (map show c)) ++ "\n"
@@ -495,8 +531,19 @@ drawLine x1 y1 x2 y2 color style =
   "("++show (x1*xscale)++","++show (y1*yscale)++") -- " ++
   "("++show (x2*xscale)++","++show (y2*yscale)++");\n"
 
+drawLine' [] color style = ""
+drawLine' (xy1:xy) color style =
+  "\\path[draw,color="++color++","++style++"] "++
+  foldl (\x y -> x ++ " -- " ++ y) (f xy1) (map f xy)
+  ++ ";\n"
+   where
+     f = (\(x,y) -> "("++show (x*xscale)++","++show (y*yscale)++")")
+
 -- | x scaling factor for the entire diagram, since TikZ doesn't scale font sizes
 xscale = 1
 
 -- | y scaling factor for the entire diagram, since TikZ doesn't scale font sizes
 yscale = 1
+
+-- | extra gap placed between loopback wires and the contents of the loop module
+loopgap = 1
