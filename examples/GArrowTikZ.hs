@@ -171,7 +171,6 @@ alloc1 = do { (t,c) <- get
             ; return (T t)
             }
 
-
 mkdiag :: GArrowPortShape m () a b -> ConstraintM Diagram
 mkdiag (GASPortPassthrough  inp outp m) = error "not supported"
 mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
@@ -188,22 +187,22 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
  mkdiag' GAS_cancell    = do { (top,(TT x y),bot) <- alloc inp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
-                                                      drawLine  x1 (tp!lowermost x)  ((x1+x2)/2) (tp!uppermost y) "black" "dashed"
+                                                      drawLine  x1 (tp!lowermost x)  ((x1+x2)/2) (tp!uppermost y) "gray!50" "dashed"
                              ; return $ DiagramBox top (TT x y) r y bot  }
  mkdiag' GAS_cancelr    = do { (top,(TT x y),bot) <- alloc inp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
-                                                      drawLine  x1 (tp!uppermost y) ((x1+x2)/2) (tp!lowermost x) "black" "dashed"
+                                                      drawLine  x1 (tp!uppermost y) ((x1+x2)/2) (tp!lowermost x) "gray!50" "dashed"
                              ; return $ DiagramBox top (TT x y) r x bot  }
  mkdiag' GAS_uncancell  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
-                                                      drawLine  ((x1+x2)/2) (tp!uppermost y) x2 (tp!lowermost x) "black" "dashed"
+                                                      drawLine  ((x1+x2)/2) (tp!uppermost y) x2 (tp!lowermost x) "gray!50" "dashed"
                              ; return $ DiagramBox top y r (TT x y) bot  }
  mkdiag' GAS_uncancelr  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
-                                                      drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "black" "dashed"
+                                                      drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "gray!50" "dashed"
                              ; return $ DiagramBox top x r (TT x y) bot  }
  mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp ; simpleDiag      "drop" top x x bot [] }
  mkdiag' (GAS_const i)  = do { (top,    x   ,bot) <- alloc inp
@@ -319,8 +318,8 @@ width (DiagramLoopBot d p)              = (width d) + 2
 
 drawWires :: TrackPositions -> Float -> Tracks -> Float -> Tracks -> String -> String
 drawWires tp x1 (TT a b) x2 (TT a' b') color = drawWires tp x1 a x2 a' color ++ drawWires tp x1 b x2 b' color
-drawWires tp x1 (T a)    x2 (T a')     color = drawLine x1 (tp!a) x2 (tp!a') color "-"
-drawWires tp x1 (TU a)   x2 (TU a')    color = drawLine x1 (tp!a) x2 (tp!a') color "dashed"
+drawWires tp x1 (T a)    x2 (T a')     color = drawLine x1 (tp!a) x2 (tp!a') color     "-"
+drawWires tp x1 (TU a)   x2 (TU a')    color = drawLine x1 (tp!a) x2 (tp!a') "gray!50" "dashed"
 drawWires tp _ _ _ _ _                       = error "drawwires fail"
 
 tikZ :: TrackPositions ->
@@ -335,14 +334,14 @@ tikZ m = tikZ'
                                       ++ tikZ' d2 (x + width d1 + 1)
   tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
                                       let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "second"
+                                      drawBox  x top (x+width m d') bot "gray!50" "second"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
                                       ++ tikZ' d (x+1)
                                       ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
                                       ++ drawWires m x p (x+1+width d+1) p "black"
   tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
                                       let bot = getBot d' in
-                                      drawBox  x top (x+width d') bot "gray!50" "first"
+                                      drawBox  x top (x+width m d') bot "gray!50" "first"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
                                       ++ tikZ' d (x+1)
                                       ++ drawWires m (x+1+width d) (getOut d) (x+1+width d+1) (getOut d) "black"
@@ -368,7 +367,7 @@ tikZ m = tikZ'
   wires' :: Float -> Tracks -> Float -> String -> String -> String
   wires' x1 (TT x y) x2 color st = wires' x1 x x2 color st ++ wires' x1 y x2 color st
   wires' x1 (T v)    x2 color st = drawLine x1 (m ! v) x2 (m ! v) color st -- ++ textc ((x1+x2) / 2) (m!v) (show v) "purple"
-  wires' x1 (TU v)   x2 color st = drawLine x1 (m ! v) x2 (m ! v) color "dashed"
+  wires' x1 (TU v)   x2 color st = drawLine x1 (m ! v) x2 (m ! v) "gray!50" "dashed"
 
   getTop :: Diagram -> Float
   getTop (DiagramComp d1 d2)        = min (getTop d1) (getTop d2)
