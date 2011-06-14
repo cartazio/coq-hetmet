@@ -441,17 +441,21 @@ toTikZ g =
                 }
      in do { let (_,constraints) = execState cm (0,[])
            ; lps <- do_lp_solve $ constraints
-           ; let trackpos = lp_solve_to_trackpos lps
-           ; return $ tikZ trackpos (evalState cm (0,[])) 0
+           ; let m = lp_solve_to_trackpos lps
+           ; let d = evalState cm (0,[])
+           ; let t = tikZ m d 1
+           ; return (t ++ drawWires m 0             (getIn  d) 1             (getIn  d) "black"
+                       ++ drawWires m (width m d+1) (getOut d) (width m d+2) (getOut d) "black")
            }
+     
 
-tikz :: (forall g a .
-                 (Int -> PGArrow g (GArrowUnit g) a) ->
-                 (
-                   forall b . PGArrow g (GArrowTensor g b b) b) ->
-                     PGArrow g (GArrowUnit g) a) -> IO ()
-
-tikz x = tikz' $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }) )
+tikz ::
+    (forall g .
+             (Int -> PGArrow g (GArrowUnit g) Int) ->
+             (forall b . PGArrow g (GArrowTensor g b b) b) ->
+             PGArrow g b c)
+     -> IO ()
+tikz x = tikz' $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }))
 
 tikz' example
      = do putStrLn "\\documentclass{article}"
