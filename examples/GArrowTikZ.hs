@@ -485,11 +485,11 @@ toTikZ g =
            }
      
 
-tikz ::
+tikz :: forall c .
     (forall g .
              (Int -> PGArrow g (GArrowUnit g) Int) ->
-             (forall b . PGArrow g (GArrowTensor g b b) b) ->
-             PGArrow g b c)
+             (PGArrow g (GArrowTensor g c c) c) ->
+             PGArrow g c c)
      -> IO ()
 tikz x = tikz' $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }))
 

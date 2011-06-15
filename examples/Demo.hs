@@ -1,11 +1,12 @@
-{-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint #-}
+{-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint -XScopedTypeVariables #-}
 module Demo (demo) where
 
 
 --demo con mer = <[ ~~mer ~~(con (2::Int)) ~~(con (12::Int)) ]>
 
 demo const mult =
-   <[ let four   = ~~mult four ~~(const  4)
+   <[ \(y::Int) ->
+      let four   = ~~mult four ~~(const  4)
 --          twelve = {- {- ~~mult four -}  ~~(const 12) -} four
       in  four
     ]>
@@ -14,7 +15,7 @@ demo ::
     forall a c . 
          (Int -> <[a]>@c) -> 
         <[a -> a -> a]>@c ->
-        <[a]>@c
+        <[Int -> a]>@c
 
 {-
 demo const mult =
