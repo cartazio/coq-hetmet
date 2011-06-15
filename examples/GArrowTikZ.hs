@@ -491,7 +491,7 @@ tikz :: forall c .
              (PGArrow g (GArrowTensor g c c) c) ->
              PGArrow g c c)
      -> IO ()
-tikz x = tikz' $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }))
+tikz x = tikz' $ beautify $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }))
 
 tikz' example
      = do putStrLn "\\documentclass{article}"

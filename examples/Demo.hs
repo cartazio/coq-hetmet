@@ -2,20 +2,24 @@
 module Demo (demo) where
 
 
---demo con mer = <[ ~~mer ~~(con (2::Int)) ~~(con (12::Int)) ]>
+--demo const mult = <[ \(y::Int) -> ~~mult y ~~(const 12) ]>
 
+demo const mult =
+   <[ \y -> let y = ~~(const 4) in ~~mult (~~mult y y) (~~mult y y) ]>
+
+{-
 demo const mult =
    <[ \(y::Int) ->
       let four   = ~~mult four ~~(const  4)
 --          twelve = {- {- ~~mult four -}  ~~(const 12) -} four
       in  four
     ]>
-
+-}
 demo ::
-    forall a c . 
-         (Int -> <[a]>@c) -> 
-        <[a -> a -> a]>@c ->
-        <[Int -> a]>@c
+    forall c . 
+         (Int -> <[Int]>@c) -> 
+        <[Int -> Int -> Int]>@c ->
+        <[Int -> Int]>@c
 
 {-
 demo const mult =
