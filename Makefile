@@ -1,7 +1,8 @@
 coqc     := coqc -noglob -opt
 coqfiles := $(shell find src -name \*.v  | grep -v \\\#)
 allfiles := $(coqfiles) $(shell find src -name \*.hs | grep -v \\\#)
-coq_version := 8.3pl2-tracer
+coq_version := $(shell coqc -v | head -n1 | sed 's_.*version __' | sed 's_ .*__')
+coq_version_wanted := 8.3pl2-tracer
 
 default: all
 
@@ -10,12 +11,24 @@ all: $(allfiles)
 	cd build; $(MAKE) -f Makefile.coq OPT="-opt -dont-load-proofs" All.vo
 
 build/CoqPass.hs: $(allfiles)
-	$(coqc) -v | grep 'version $(coq_version)' || (echo;echo "You need Coq version $(coq_version) to proceed";echo; false)
+ifeq ($(coq_version),$(coq_version_wanted))
 	make build/Makefile.coq
 	cd build; $(MAKE) -f Makefile.coq OPT="-opt -dont-load-proofs" ExtractionMain.vo
 	cd build; $(MAKE) -f Makefile.coq Extraction.vo
 	cat src/Extraction-prefix.hs                                     > build/CoqPass.hs
 	cat build/Extraction.hs | grep -v '^module' | grep -v '^import' >> build/CoqPass.hs
+else
+	@echo
+	@echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	@echo ++ YOU DO NOT HAVE COQ VERSION $(coq_version_wanted) INSTALLED  ++
+	@echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	@echo
+	@echo Therefore, I am going to "git pull" from the coq-extraction-baked-in
+	@echo branch of the repository.
+	@echo
+	git pull http://git.megacz.com/coq-hetmet.git coq-extraction-baked-in:master
+endif
+
 
 build/Makefile.coq: $(coqfiles) src/categories/src
 	mkdir -p build
