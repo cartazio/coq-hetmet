@@ -23,10 +23,10 @@ else
 	@echo ++ YOU DO NOT HAVE COQ VERSION $(coq_version_wanted) INSTALLED  ++
 	@echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	@echo
-	@echo Therefore, I am going to "git pull" from the coq-extraction-baked-in
+	@echo Therefore, I am going to "git pull -f" from the coq-extraction-baked-in
 	@echo branch of the repository.
 	@echo
-	git pull http://git.megacz.com/coq-hetmet.git coq-extraction-baked-in:master
+	git pull -f http://git.megacz.com/coq-hetmet.git coq-extraction-baked-in:master
 endif
 
 
