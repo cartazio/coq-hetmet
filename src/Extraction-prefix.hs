@@ -15,6 +15,9 @@ import qualified Literal
 import qualified Type
 import qualified TypeRep
 import qualified DataCon
+import qualified DsMonad
+import qualified IOEnv
+import qualified TcRnTypes
 import qualified TyCon
 import qualified Coercion
 import qualified Var
@@ -33,7 +36,9 @@ import qualified Data.Typeable
 import Data.Bits ((.&.), shiftL, (.|.))
 import Prelude ( (++), (+), (==), Show, show, (.), ($) )
 import qualified Prelude
+import qualified HscTypes
 import qualified GHC.Base
+import qualified CoreMonad
 import qualified System.IO.Unsafe
 
 getTyConTyVars :: TyCon.TyCon -> [Var.TyVar]

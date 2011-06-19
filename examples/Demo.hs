@@ -2,10 +2,21 @@
 module Demo (demo) where
 
 
---demo const mult = <[ \(y::Int) -> ~~mult y ~~(const 12) ]>
+demo const mult = <[ \(y::Int) -> ~~mult y ~~(const 12) ]>
+{-
+demo const mult = <[ \y -> ~~(demo' 0) ]>
+  where
+   demo' 0 = const 4
+   demo' n = const 4
+-}
+-- demo' n = <[ ~~mult ~~(demo' (n-1)) ~~(demo' (n-1)) ]>
 
+
+
+{-
 demo const mult =
    <[ \y -> let y = ~~(const 4) in ~~mult (~~mult y y) (~~mult y y) ]>
+-}
 
 {-
 demo const mult =

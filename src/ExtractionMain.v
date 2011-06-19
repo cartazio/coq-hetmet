@@ -75,6 +75,18 @@ Variable mkCoVar : Name -> CoreType -> CoreType -> CoreVar.
 Variable mkExVar : Name -> CoreType -> CoreVar.
   Extract Inlined Constant mkExVar => "Id.mkLocalId".
 
+Variable CoreM : Type -> Type.
+  Extract Constant CoreM "a" => "CoreMonad.CoreM".
+  Extraction Inline CoreM.
+Variable CoreMreturn : forall a, a -> CoreM a.
+  Extraction Implicit CoreMreturn [a].
+  Implicit Arguments CoreMreturn [[a]].
+  Extract Inlined Constant CoreMreturn => "Prelude.return".
+Variable CoreMbind : forall a b, CoreM a -> (a -> CoreM b) -> CoreM b.
+  Extraction Implicit CoreMbind [a b].
+  Implicit Arguments CoreMbind [[a] [b]].
+  Extract Inlined Constant CoreMbind => "(Prelude.>>=)".
+
 Section core2proof.
   Context (ce:@CoreExpr CoreVar).
 
@@ -503,41 +515,47 @@ Section core2proof.
 
   End coqPassCoreToCore.
 
+  Notation "a >>= b" := (@CoreMbind _ _ a b).
+
     Definition coqPassCoreToCore 
-    (do_flatten  : bool)
-    (do_skolemize  : bool)
-    (hetmet_brak  : CoreVar)
-    (hetmet_esc   : CoreVar)
-    (hetmet_flatten   : CoreVar)
-    (hetmet_unflatten   : CoreVar)
-    (hetmet_flattened_id   : CoreVar)
+    (do_flatten   : bool)
+    (do_skolemize : bool)
+    (dsLookupVar  : string -> string -> CoreM CoreVar)
+    (dsLookupTyc  : string -> string -> CoreM TyFun)
     (uniqueSupply : UniqSupply)
-    (lbinds:list (@CoreBind CoreVar))
-    (hetmet_PGArrowTyCon : TyFun)
-    (hetmet_PGArrow_unit_TyCon : TyFun)
-    (hetmet_PGArrow_tensor_TyCon : TyFun)
-    (hetmet_PGArrow_exponent_TyCon : TyFun)
-    (hetmet_pga_id : CoreVar)
-    (hetmet_pga_comp : CoreVar)
-    (hetmet_pga_first : CoreVar)
-    (hetmet_pga_second : CoreVar)
-    (hetmet_pga_cancell : CoreVar)
-    (hetmet_pga_cancelr : CoreVar)
-    (hetmet_pga_uncancell : CoreVar)
-    (hetmet_pga_uncancelr : CoreVar)
-    (hetmet_pga_assoc : CoreVar)
-    (hetmet_pga_unassoc : CoreVar)
-    (hetmet_pga_copy : CoreVar)
-    (hetmet_pga_drop : CoreVar)
-    (hetmet_pga_swap : CoreVar)
-    (hetmet_pga_applyl : CoreVar)
-    (hetmet_pga_applyr : CoreVar)
-    (hetmet_pga_curryl : CoreVar)
-    (hetmet_pga_curryr : CoreVar)
-    (hetmet_pga_loopl : CoreVar)
-    (hetmet_pga_loopr : CoreVar)
-    : list (@CoreBind CoreVar) :=
-    coqPassCoreToCore'
+    (lbinds       : list (@CoreBind CoreVar))
+    : CoreM (list (@CoreBind CoreVar)) :=
+      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_brak" >>= fun hetmet_brak =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_esc" >>= fun hetmet_esc =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_flatten" >>= fun hetmet_flatten =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "pga_unflatten" >>= fun hetmet_unflatten =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "pga_flattened_id" >>= fun hetmet_flattened_id =>
+      dsLookupTyc "GHC.HetMet.Private" "PGArrow" >>= fun hetmet_PGArrow =>
+      dsLookupTyc "GHC.HetMet.GArrow" "GArrowUnit" >>= fun hetmet_PGArrow_unit =>
+      dsLookupTyc "GHC.HetMet.GArrow" "GArrowTensor" >>= fun hetmet_PGArrow_tensor =>
+      dsLookupTyc "GHC.HetMet.GArrow" "GArrowExponent" >>= fun hetmet_PGArrow_exponent =>
+      dsLookupVar "GHC.HetMet.Private" "pga_id" >>= fun hetmet_pga_id =>
+      dsLookupVar "GHC.HetMet.Private" "pga_comp" >>= fun hetmet_pga_comp =>
+      dsLookupVar "GHC.HetMet.Private" "pga_first" >>= fun hetmet_pga_first =>
+      dsLookupVar "GHC.HetMet.Private" "pga_second" >>= fun hetmet_pga_second =>
+      dsLookupVar "GHC.HetMet.Private" "pga_cancell" >>= fun hetmet_pga_cancell =>
+      dsLookupVar "GHC.HetMet.Private" "pga_cancelr" >>= fun hetmet_pga_cancelr =>
+      dsLookupVar "GHC.HetMet.Private" "pga_uncancell" >>= fun hetmet_pga_uncancell =>
+      dsLookupVar "GHC.HetMet.Private" "pga_uncancelr" >>= fun hetmet_pga_uncancelr =>
+      dsLookupVar "GHC.HetMet.Private" "pga_assoc" >>= fun hetmet_pga_assoc =>
+      dsLookupVar "GHC.HetMet.Private" "pga_unassoc" >>= fun hetmet_pga_unassoc =>
+      dsLookupVar "GHC.HetMet.Private" "pga_copy" >>= fun hetmet_pga_copy =>
+      dsLookupVar "GHC.HetMet.Private" "pga_drop" >>= fun hetmet_pga_drop =>
+      dsLookupVar "GHC.HetMet.Private" "pga_swap" >>= fun hetmet_pga_swap =>
+      dsLookupVar "GHC.HetMet.Private" "pga_applyl" >>= fun hetmet_pga_applyl =>
+      dsLookupVar "GHC.HetMet.Private" "pga_applyr" >>= fun hetmet_pga_applyr =>
+      dsLookupVar "GHC.HetMet.Private" "pga_curryl" >>= fun hetmet_pga_curryl =>
+      dsLookupVar "GHC.HetMet.Private" "pga_curryr" >>= fun hetmet_pga_curryr =>
+      dsLookupVar "GHC.HetMet.Private" "pga_loopl" >>= fun hetmet_pga_loopl =>
+      dsLookupVar "GHC.HetMet.Private" "pga_loopr" >>= fun hetmet_pga_loopr =>
+
+    CoreMreturn
+    (coqPassCoreToCore'
        do_flatten
        do_skolemize
        hetmet_brak  
@@ -546,9 +564,9 @@ Section core2proof.
        hetmet_unflatten
        hetmet_flattened_id
        uniqueSupply 
-       hetmet_PGArrowTyCon
-       hetmet_PGArrow_unit_TyCon
-       hetmet_PGArrow_tensor_TyCon
+       hetmet_PGArrow
+       hetmet_PGArrow_unit
+       hetmet_PGArrow_tensor
 (*       hetmet_PGArrow_exponent_TyCon*)
        hetmet_pga_id 
        hetmet_pga_comp 
@@ -571,7 +589,7 @@ Section core2proof.
        hetmet_pga_applyr 
        hetmet_pga_curryl 
        *)
-
+       )
        .
 
 End core2proof.
