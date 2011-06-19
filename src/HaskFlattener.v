@@ -161,9 +161,6 @@ Section HaskFlattener.
   (*******************************************************************************)
 
 
-  Context (hetmet_flatten : WeakExprVar).
-  Context (hetmet_unflatten : WeakExprVar).
-  Context (hetmet_id      : WeakExprVar).
   Context {unitTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★                                          }.
   Context {prodTy : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★  -> RawHaskType TV ★ -> RawHaskType TV ★ }.
   Context {gaTy   : forall TV, RawHaskType TV ECKind  -> RawHaskType TV ★ -> RawHaskType TV ★  -> RawHaskType TV ★ }.
@@ -777,9 +774,6 @@ Section HaskFlattener.
                  (fun TV : Kind → Type => take_arg_types ○ t TV))))).
     reflexivity.
     unfold flatten_type.
-    clear hetmet_flatten.
-    clear hetmet_unflatten.
-    clear hetmet_id.
     clear gar.
     set (t tv ite) as x.
     admit.
@@ -888,6 +882,7 @@ Section HaskFlattener.
       rename l into g.
       rename σ into l.
       destruct l as [|ec lev]; simpl. 
+        (*
         destruct (eqd_dec (g:CoreVar) (hetmet_flatten:CoreVar)).
           set (flatten_type (g wev)) as t.
           set (RGlobal _ Δ nil (mkGlobal Γ t hetmet_id)) as q.
@@ -902,6 +897,7 @@ Section HaskFlattener.
           apply nd_rule.
           apply q.
           apply INil.
+          *)
         unfold flatten_leveled_type. simpl.
           apply nd_rule; rewrite globals_do_not_have_code_types.
           apply RGlobal.

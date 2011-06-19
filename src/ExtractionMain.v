@@ -181,9 +181,6 @@ Section core2proof.
 
     Context (hetmet_brak    : WeakExprVar).
     Context (hetmet_esc     : WeakExprVar).
-    Context (hetmet_flatten : WeakExprVar).
-    Context (hetmet_unflatten : WeakExprVar).
-    Context (hetmet_flattened_id : WeakExprVar).
     Context (uniqueSupply   : UniqSupply).
 
     Definition useUniqueSupply {T}(ut:UniqM T) : ???T :=
@@ -293,9 +290,6 @@ Section core2proof.
     (do_skolemize : bool)
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
-    (hetmet_flatten : CoreVar)
-    (hetmet_unflatten : CoreVar)
-    (hetmet_flattened_id : CoreVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
@@ -435,9 +429,6 @@ Section core2proof.
 
     Definition hetmet_brak' := coreVarToWeakExprVarOrError hetmet_brak.
     Definition hetmet_esc'  := coreVarToWeakExprVarOrError hetmet_esc.
-    Definition hetmet_flatten'  := coreVarToWeakExprVarOrError hetmet_flatten.
-    Definition hetmet_unflatten'  := coreVarToWeakExprVarOrError hetmet_unflatten.
-    Definition hetmet_flattened_id'  := coreVarToWeakExprVarOrError hetmet_flattened_id.
 
     Definition coreToCoreExpr' (cex:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
       addErrorMessage ("input CoreSyn: " +++ toString cex)
@@ -454,8 +445,7 @@ Section core2proof.
                       (addErrorMessage ("HaskStrong...")
                         (if do_skolemize
                         then
-                             (let haskProof := skolemize_and_flatten_proof hetmet_flatten' hetmet_unflatten'
-                                                 hetmet_flattened_id' my_ga (@expr2proof _ _ _ _ _ _ _ e)
+                             (let haskProof := skolemize_and_flatten_proof my_ga (@expr2proof _ _ _ _ _ _ _ e)
                               in (* insert HaskProof-to-HaskProof manipulations here *)
                               OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ) nil _
                                 (fun _ => Prelude_error "unbound unique") _ haskProof) O)
@@ -466,8 +456,7 @@ Section core2proof.
                               >>= fun q => OK (weakExprToCoreExpr q))
                         else (if do_flatten
                         then
-                          (let haskProof := flatten_proof (*hetmet_flatten' hetmet_unflatten'
-                                                 hetmet_flattened_id' my_ga*) (@expr2proof _ _ _ _ _ _ _ e)
+                          (let haskProof := flatten_proof (@expr2proof _ _ _ _ _ _ _ e)
                               in (* insert HaskProof-to-HaskProof manipulations here *)
                               OK ((@proof2expr nat _ FreshNat _ _ τ nil _
                                 (fun _ => Prelude_error "unbound unique") _ haskProof) O)
@@ -527,9 +516,6 @@ Section core2proof.
     : CoreM (list (@CoreBind CoreVar)) :=
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_brak" >>= fun hetmet_brak =>
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_esc" >>= fun hetmet_esc =>
-      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_flatten" >>= fun hetmet_flatten =>
-      dsLookupVar "GHC.HetMet.CodeTypes" "pga_unflatten" >>= fun hetmet_unflatten =>
-      dsLookupVar "GHC.HetMet.CodeTypes" "pga_flattened_id" >>= fun hetmet_flattened_id =>
       dsLookupTyc "GHC.HetMet.Private" "PGArrow" >>= fun hetmet_PGArrow =>
       dsLookupTyc "GHC.HetMet.GArrow" "GArrowUnit" >>= fun hetmet_PGArrow_unit =>
       dsLookupTyc "GHC.HetMet.GArrow" "GArrowTensor" >>= fun hetmet_PGArrow_tensor =>
@@ -560,9 +546,6 @@ Section core2proof.
        do_skolemize
        hetmet_brak  
        hetmet_esc   
-       hetmet_flatten
-       hetmet_unflatten
-       hetmet_flattened_id
        uniqueSupply 
        hetmet_PGArrow
        hetmet_PGArrow_unit
