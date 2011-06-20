@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -XModalTypes -ddump-types -XNoMonoPatBinds -XFlexibleContexts #-}
 module DotProduct
 where
-import GHC.HetMet.CodeTypes hiding ((-))
+import GHC.HetMet.GuestLanguage hiding ((-))
 import Prelude hiding ( id, (.) )
 
 --------------------------------------------------------------------------------

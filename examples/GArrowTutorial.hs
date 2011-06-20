@@ -3,8 +3,8 @@ module GArrowTutorial
 where
 import Data.Bits
 import Data.Bool (not)
-import GHC.HetMet.CodeTypes hiding ((-))
 import GHC.HetMet.GArrow
+import GHC.HetMet.GuestLanguage hiding ( (-) )
 import Control.Category
 import Control.Arrow
 import Prelude hiding ( id, (.) )
