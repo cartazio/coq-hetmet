@@ -78,7 +78,7 @@ lowermost (TT x y) = lowermost y
 -- | A Diagram is the visual representation of a GArrowSkeleton
 data Diagram
   = DiagramComp      Diagram Diagram
-  | DiagramBox       TrackIdentifier Tracks BoxRenderer Tracks TrackIdentifier
+  | DiagramBox       Float TrackIdentifier Tracks BoxRenderer Tracks TrackIdentifier
   | DiagramBypassTop Tracks Diagram
   | DiagramBypassBot        Diagram Tracks
   | DiagramLoopTop   Tracks Diagram
@@ -87,7 +87,7 @@ data Diagram
 -- | get the output tracks of a diagram
 getOut :: Diagram -> Tracks
 getOut (DiagramComp f g)                     = getOut g
-getOut (DiagramBox ptop pin q pout pbot)     = pout
+getOut (DiagramBox wid ptop pin q pout pbot)     = pout
 getOut (DiagramBypassTop p f)                = TT p (getOut f)
 getOut (DiagramBypassBot f p)                = TT (getOut f) p
 getOut (DiagramLoopTop t d)                  = case getOut d of { TT z y -> y ; _ -> error "DiagramLoopTop: mismatch" }
@@ -96,7 +96,7 @@ getOut (DiagramLoopBot d t)                  = case getOut d of { TT y z -> y ; 
 -- | get the input tracks of a diagram
 getIn :: Diagram -> Tracks
 getIn (DiagramComp f g)                      = getIn f
-getIn (DiagramBox ptop pin q pout pbot)      = pin
+getIn (DiagramBox wid ptop pin q pout pbot)      = pin
 getIn (DiagramBypassTop p f)                 = TT p (getIn f)
 getIn (DiagramBypassBot f p)                 = TT (getIn f) p
 getIn (DiagramLoopTop t d)                   = case getIn d of { TT z x -> x ; _ -> error "DiagramLoopTop: mismatch" }
@@ -112,8 +112,8 @@ type BoxRenderer =
     Float          ->  -- x2
     Float          ->  -- y2
     String             -- TikZ code
-
-
+noRender :: BoxRenderer
+noRender _ _ _ _ _ = ""
 
 
 
@@ -183,27 +183,27 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                              ; return $ DiagramBypassBot f' x  }
  mkdiag' (GAS_second f) = do { (top,(TT x _),bot) <- alloc inp; f' <- mkdiag' f ; constrainTop (lowermost x) 1 f'
                              ; return $ DiagramBypassTop x f'  }
- mkdiag' (GAS_id      ) = do { (top,    x   ,bot) <- alloc inp ; simpleDiag        "id" top x x bot        [(x,x)]      }
+ mkdiag' (GAS_id      ) = do { (top,    x   ,bot) <- alloc inp ; simpleDiag'        "id" top x x bot        [(x,x)]  "gray!50"    }
  mkdiag' GAS_cancell    = do { (top,(TT x y),bot) <- alloc inp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
                                                       drawLine  x1 (tp!lowermost x)  ((x1+x2)/2) (tp!uppermost y) "gray!50" "dashed"
-                             ; return $ DiagramBox top (TT x y) r y bot  }
+                             ; return $ DiagramBox 2 top (TT x y) r y bot  }
  mkdiag' GAS_cancelr    = do { (top,(TT x y),bot) <- alloc inp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
                                                       drawLine  x1 (tp!uppermost y) ((x1+x2)/2) (tp!lowermost x) "gray!50" "dashed"
-                             ; return $ DiagramBox top (TT x y) r x bot  }
+                             ; return $ DiagramBox 2 top (TT x y) r x bot  }
  mkdiag' GAS_uncancell  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
                                                       drawLine  ((x1+x2)/2) (tp!uppermost y) x2 (tp!lowermost x) "gray!50" "dashed"
-                             ; return $ DiagramBox top y r (TT x y) bot  }
+                             ; return $ DiagramBox 2 top y r (TT x y) bot  }
  mkdiag' GAS_uncancelr  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
                                                       drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "gray!50" "dashed"
-                             ; return $ DiagramBox top x r (TT x y) bot  }
+                             ; return $ DiagramBox 2 top x r (TT x y) bot  }
  mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp ; simpleDiag      "drop" top x x bot [] }
  mkdiag' (GAS_const i)  = do { (top,    x   ,bot) <- alloc inp
                              ; (_,      y   ,_)   <- alloc outp
@@ -216,7 +216,7 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                                                       drawWires tp x1 x ((x1+x2)/2) x "black" ++
                                                       drawWires tp ((x1+x2)/2) x x2 y "black" ++
                                                       drawWires tp ((x1+x2)/2) x x2 z "black"
-                             ; return $ DiagramBox top x r (TT y z) bot
+                             ; return $ DiagramBox 2 top x r (TT y z) bot
                              }
  mkdiag' GAS_merge      = do { (top,(TT x y),bot) <- alloc inp 
                              ; simpleDiag     "times" top (TT x y) x bot [] }
@@ -244,7 +244,9 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 x x2 x "black" ++
                     drawWires tp x1 y x2 y "black" ++
                     drawWires tp x1 z x2 z "black"
-        ; return $ DiagramBox top (TT (TT x y) z) r (TT x (TT y z)) bot
+        ; let pin = (TT (TT x y) z)
+        ; let pout = (TT x (TT y z))
+        ; return $ if draw_assoc then DiagramBox 2 top pin r pout bot else DiagramBox 0 top pin noRender pout bot
         }
  mkdiag' GAS_unassoc    =
      do { (top,(TT x (TT y z)),bot) <- alloc inp
@@ -265,7 +267,9 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 x x2 x "black" ++
                     drawWires tp x1 y x2 y "black" ++
                     drawWires tp x1 z x2 z "black"
-        ; return $ DiagramBox top (TT x (TT y z)) r (TT (TT x y) z) bot
+        ; let pin = (TT x (TT y z))
+        ; let pout = (TT (TT x y) z)
+        ; return $ if draw_assoc then DiagramBox 2 top pin r pout bot else DiagramBox 0 top pin noRender pout bot
         }
  mkdiag' (GAS_loopl  f) = do { f' <- mkdiag' f
                              ; l <- allocLoop (case (getIn f') of (TT z _) -> z ; _ -> error "GAS_loopl: mismatch")
@@ -283,7 +287,7 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                                       ; constrain ptop LT (uppermost pout) (-1)
                                       ; constrain pbot GT (lowermost pout) 1
                                       ; constrain ptop LT pbot (-1)
-                                      ; return $ DiagramBox ptop pin r pout pbot
+                                      ; return $ DiagramBox 2 ptop pin r pout pbot
                                       }
  simpleDiag  text ptop pin pout pbot conn = simpleDiag' text ptop pin pout pbot conn "black"
  simpleDiag' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
@@ -293,12 +297,17 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
    --    ++ wires (x-1) p1  x    "green"
    --    ++ wires  (x+w) p2 (x+w+1) "red"
 
+--draw_assoc = False
+--draw_first_second = False
+draw_assoc = True
+draw_first_second = True
+
 -- constrain that Ports is at least Int units above the topmost portion of Diagram
 constrainTop :: TrackIdentifier -> Float -> Diagram -> ConstraintM ()
 constrainTop v i (DiagramComp d1 d2)                  = do { constrainTop v i d1 ; constrainTop v i d2 ; return () }
 constrainTop v i (DiagramBypassTop p d)               = constrain v LT (uppermost p) (-1 * i)
 constrainTop v i (DiagramBypassBot d p)               = constrainTop v (i+1) d
-constrainTop v i (DiagramBox ptop pin r pout pbot)    = constrain v LT ptop (-1 * i)
+constrainTop v i (DiagramBox wid ptop pin r pout pbot)    = constrain v LT ptop (-1 * i)
 constrainTop v i (DiagramLoopTop p d)                 = constrain v LT (uppermost p) (-1 * i)
 constrainTop v i (DiagramLoopBot d p)                 = constrainTop v (i+1) d
 
@@ -307,16 +316,16 @@ constrainBot :: Diagram -> Float -> TrackIdentifier -> ConstraintM ()
 constrainBot (DiagramComp d1 d2)                  i v = do { constrainBot d1 i v ; constrainBot d2 i v ; return () }
 constrainBot (DiagramBypassTop p d)               i v = constrainBot d (i+1) v
 constrainBot (DiagramBypassBot d p)               i v = constrain v GT (lowermost p) 2
-constrainBot (DiagramBox ptop pin r pout pbot)    i v = constrain v GT pbot i
+constrainBot (DiagramBox wid ptop pin r pout pbot)    i v = constrain v GT pbot i
 constrainBot (DiagramLoopTop p d)                 i v = constrainBot d (i+1) v
 constrainBot (DiagramLoopBot d p)                 i v = constrain v GT (lowermost p) 2
 
 -- | The width of a box is easy to calculate
 width :: TrackPositions -> Diagram -> Float
 width m (DiagramComp d1 d2)               = (width m d1) + 1 + (width m d2)
-width m (DiagramBox ptop pin x pout pbot) = 2
-width m (DiagramBypassTop p d)            = (width m d) + 2
-width m (DiagramBypassBot d p)            = (width m d) + 2
+width m (DiagramBox wid ptop pin x pout pbot) = wid
+width m (DiagramBypassTop p d)            = (width m d) + (if draw_first_second then 2 else 0)
+width m (DiagramBypassBot d p)            = (width m d) + (if draw_first_second then 2 else 0)
 width m (DiagramLoopTop p d)              = (width m d) + 2 + 2 * (loopgap + (m ! lowermost p) - (m ! uppermost p))
 width m (DiagramLoopBot d p)              = (width m d) + 2 + 2 * (loopgap + (m ! lowermost p) - (m ! uppermost p))
 
@@ -354,14 +363,20 @@ tikZ m = tikZ'
                                       ++ wires' (x+width m d1) (getOut d1) (x+width m d1+0.5) "black" "->"
                                       ++ wires' (x+width m d1+0.5) (getOut d1) (x+width m d1+1) "black" "-"
                                       ++ tikZ' d2 (x + width m d1 + 1)
-  tikZ' d'@(DiagramBypassTop p d) x = let top = getTop d' in
+  tikZ' d'@(DiagramBypassTop p d) x = if not draw_first_second
+                                      then drawWires m x p (x+width m d) p "black" ++ tikZ' d x
+                                      else
+                                      let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width m d') bot "gray!50" "second"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
                                       ++ tikZ' d (x+1)
                                       ++ drawWires m (x+1+width m d) (getOut d) (x+1+width m d+1) (getOut d) "black"
                                       ++ drawWires m x p (x+1+width m d+1) p "black"
-  tikZ' d'@(DiagramBypassBot d p) x = let top = getTop d' in
+  tikZ' d'@(DiagramBypassBot d p) x = if not draw_first_second
+                                      then drawWires m x p (x+width m d) p "black" ++ tikZ' d x
+                                      else
+                                      let top = getTop d' in
                                       let bot = getBot d' in
                                       drawBox  x top (x+width m d') bot "gray!50" "first"
                                       ++ drawWires m x (getIn d) (x+1) (getIn d) "black"
@@ -385,7 +400,7 @@ tikZ m = tikZ'
                                       ++ let rest = case getOut d of TT _ z -> z ; _ -> error "DiagramLoopTop: mismatch"
                                          in  drawWires m (x+1+gap+width m d) rest (x+width m d') rest "black"
   tikZ' d'@(DiagramLoopBot d p) x_  = error "not implemented"
-  tikZ' d@(DiagramBox ptop pin r pout pbot) x = r m x (m ! ptop) (x + width m d) (m ! pbot)
+  tikZ' d@(DiagramBox wid ptop pin r pout pbot) x = r m x (m ! ptop) (x + width m d) (m ! pbot)
 
   wires x1 t x2 c = wires' x1 t x2 c "-"
 
@@ -396,7 +411,7 @@ tikZ m = tikZ'
 
   getTop :: Diagram -> Float
   getTop (DiagramComp d1 d2)        = min (getTop d1) (getTop d2)
-  getTop (DiagramBox ptop _ _ _ _)  = m ! ptop
+  getTop (DiagramBox wid ptop _ _ _ _)  = m ! ptop
   getTop (DiagramBypassTop p d)     = (m ! uppermost p) - 1
   getTop (DiagramBypassBot d p)     = getTop d - 1
   getTop (DiagramLoopTop p d)       = (m ! uppermost p) - 1
@@ -404,7 +419,7 @@ tikZ m = tikZ'
 
   getBot :: Diagram -> Float
   getBot (DiagramComp d1 d2)        = max (getBot d1) (getBot d2)
-  getBot (DiagramBox _ _ _ _ pbot)  = m ! pbot
+  getBot (DiagramBox wid _ _ _ _ pbot)  = m ! pbot
   getBot (DiagramBypassTop p d)     = getBot d + 1
   getBot (DiagramBypassBot d p)     = (m ! lowermost p) + 1
   getBot (DiagramLoopTop p d)       = getBot d + 1
