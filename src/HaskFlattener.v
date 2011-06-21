@@ -1196,8 +1196,26 @@ Section HaskFlattener.
         reflexivity.
 
     destruct case_RCase.
-      simpl.
-      apply (Prelude_error "Case not supported (BIG FIXME)").
+      destruct lev; [ idtac | apply (Prelude_error "case at depth >0") ]; simpl.
+      apply nd_rule.
+      rewrite <- mapOptionTree_compose.
+      replace (mapOptionTree
+        (fun x  => flatten_judgment (pcb_judg (snd x)))
+        alts,, [Γ > Δ > mapOptionTree flatten_leveled_type Σ |- [flatten_type (caseType tc avars)] @ nil])
+      with
+        (mapOptionTree
+           (fun x  => @pcb_judg tc Γ Δ nil (flatten_type tbranches) avars (fst x) (snd x))
+           alts,,
+           [Γ > Δ > mapOptionTree flatten_leveled_type Σ |- [caseType tc avars] @ nil]).
+      replace (mapOptionTree flatten_leveled_type
+        (mapOptionTreeAndFlatten
+           (fun x  => (snd x)) alts))
+      with (mapOptionTreeAndFlatten
+           (fun x =>
+            (snd x)) alts).
+      apply RCase.
+      admit.
+      admit.
 
     destruct case_SBrak.
       simpl.

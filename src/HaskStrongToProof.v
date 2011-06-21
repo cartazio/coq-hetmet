@@ -549,23 +549,6 @@ match elrb with
   | ELR_branch Γ Δ ξ lev t1 t2 b1 b2 => (eLetRecContext b1),,(eLetRecContext b2)
 end.
 
-Definition mkProofCaseBranch {Γ}{Δ}{ξ}{l}{tc}{tbranches}{atypes}
-(alt : { sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
-                            & Expr (sac_gamma sac Γ)
-                                   (sac_delta sac Γ atypes (weakCK'' Δ))
-                                   (scbwv_xi scb ξ l)
-                                   (weakT' tbranches) (weakL' l) } })
-  : { sac : _ & ProofCaseBranch tc Γ Δ l tbranches atypes sac }.
-  destruct alt.
-  exists x.
-  exact
-    {| pcb_freevars := mapOptionTree ξ
-      (stripOutVars (vec2list (scbwv_exprvars (projT1 s)))
-        (expr2antecedent (projT2 s)))
-     |}.
-     Defined.
-
-
 Fixpoint eLetRecTypes {Γ}{Δ}{ξ}{lev}{τ}(elrb:ELetRecBindings Γ Δ ξ lev τ) : Tree ??(HaskType Γ ★) :=
   match elrb with
   | ELR_nil    Γ Δ ξ lev  => []
@@ -1057,6 +1040,21 @@ Lemma scbwv_coherent {tc}{Γ}{atypes:IList _ (HaskType Γ) _}{sac} :
   Qed.
 
 
+Definition mkProofCaseBranch {Γ}{Δ}{ξ}{l}{tc}{tbranches}{atypes}
+(alt : { sac : _ & { scb : StrongCaseBranchWithVVs _ _ tc atypes sac
+                            & Expr (sac_gamma sac Γ)
+                                   (sac_delta sac Γ atypes (weakCK'' Δ))
+                                   (scbwv_xi scb ξ l)
+                                   (weakT' tbranches) (weakL' l) } })
+  : @StrongAltCon tc * Tree ??(LeveledHaskType Γ ★).
+  destruct alt.
+  split.
+  apply x. 
+  apply (mapOptionTree ξ
+      (stripOutVars (vec2list (scbwv_exprvars (projT1 s)))
+        (expr2antecedent (projT2 s)))).
+     Defined.
+
 Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
    (alts':Tree
             ??{sac : StrongAltCon &
@@ -1064,7 +1062,7 @@ Lemma case_lemma : forall Γ Δ ξ l tc tbranches atypes e
               Expr (sac_gamma sac Γ) (sac_delta sac Γ atypes (weakCK'' Δ))
                 (scbwv_xi scb ξ l) (weakT' tbranches) (weakL' l)}}),
 
-      (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x))
+      (mapOptionTreeAndFlatten (fun x => snd x)
         (mapOptionTree mkProofCaseBranch alts'))
     ,,
     mapOptionTree ξ  (expr2antecedent e) =
@@ -1131,13 +1129,15 @@ Definition expr2proof  :
                                    (sac_delta sac Γ atypes (weakCK'' Δ))
                                    (scbwv_xi scb ξ l)
                                    (weakT' tbranches) (weakL' l) } })
-          : ND Rule [] (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) alts) :=
+          : ND Rule [] (mapOptionTree (fun x => pcb_judg (snd (mkProofCaseBranch x))) alts) :=
         match alts as ALTS return ND Rule [] 
-          (mapOptionTree (fun x => pcb_judg (projT2 (mkProofCaseBranch x))) ALTS) with
+          (mapOptionTree (fun x => pcb_judg (snd (mkProofCaseBranch x))) ALTS) with
           | T_Leaf None      => let case_nil := tt in _
           | T_Branch b1 b2   => let case_branch := tt in (fun b1' b2' => _) (mkdcsp b1) (mkdcsp b2)
           | T_Leaf (Some x)  =>
-            match x as X return ND Rule [] [pcb_judg (projT2 (mkProofCaseBranch X))] with
+            match x as X return ND Rule [] [@pcb_judg tc Γ Δ l tbranches atypes
+              (fst (mkProofCaseBranch X))
+              (snd (mkProofCaseBranch X))] with
             existT sac (existT scbx ex) =>
             (fun e' => let case_leaf := tt in _) (expr2proof _ _ _ _ _ ex)
         end
@@ -1250,10 +1250,10 @@ Definition expr2proof  :
 
     destruct case_leaf.
       clear o x alts alts' e.
-      eapply nd_comp; [ apply e' | idtac ].
+      simpl.
+      apply (fun x => nd_comp e' x).
       clear e'.
-      apply nd_rule.
-      apply RArrange.
+      unfold pcb_judg.
       simpl.
       rewrite mapleaves'.
       simpl.
@@ -1262,26 +1262,40 @@ Definition expr2proof  :
       rewrite <- mapleaves'.
       rewrite vec2list_map_list2vec.
       unfold sac_gamma.      
-      rewrite <- (scbwv_coherent scbx l ξ).
       rewrite <- vec2list_map_list2vec.
       rewrite mapleaves'.
-      set (@factorContextRightAndWeaken'') as q.
-      unfold scbwv_xi.
       set (@updating_stripped_tree_is_inert' _ (weakL' l) (weakLT' ○ ξ) (vec2list (scbwv_varstypes scbx))) as z.
       unfold scbwv_varstypes in z.
       rewrite vec2list_map_list2vec in z.
       rewrite fst_zip in z.
       rewrite <- z.
       clear z.
+      unfold sac_gamma in *.
+      simpl in *.
+      Unset Printing Implicit.
+      idtac.
+      apply nd_rule.
+      apply RArrange.
+      set (scbwv_exprvars_distinct scbx) as q'.
+      rewrite <- leaves_unleaves in q'.
+      apply (AComp (@factorContextRightAndWeaken'' _ (weakCE' Δ) _ _ (expr2antecedent ex) q')).
+      clear q'.
 
-      replace (stripOutVars (vec2list (scbwv_exprvars scbx))) with
-        (stripOutVars (leaves (unleaves (vec2list (scbwv_exprvars scbx))))).
-      apply q.
-      apply (sac_delta sac Γ atypes (weakCK'' Δ)).
+      set (scbwv_coherent scbx l ξ) as H.
       rewrite leaves_unleaves.
-      apply (scbwv_exprvars_distinct scbx).
-      rewrite leaves_unleaves.
-      reflexivity.
+      unfold scbwv_varstypes.
+      apply ALeft.
+      rewrite <- mapleaves'.
+      rewrite <- mapleaves'.
+      rewrite mapleaves'.
+      rewrite vec2list_map_list2vec.
+      rewrite <- H.
+      clear H.
+      rewrite <- mapleaves'.
+      rewrite vec2list_map_list2vec.
+      unfold scbwv_xi.
+      unfold scbwv_varstypes.
+      apply AId.
 
     destruct case_nil.
       apply nd_id0.

@@ -518,8 +518,17 @@ Section HaskSkolemizer.
           eapply RLetRec.
 
       destruct case_RCase.
-        simpl.
-        apply (Prelude_error "CASE: BIG FIXME").
+        destruct lev; [ idtac | apply (Prelude_error "case at depth >0") ]; simpl.
+        apply nd_rule.
+        apply SFlat.
+        rewrite <- mapOptionTree_compose.
+        assert
+          ((mapOptionTree (fun x => skolemize_judgment (@pcb_judg tc Γ Δ nil tbranches avars (fst x) (snd x))) alts) =
+           (mapOptionTree (fun x => (@pcb_judg tc Γ Δ nil tbranches avars (fst x) (snd x))) alts)).
+           admit.
+           rewrite H.
+        set (@RCase Γ Δ nil tc Σ avars tbranches alts) as q.
+        apply q.
         Defined.
 
   Transparent take_arg_types_as_tree.

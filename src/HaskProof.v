@@ -36,14 +36,13 @@ Inductive Judg  :=
   Notation "Γ > Δ > a '|-' s '@' l" := (mkJudg Γ Δ a s l) (at level 52, Δ at level 50, a at level 52, s at level 50, l at level 50).
 
 (* information needed to define a case branch in a HaskProof *)
-Record ProofCaseBranch {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars}{sac:@StrongAltCon tc} :=
-{ pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)
-; pcb_judg           := sac_gamma sac Γ > sac_delta sac Γ avars (map weakCK' Δ)
+Definition pcb_judg
+  {tc:TyCon}{Γ}{Δ}{lev}{branchtype : HaskType Γ ★}{avars}{sac:@StrongAltCon tc}
+  (pcb_freevars       :  Tree ??(LeveledHaskType Γ ★)) :=
+  sac_gamma sac Γ > sac_delta sac Γ avars (map weakCK' Δ)
                 > (mapOptionTree weakLT' pcb_freevars),,(unleaves (map (fun t => t@@weakL' lev)
                   (vec2list (sac_types sac Γ avars))))
-                |- [weakT' branchtype ] @ weakL' lev
-}.
-Implicit Arguments ProofCaseBranch [ ].
+                |- [weakT' branchtype ] @ weakL' lev.
 
 (* Figure 3, production $\vdash_E$, all rules *)
 Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
@@ -87,11 +86,11 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 
 | RLetRec        : forall Γ Δ Σ₁ τ₁ τ₂ lev, Rule [Γ > Δ > (τ₂@@@lev),,Σ₁ |- (τ₂,,[τ₁]) @lev ] [Γ > Δ > Σ₁ |- [τ₁] @lev]
 | RCase          : forall Γ Δ lev tc Σ avars tbranches
-  (alts:Tree ??{ sac : @StrongAltCon tc & @ProofCaseBranch tc Γ Δ lev tbranches avars sac }),
+  (alts:Tree ??( (@StrongAltCon tc) * (Tree ??(LeveledHaskType Γ ★)) )),
                    Rule
-                       ((mapOptionTree (fun x => pcb_judg (projT2 x)) alts),,
+                       ((mapOptionTree (fun x => @pcb_judg tc Γ Δ lev tbranches avars (fst x) (snd x)) alts),,
                         [Γ > Δ >                                              Σ |- [ caseType tc avars  ] @lev])
-                        [Γ > Δ > (mapOptionTreeAndFlatten (fun x => pcb_freevars (projT2 x)) alts),,Σ |- [ tbranches ] @ lev]
+                        [Γ > Δ > (mapOptionTreeAndFlatten (fun x => (snd x)) alts),,Σ |- [ tbranches ] @ lev]
 .
 
 Definition RCut'  : ∀ Γ Δ Σ₁ Σ₁₂ Σ₂ Σ₃ l,

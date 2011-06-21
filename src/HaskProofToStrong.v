@@ -393,9 +393,9 @@ Section HaskProofToStrong.
     exists x; auto.
     Defined.
 
-  Definition fix_indexing X (F:X->Type)(J:X->Type)(t:Tree ??{ x:X & F x })
-    :  ITree { x:X & F x } (fun x => J (projT1 x))                                t
-    -> ITree X             (fun x:X => J x)   (mapOptionTree (@projT1 _ _) t).
+  Definition fix_indexing X Y (J:X->Type)(t:Tree ??(X*Y))
+    :  ITree (X * Y) (fun x => J (fst x))                                t
+    -> ITree X       (fun x:X => J x)   (mapOptionTree (@fst _ _) t).
     intro it.
     induction it; simpl in *.
     apply INone.
@@ -418,12 +418,13 @@ Section HaskProofToStrong.
     Defined.
   
   Definition case_helper tc Γ Δ lev tbranches avars ξ :
-    forall pcb:{sac : StrongAltCon & ProofCaseBranch tc Γ Δ lev tbranches avars sac},
-     prod (judg2exprType (pcb_judg (projT2 pcb))) {vars' : Tree ??VV & pcb_freevars (projT2 pcb) = mapOptionTree ξ vars'} ->
+    forall pcb:(StrongAltCon * Tree ??(LeveledHaskType Γ ★)),
+     prod (judg2exprType (@pcb_judg tc Γ Δ lev tbranches avars (fst pcb) (snd pcb)))
+     {vars' : Tree ??VV & (snd pcb) = mapOptionTree ξ vars'} ->
      ((fun sac => FreshM
        { scb : StrongCaseBranchWithVVs VV eqdec_vv tc avars sac
          & Expr (sac_gamma sac Γ) (sac_delta sac Γ avars (weakCK'' Δ)) (scbwv_xi scb ξ lev)
-         (weakT' tbranches) (weakL' lev) }) (projT1 pcb)).
+         (weakT' tbranches) (weakL' lev) }) (fst pcb)).
     intro pcb.
     intro X.
     simpl in X.
@@ -435,7 +436,7 @@ Section HaskProofToStrong.
     destruct s as [vars vars_pf].
 
     refine (bind localvars = fresh_lemma' _ (unleaves  (vec2list (sac_types sac _ avars))) vars 
-      (mapOptionTree weakLT' (pcb_freevars pcb)) (weakLT' ○ ξ) (weakL' lev) _  ; _).
+      (mapOptionTree weakLT' pcb) (weakLT' ○ ξ) (weakL' lev) _  ; _).
       apply FreshMon.
       rewrite vars_pf.
       rewrite <- mapOptionTree_compose.
@@ -470,14 +471,15 @@ Section HaskProofToStrong.
     Defined.
 
   Definition gather_branch_variables
-    Γ Δ (ξ:VV -> LeveledHaskType Γ ★) tc avars tbranches lev (alts:Tree ?? {sac : StrongAltCon &
-                ProofCaseBranch tc Γ Δ lev tbranches avars sac})
+    Γ Δ
+    (ξ:VV -> LeveledHaskType Γ ★) tc avars tbranches lev
+    (alts:Tree ??(@StrongAltCon tc * Tree ??(LeveledHaskType Γ ★)))
     :
     forall vars,
-    mapOptionTreeAndFlatten (fun x => pcb_freevars(Γ:=Γ) (projT2 x)) alts = mapOptionTree ξ vars
-    -> ITree Judg judg2exprType (mapOptionTree (fun x => pcb_judg (projT2 x)) alts)
-    -> ITree _ (fun q => prod (judg2exprType (pcb_judg (projT2 q))) 
-      { vars' : _ & pcb_freevars (projT2 q) = mapOptionTree ξ vars' })
+    mapOptionTreeAndFlatten (fun x => snd x) alts = mapOptionTree ξ vars
+    -> ITree Judg judg2exprType (mapOptionTree (fun x => @pcb_judg tc Γ Δ lev avars tbranches (fst x) (snd x)) alts)
+    -> ITree _ (fun q => prod (judg2exprType (@pcb_judg tc Γ Δ lev avars tbranches (fst q) (snd q))) 
+      { vars' : _ & (snd q) = mapOptionTree ξ vars' })
   alts.
     induction alts;
     intro vars;
@@ -487,7 +489,7 @@ Section HaskProofToStrong.
     simpl in *.
     apply ileaf in source.
     apply ILeaf.
-    destruct s as [sac pcb].
+    destruct p as [sac pcb].
     simpl in *.
     split.
     intros.
