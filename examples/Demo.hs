@@ -1,17 +1,134 @@
-{-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint -XScopedTypeVariables #-}
+{-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint -XScopedTypeVariables -fsimpleopt-before-flatten #-}
 module Demo (demo) where
 
-
-demo const mult = <[ \(y::Int) -> ~~mult y ~~(const 12) ]>
 {-
-demo const mult = <[ \y -> ~~(demo' 0) ]>
-  where
-   demo' 0 = const 4
-   demo' n = const 4
+demo const mult =
+  <[ \y ->
+     ~~mult
+       (~~mult y y)
+       (~~mult y y)
+   ]>
 -}
+
+
+
+
+
+
+{-
+demo const mult =
+  <[ \y ->
+     ~~mult
+       (~~mult (~~mult y y) (~~mult y y))
+       (~~mult (~~mult y y) (~~mult y y))
+   ]>
+-}
+
+
+
+{-
+demo const mult =
+    <[ \y -> ~~(foo 4) ]>
+        where
+          foo 0 = const (12::Int)
+          foo n = <[ let bar = ~~(foo (n-1))
+                     in ~~mult bar bar
+                   ]>
+
+-}
+
+
+
+{-
+demo const mult =
+    <[ \y -> ~~(foo 3) ]>
+        where
+          foo 0 = const (12::Int)
+          foo n = <[ let recurs = ~~(foo (n-1))
+                     in  ~~mult recurs recurs
+                   ]>
+
+-}
+
+
+
+
+
+demo const mult =
+ <[ \y ->
+    let   foo  = ~~mult (~~mult foo (~~mult y foo)) y
+    in    foo ]>
+
+
+
+
+
+
+
+
+
+
+
+
+{-
+demo const mult =
+    <[ \y -> ~~(foo 2 <[y]>) ]>
+        where
+          foo 0 y = const (12::Int)
+          foo n y = <[ let recurs = ~~(foo (n-1) y)
+                       in  ~~mult recurs recurs
+                     ]>
+-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- demo const mult = <[ \(y::Int) -> ~~mult y ~~(const 12) ]>
 -- demo' n = <[ ~~mult ~~(demo' (n-1)) ~~(demo' (n-1)) ]>
-
-
+-- golden
+{-
+demo const mult =
+ <[ \y ->
+    let   twelve  = ~~mult twelve y
+    in    twelve ]>
+-}
 
 {-
 demo const mult =
@@ -38,14 +155,6 @@ demo const mult =
     in let  four    = ~~(const (4::Int))
          in  ~~mult four twelve  ]>
 -}
-{-
-demo const mult =
- <[ let     twelve = ~~(const (12::Int))
-    in let  twelvea = twelve
-            four    = ~~(const (4::Int))
-            twelveb = twelve
-         in  ~~mult (~~mult twelvea four) (~~mult twelveb twelveb) ]>
--}
 
 {-
 demo const mult = demo' 3
@@ -54,3 +163,9 @@ demo const mult = demo' 3
   demo' 1 = const 12
   demo' n = <[ ~~mult ~~(demo' (n-1)) ~~(demo' (n-2)) ]>
 -}
+
+-- BUG
+--demo const mult = <[ \y -> ~~(demo' 0) ]>
+--  where
+--   demo' 0 = const 4
+--   demo' n = const 4
