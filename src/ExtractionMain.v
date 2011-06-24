@@ -267,6 +267,16 @@ Section core2proof.
     apply curry.
     Defined.
 
+  Definition fToC1' {Γ}{Δ}{a}{s}{lev} :
+    ND Rule [] [ Γ > Δ > [        ] |- [a ---> s  ]@lev ] ->
+    ND Rule [] [ Γ > Δ > [a @@ lev] |-       [ s  ]@lev ].
+    intro pf.
+    eapply nd_comp.
+    apply pf.
+    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply ACanR ].
+    apply curry.
+    Defined.
+
   Definition fToC2 {Γ}{Δ}{a1}{a2}{s}{lev} :
     ND Rule [] [ Γ > Δ >                       [] |- [a1 ---> (a2 ---> s)  ]@lev ] ->
     ND Rule [] [ Γ > Δ > [a1 @@ lev],,[a2 @@ lev] |-                  [ s  ]@lev ].
@@ -282,6 +292,17 @@ Section core2proof.
     eapply ACanR.
     eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
     apply curry.
+    Defined.
+
+  Definition fToCx {Γ}{Δ}{a1}{a2}{a3}{l} Σ :
+    ND Rule [] [ Γ > Δ >       [] |- [(a1 ---> a2) ---> a3  ]@l ] ->
+    ND Rule [Γ > Δ > Σ,,[a1 @@ l] |- [a2]@l ]
+            [Γ > Δ > Σ            |- [a3]@l ].
+    intro pf.
+    eapply nd_comp; [ eapply nd_rule; eapply RLam | idtac ].
+    set (fToC1 pf) as pf'.
+    apply boost.
+    apply pf'.
     Defined.
 
   Section coqPassCoreToCore.
@@ -315,6 +336,7 @@ Section core2proof.
     (hetmet_pga_curryr : CoreVar)
     (hetmet_pga_loopl : CoreVar)
     (hetmet_pga_loopr : CoreVar)
+    (hetmet_pga_kappa : CoreVar)
     .
 
 
@@ -415,16 +437,16 @@ Section core2proof.
     ; ga_first     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_first (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
     ; ga_second    := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_second (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
     ; ga_comp      := fun Γ Δ ec l a b c => fToC2 (mkGlob4 hetmet_pga_comp (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec c))
-(*  ; ga_lit       := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_lit))*)
-(*  ; ga_curry     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_curry))*)
-(*  ; ga_apply     := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_apply))*)
-(*  ; ga_kappa     := fun Γ Δ ec l a     => fToC1 (nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_kappa)))*)
     ; ga_loopl     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_loopl (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
     ; ga_loopr     := fun Γ Δ ec l a b x => fToC1 (mkGlob4 hetmet_pga_loopr (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec x))
+
+    ; ga_curry     := fun Γ Δ ec l a     =>  Prelude_error "ga_curry"
+
+    ; ga_apply     := fun Γ Δ ec l a     =>  Prelude_error "ga_apply"
     ; ga_lit       := fun Γ Δ ec l a     => Prelude_error "ga_lit"
-    ; ga_curry     := fun Γ Δ ec l a b c => Prelude_error "ga_curry"
-    ; ga_apply     := fun Γ Δ ec l a b c => Prelude_error "ga_apply"
-    ; ga_kappa     := fun Γ Δ ec l a     => Prelude_error "ga_kappa"
+(*  ; ga_lit       := fun Γ Δ ec l a => nd_rule (RGlobal _ _ _ _ (coreVarToWeakExprVarOrError hetmet_pga_lit))*)
+    ; ga_kappa     := fun Γ Δ ec l a b c Σ =>
+      fToCx Σ (mkGlob4 hetmet_pga_kappa (fun ec a b c => _) ec (gat ec a) (gat ec b) (gat ec c))
     }.
 
     Definition hetmet_brak' := coreVarToWeakExprVarOrError hetmet_brak.
@@ -539,6 +561,7 @@ Section core2proof.
       dsLookupVar "GHC.HetMet.Private" "pga_curryr" >>= fun hetmet_pga_curryr =>
       dsLookupVar "GHC.HetMet.Private" "pga_loopl" >>= fun hetmet_pga_loopl =>
       dsLookupVar "GHC.HetMet.Private" "pga_loopr" >>= fun hetmet_pga_loopr =>
+      dsLookupVar "GHC.HetMet.Private" "pga_kappa" >>= fun hetmet_pga_kappa =>
 
     CoreMreturn
     (coqPassCoreToCore'
@@ -566,6 +589,7 @@ Section core2proof.
        hetmet_pga_swap 
        hetmet_pga_loopl 
        hetmet_pga_loopr 
+       hetmet_pga_kappa
        lbinds
        (*
        hetmet_pga_applyl 

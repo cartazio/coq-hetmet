@@ -274,9 +274,9 @@ Section HaskFlattener.
   ; ga_comp      : ∀ Γ Δ ec l a b c, ND Rule [] [Γ > Δ > [@ga_mk Γ ec a b @@ l],,[@ga_mk Γ ec b c @@ l] |- [@ga_mk Γ ec a c ]@l ] 
   ; ga_apply     : ∀ Γ Δ ec l a a' b c,
                  ND Rule [] [Γ > Δ > [@ga_mk Γ ec a [b ---> c] @@ l],,[@ga_mk Γ ec a' [b] @@ l] |- [@ga_mk Γ ec (a,,a') [c] ]@l ]
-  ; ga_kappa     : ∀ Γ Δ ec l a b Σ, ND Rule
-  [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec [] b ]@l ]
-  [Γ > Δ > Σ          |- [@ga_mk Γ ec a  b ]@l ]
+  ; ga_kappa     : ∀ Γ Δ ec l a b c Σ, ND Rule
+  [Γ > Δ > Σ,,[@ga_mk Γ ec [] a @@ l] |- [@ga_mk Γ ec b c      ]@l ]
+  [Γ > Δ > Σ                          |- [@ga_mk Γ ec (a,,b) c ]@l ]
   }.
   Context `(gar:garrow).
 
@@ -636,66 +636,109 @@ Section HaskFlattener.
     clear y q.
 
     set (mapOptionTree flatten_leveled_type (dropT (mkFlags (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ))) as q.
-    destruct (decide_tree_empty q); [ idtac | apply (Prelude_error "escapifying open code not yet supported") ].
-    destruct s.
+    destruct (decide_tree_empty q).
 
-    simpl.
-    eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AExch ].
-    set (fun z z' => @RLet Γ Δ z (mapOptionTree flatten_leveled_type q') t z' nil) as q''.
-    eapply nd_comp; [ idtac | apply RLet ].
-    clear q''.
-    eapply nd_comp; [ apply nd_rlecnac | idtac ].
-    apply nd_prod.
-    apply nd_rule.
-    apply RArrange.
-    eapply AComp; [ idtac | apply ACanR ].
-    apply ALeft.
-    apply (@arrangeCancelEmptyTree _ _ _ _ e).
-   
-    eapply nd_comp.
-      eapply nd_rule.
-      eapply (@RVar Γ Δ t nil).
-    apply nd_rule.
-      apply RArrange.
-      eapply AComp.
-      apply AuCanR.
-      apply ALeft.
-      apply AWeak.
-(*
-    eapply decide_tree_empty.
-
-    simpl.
-    set (dropT (mkFlags (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ)) as escapified.
-    destruct (decide_tree_empty escapified).
-
-    induction succ.
-    destruct a.
-      unfold drop_lev.
-      destruct l.
+      destruct s.
       simpl.
-      unfold mkDropFlags; simpl.
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; apply AExch ].
+      set (fun z z' => @RLet Γ Δ z (mapOptionTree flatten_leveled_type q') t z' nil) as q''.
+      eapply nd_comp; [ idtac | apply RLet ].
+      clear q''.
+      eapply nd_comp; [ apply nd_rlecnac | idtac ].
+      apply nd_prod.
+      apply nd_rule.
+      apply RArrange.
+      eapply AComp; [ idtac | apply ACanR ].
+      apply ALeft.
+      apply (@arrangeCancelEmptyTree _ _ _ _ e).
+   
+      eapply nd_comp.
+        eapply nd_rule.
+        eapply (@RVar Γ Δ t nil).
+      apply nd_rule.
+        apply RArrange.
+        eapply AComp.
+        apply AuCanR.
+        apply ALeft.
+        apply AWeak.
+
+      simpl.
+      clear q.
+      unfold q'.
+      clear q'.
+      apply nd_rule.
+      apply RArrange.
+      induction succ.
+      destruct a.
+      destruct l as [t' l']. 
+      simpl.
+      Transparent drop_lev.
+      simpl.
       unfold take_lev.
       unfold mkTakeFlags.
       simpl.
-      destruct (General.list_eq_dec h0 (ec :: nil)).
-        simpl.
-        rewrite e.
-        apply nd_id.
-        simpl.
-        apply nd_rule.
-        apply RArrange.
-        apply ALeft.
-        apply AWeak.
+      unfold drop_lev.
       simpl.
-        apply nd_rule.
-        unfold take_lev.
-        simpl.
-        apply RArrange.
-        apply ALeft.
-        apply AWeak.
-      apply (Prelude_error "escapifying code with multi-leaf antecedents is not supported").
-*)
-      Defined.
+      unfold mkDropFlags.
+      simpl.
+      unfold flatten_leveled_type.
+      destruct (General.list_eq_dec l' (ec :: nil)); simpl.
+      rewrite e.
+      unfold levels_to_tcode.
+      eapply AComp.
+      apply ACanL.
+      apply AuCanR.
+      eapply AComp.
+      apply ACanR.
+      eapply AComp.
+      apply AuCanL.
+      apply ARight.
+      apply AWeak.
+      
+      simpl.
+      apply ARight.
+      apply AWeak.
+      
+      drop_simplify.
+      simpl.
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ2)) as d2 in *.
+      set (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ1)) as d1 in *.
+      set (mapOptionTree flatten_leveled_type (dropT (mkFlags
+        (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ1))) as s1 in *.
+      set (mapOptionTree flatten_leveled_type (dropT (mkFlags
+        (liftBoolFunc false (bnot ○ levelMatch (ec :: nil))) succ2))) as s2 in *.
+      set (mapOptionTree (flatten_type ○ unlev) (dropT (mkFlags
+        (liftBoolFunc true (bnot ○ levelMatch (ec :: nil))) succ1))) as s1' in *.
+      set (mapOptionTree (flatten_type ○ unlev) (dropT (mkFlags
+        (liftBoolFunc true (bnot ○ levelMatch (ec :: nil))) succ2))) as s2' in *.
+
+      eapply AComp.
+      apply arrangeSwapMiddle.
+      
+      eapply AComp.
+      eapply ALeft.
+      apply IHsucc2.
+      
+      eapply AComp.
+      eapply ARight.
+      apply IHsucc1.
+      
+      eapply AComp.
+      apply arrangeSwapMiddle.
+      apply ARight.
+      unfold take_lev.
+      unfold mkTakeFlags.
+      
+      unfold s1'.
+      unfold s2'.
+      clear s1' s2'.
+      set (mapOptionTree (flatten_type ○ unlev) (dropT (mkFlags
+        (liftBoolFunc true (bnot ○ levelMatch (ec :: nil))) succ1))) as s1' in *.
+      set (mapOptionTree (flatten_type ○ unlev) (dropT (mkFlags
+        (liftBoolFunc true (bnot ○ levelMatch (ec :: nil))) succ2))) as s2' in *.
+      
+      apply (Prelude_error "almost there!").
+    Defined.
 
   Lemma unlev_relev : forall {Γ}(t:Tree ??(HaskType Γ ★)) lev, mapOptionTree unlev (t @@@ lev) = t.
     intros.
@@ -1306,8 +1349,37 @@ Section HaskFlattener.
         apply secondify.
         apply IHx2.
 
-      (* environment has non-empty leaves *)
-      apply (Prelude_error "ga_kappa not supported yet (BIG FIXME)").
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
+      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AuCanR ].
+
+      replace (mapOptionTree (fun ht => levels_to_tcode (unlev ht) (getlev ht) @@  nil) (drop_lev (ec :: nil) succ))
+        with (mapOptionTree flatten_leveled_type (drop_lev (ec :: nil) succ)).
+      eapply nd_comp; [ eapply nd_rule; eapply RArrange; eapply AExch | idtac ].
+      apply ga_kappa.
+      induction succ.
+        destruct a.
+        destruct l.
+        Transparent drop_lev.
+        simpl.
+        unfold drop_lev.
+        Opaque drop_lev.
+        unfold mkDropFlags.
+        simpl.
+        destruct (General.list_eq_dec h1 (ec :: nil)).
+        simpl.
+        auto.
+        simpl.
+        unfold flatten_leveled_type.
+        simpl.
+        auto.
+        simpl.
+        auto.
+        simpl.
+        drop_simplify.
+        simpl.
+        rewrite IHsucc1.
+        rewrite IHsucc2.
+        reflexivity.
 
       (* nesting too deep *)
       apply (Prelude_error "found Esc at depth >0 indicating 3-level code; only two-level code is currently supported").
