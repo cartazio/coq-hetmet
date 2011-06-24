@@ -218,6 +218,104 @@ Fixpoint mapProp {A:Type} (f:A->Prop) (l:list A) : Prop :=
     | (a::al) => f a /\ mapProp f al
   end.
 
+
+(* delete the n^th element of a list *)
+Definition list_del : forall {T:Type} (l:list T) (n:nat)(pf:lt n (length l)), list T.
+  refine (fix list_del {T:Type} (l:list T) (n:nat) : lt n (length l) -> list T :=
+    match l as L return lt n (length L) -> list T with
+      | nil  => _
+      | a::b => match n with
+                  | O    => fun _ => b
+                  | S n' => fun pf => (fun list_del' => _) (list_del _ b n')
+                end
+    end).
+    intro pf.
+    simpl in pf.
+    assert False.
+    inversion pf.
+    inversion H.
+
+    simpl in *.
+    apply list_del'.
+    omega.
+    Defined.
+
+Definition list_get : forall {T:Type} (l:list T) (n:nat), lt n (length l) -> T.
+  refine (fix list_get {T:Type} (l:list T) (n:nat) : lt n (length l) -> T :=
+    match l as L return lt n (length L) -> T with
+      | nil => _
+      | a::b => match n with
+                  | O    => fun _ => a
+                  | S n' => fun pf => (fun list_get' => _) (list_get _ b n')
+                end
+    end).
+  intro pf.
+  assert False.
+  inversion pf.
+  inversion H.
+
+  simpl in *.
+  apply list_get'.
+  omega.
+  Defined.
+
+Fixpoint list_ins (n:nat) {T:Type} (t:T) (l:list T) : list T :=
+  match n with
+    | O    => t::l
+    | S n' => match l with
+                | nil  => t::nil
+                | a::b => a::(list_ins n' t b)
+              end
+  end.
+
+Lemma list_ins_nil : forall T n x, @list_ins n T x nil = x::nil.
+  intros.
+  destruct n; auto.
+  Qed.
+
+Fixpoint list_take {T:Type}(l:list T)(n:nat) :=
+  match n with
+    | O    => nil
+    | S n' => match l with
+                | nil  => nil
+                | a::b => a::(list_take b n')
+              end
+  end.
+
+Fixpoint list_drop {T:Type}(l:list T)(n:nat) :=
+  match n with
+    | O    => l
+    | S n' => match l with
+                | nil  => nil
+                | a::b => list_drop b n'
+              end
+  end.
+
+Lemma list_ins_app T n κ : forall Γ, @list_ins n T κ Γ = app (list_take Γ n) (κ::(list_drop Γ n)).
+  induction n.
+  simpl.
+  intros.
+  destruct Γ; auto.
+  intro Γ.
+  destruct Γ.
+  reflexivity.
+  simpl.
+  rewrite <- IHn.
+  reflexivity.
+  Qed.
+
+Lemma list_take_drop T l : forall n, app (@list_take T l n) (list_drop l n) = l.
+  induction l; auto.
+  simpl.
+  destruct n; auto.
+  simpl.
+  destruct n.
+  reflexivity.
+  simpl.
+  rewrite IHl.
+  reflexivity.
+  Qed.
+
 Lemma map_id : forall A (l:list A), (map (fun x:A => x) l) = l.
   induction l.
   auto.
@@ -801,6 +899,17 @@ Lemma ilist_chop' {T}{F}{l1 l2:list T}(v:IList T F (app l1 l2)) : IList T F l2.
   induction l1; auto.
   apply IHl1.
   inversion v; subst; auto.
+  Defined.
+
+Lemma ilist_app {T}{F}{l1:list T}(v1:IList T F l1) : forall {l2:list T}(v2:IList T F l2), IList T F (app l1 l2).
+  induction l1; auto.
+  intros.
+  inversion v1.
+  subst.
+  simpl.
+  apply ICons.
+  apply X.
+  apply IHl1; auto.
   Defined.
 
 Fixpoint ilist_to_list {T}{Z}{l:list T}(il:IList T (fun _ => Z) l) : list Z :=
