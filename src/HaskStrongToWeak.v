@@ -79,6 +79,18 @@ Section HaskStrongToWeak.
   Definition updateITE {Γ:TypeEnv}{TV:Kind->Type}{κ}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ) : InstantiatedTypeEnv TV (κ::Γ)
     := tv::::ite.
   
+  Definition updateITE_ {Γ:TypeEnv}{TV:Kind->Type}{κ}{n}(tv:TV κ)(ite:InstantiatedTypeEnv TV Γ)
+    : InstantiatedTypeEnv TV (list_ins n κ Γ).
+    rewrite list_ins_app.
+    rewrite <- (list_take_drop _ Γ n) in ite.
+    apply ilist_app.
+    apply ilist_chop in ite; auto.
+    apply ICons.
+    apply tv.
+    apply ilist_chop' in ite.
+    apply ite.
+    Defined.
+  
   Definition coercionToWeakCoercion Γ Δ κ t1 t2 ite (γ:@HaskCoercion Γ Δ (@mkHaskCoercionKind Γ κ t1 t2))
     : UniqM WeakCoercion
     := bind t1' = @typeToWeakType Γ κ t1 ite
@@ -144,8 +156,8 @@ Section HaskStrongToWeak.
     | ECast Γ Δ ξ t1 t2 γ l e      => fun ite  => bind e' = exprToWeakExpr χ e ite
                                                 ; bind c' = coercionToWeakCoercion _ _ _ _ _ ite γ
                                                 ; return WECast e' c'
-    | ETyLam _ _ _ k _ _ e          => fun ite => bind tv = mkWeakTypeVar k
-                                                ; bind e' = exprToWeakExpr χ e (updateITE tv ite)
+    | ETyLam _ _ _ k _ _ n e        => fun ite => bind tv = mkWeakTypeVar k
+                                                ; bind e' = exprToWeakExpr χ e (updateITE_ tv ite)
                                                 ; return WETyLam tv e'
     | ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e    => fun ite => bind t1' = typeToWeakType σ₁ ite
                                                 ; bind t2' = typeToWeakType σ₂ ite

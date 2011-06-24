@@ -26,6 +26,11 @@ Open Scope string_scope.
 Definition TyVarResolver Γ   := forall wt:WeakTypeVar, ???(HaskTyVar Γ wt).
 Definition CoVarResolver Γ Δ := forall wt:WeakCoerVar, ???(HaskCoVar Γ Δ).
 
+Definition lamer {a}{b}{c}{κ}(lt:HaskType (app (app a  b) c) κ) : HaskType (app a (app b c)) κ.
+  rewrite <- ass_app in lt.
+  exact lt.
+  Defined.
+
 Definition upPhi {Γ}(tv:WeakTypeVar)(φ:TyVarResolver Γ) : TyVarResolver ((tv:Kind)::Γ).
   unfold TyVarResolver.
   refine (fun tv' =>
@@ -604,9 +609,11 @@ Definition weakExprToStrongExpr : forall
     | WETyLam tv e                      => let φ2 := upPhi tv φ in
                                              weakTypeOfWeakExpr e >>= fun te =>
                                                weakTypeToTypeOfKind φ2 te ★ >>= fun τ' =>
-                                                 weakExprToStrongExpr _ (weakCE Δ) φ2
-                                                   (fun x => (ψ x) >>= fun y => OK (weakCV y)) (weakLT○ξ) ig _ (weakL lev) e
-                                                     >>= fun e' => castExpr we "WETyLam2" _ _ (ETyLam Γ Δ ξ tv (mkTAll' τ') lev e')
+                                                 weakExprToStrongExpr _ (weakCE_(n:=O) Δ) φ2
+                                                   (fun x => (ψ x) >>= fun y =>
+                                                     OK (weakCV_ y)) (weakLT_○ξ) ig _ (weakL_ lev) e
+                                                   >>= fun e' => castExpr we "WETyLam2" _ _
+                                                     (ETyLam Γ Δ ξ tv (mkTAll' τ') lev 0 e')
 
     | WETyApp e t                       => weakTypeOfWeakExpr e >>= fun te =>
                                            match te with

@@ -47,8 +47,8 @@ Section HaskStrong.
   | ETyApp : ∀ Γ Δ κ σ τ ξ l,                    Expr Γ Δ ξ (HaskTAll κ σ) l                   -> Expr Γ Δ ξ (substT σ τ) l
   | ECoLam : forall Γ Δ κ σ (σ₁ σ₂:HaskType Γ κ) ξ l, Expr Γ (σ₁∼∼∼σ₂::Δ) ξ σ l    -> Expr Γ Δ ξ (σ₁∼∼σ₂    ⇒ σ) l
   | ECoApp : forall Γ Δ κ (σ₁ σ₂:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ₁∼∼∼σ₂)) σ ξ l, Expr Γ Δ ξ (σ₁ ∼∼ σ₂ ⇒ σ) l  -> Expr Γ Δ ξ σ l
-  | ETyLam : ∀ Γ Δ ξ κ σ l,
-    Expr (κ::Γ) (weakCE Δ) (weakLT○ξ) (HaskTApp (weakF σ) (FreshHaskTyVar _)) (weakL l)-> Expr Γ Δ ξ (HaskTAll κ σ) l
+  | ETyLam : ∀ Γ Δ ξ κ σ l n,
+    Expr (list_ins n κ Γ) (weakCE_ Δ) (weakLT_○ξ) (HaskTApp (weakF_ σ) (FreshHaskTyVar_ _)) (weakL_ l)-> Expr Γ Δ ξ (HaskTAll κ σ) l
   | ECase    : forall Γ Δ ξ l tc tbranches atypes,
                Expr Γ Δ ξ (caseType tc atypes) l ->
                Tree ??{ sac : _
@@ -90,7 +90,7 @@ Section HaskStrong.
     | ETyApp  Γ Δ κ σ τ ξ l       e => "("+++exprToString e+++")@("+++toString τ+++")"
     | ECoApp Γ Δ κ σ₁ σ₂ γ σ ξ l e  => "("+++exprToString e+++")~(co)"
     | ECast Γ Δ ξ t1 t2 γ l e       => "cast ("+++exprToString e+++"):t2"
-    | ETyLam _ _ _ k _ _ e          => "\@_ ->"+++ exprToString e
+    | ETyLam _ _ _ k _ _ _ e        => "\@_ ->"+++ exprToString e
     | ECoLam Γ Δ κ σ σ₁ σ₂ ξ l e    => "\~_ ->"+++ exprToString e
     | ECase Γ Δ ξ l tc branches atypes escrut alts => "case " +++ exprToString escrut +++ " of FIXME"
     | ELetRec _ _ _ _ _ vars vu elrb e => "letrec FIXME in " +++ exprToString e

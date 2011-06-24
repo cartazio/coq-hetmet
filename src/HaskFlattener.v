@@ -46,7 +46,6 @@ Set Printing Width 130.
  *)
 Section HaskFlattener.
 
-
   Ltac eqd_dec_refl' :=
     match goal with
       | [ |- context[@eqd_dec ?T ?V ?X ?X] ] =>
@@ -232,12 +231,12 @@ Section HaskFlattener.
     flatten_type  (HaskTAll κ σ) = HaskTAll κ (fun TV ite v => flatten_rawtype (σ TV ite v)).
 
   Axiom flatten_commutes_with_HaskTApp :
-    forall  κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
-    flatten_type  (HaskTApp (weakF σ) (FreshHaskTyVar κ)) =
-    HaskTApp (weakF (fun TV ite v => flatten_rawtype  (σ TV ite v))) (FreshHaskTyVar κ).
+    forall n κ Γ (Δ:CoercionEnv Γ) (σ:∀ TV, InstantiatedTypeEnv TV Γ → TV κ → RawHaskType TV ★),
+    flatten_type  (HaskTApp (weakF_ σ) (FreshHaskTyVar_ κ)) =
+    HaskTApp (weakF_ (fun TV ite v => flatten_rawtype  (σ TV ite v))) (FreshHaskTyVar_(n:=n) κ).
 
-  Axiom flatten_commutes_with_weakLT : forall (Γ:TypeEnv) κ  t,
-    flatten_leveled_type  (weakLT(Γ:=Γ)(κ:=κ) t) = weakLT(Γ:=Γ)(κ:=κ) (flatten_leveled_type  t).
+  Axiom flatten_commutes_with_weakLT : forall n (Γ:TypeEnv) κ t,
+    flatten_leveled_type  (weakLT_(n:=n)(Γ:=Γ)(κ:=κ) t) = weakLT_(n:=n)(Γ:=Γ)(κ:=κ) (flatten_leveled_type  t).
 
   Axiom globals_do_not_have_code_types : forall (Γ:TypeEnv) (g:Global Γ) v,
     flatten_type (g v) = g v.
@@ -406,6 +405,9 @@ Section HaskFlattener.
      eapply nd_comp; [ idtac | eapply nd_rule; eapply RArrange; eapply AExch ].
      apply precompose.
      Defined.
+
+
+
 
   (* useful for cutting down on the pretty-printed noise
   
@@ -864,7 +866,7 @@ Section HaskFlattener.
       | RGlobal  Γ Δ σ l wev           => let case_RGlobal := tt       in _
       | RLam     Γ Δ Σ tx te     lev   => let case_RLam := tt          in _
       | RCast    Γ Δ Σ σ τ lev γ       => let case_RCast := tt         in _
-      | RAbsT    Γ Δ Σ κ σ lev         => let case_RAbsT := tt         in _
+      | RAbsT    Γ Δ Σ κ σ lev n       => let case_RAbsT := tt         in _
       | RAppT    Γ Δ Σ κ σ τ     lev   => let case_RAppT := tt         in _
       | RAppCo   Γ Δ Σ κ σ₁ σ₂ γ σ lev => let case_RAppCo := tt        in _
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
@@ -1161,8 +1163,8 @@ Section HaskFlattener.
       rewrite flatten_commutes_with_HaskTApp.
       eapply nd_comp; [ idtac | eapply nd_rule; eapply RAbsT ].
       simpl.
-      set (mapOptionTree (flatten_leveled_type ) (mapOptionTree (weakLT(κ:=κ)) Σ)) as a.
-      set (mapOptionTree (weakLT(κ:=κ)) (mapOptionTree (flatten_leveled_type ) Σ)) as q'.
+      set (mapOptionTree (flatten_leveled_type ) (mapOptionTree (weakLT_(n:=n)(κ:=κ)) Σ)) as a.
+      set (mapOptionTree (weakLT_(n:=n)(κ:=κ)) (mapOptionTree (flatten_leveled_type ) Σ)) as q'.
       assert (a=q').
         unfold a.
         unfold q'.

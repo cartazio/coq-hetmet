@@ -226,7 +226,7 @@ Section HaskSkolemizer.
       | RGlobal  Γ Δ σ l wev           => let case_RGlobal := tt       in _
       | RLam     Γ Δ Σ tx te     lev   => let case_RLam := tt          in _
       | RCast    Γ Δ Σ σ τ lev γ       => let case_RCast := tt         in _
-      | RAbsT    Γ Δ Σ κ σ lev         => let case_RAbsT := tt         in _
+      | RAbsT    Γ Δ Σ κ σ lev n       => let case_RAbsT := tt         in _
       | RAppT    Γ Δ Σ κ σ τ     lev   => let case_RAppT := tt         in _
       | RAppCo   Γ Δ Σ κ σ₁ σ₂ γ σ lev => let case_RAppCo := tt        in _
       | RAbsCo   Γ Δ Σ κ σ  σ₁ σ₂  lev => let case_RAbsCo := tt        in _
@@ -472,7 +472,10 @@ Section HaskSkolemizer.
 
       destruct case_RAbsT.
         simpl.
-        destruct lev; simpl; [ apply nd_rule; apply SFlat; apply (@RAbsT _ _ _ _ _ nil) | idtac ].
+        destruct lev; simpl.
+          apply nd_rule.
+          apply SFlat.
+          apply (@RAbsT Γ Δ Σ κ σ nil n).
         apply (Prelude_error "RAbsT at depth>0").
 
       destruct case_RAppCo.

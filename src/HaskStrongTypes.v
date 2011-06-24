@@ -155,6 +155,7 @@ Definition HaskCoercion Γ Δ (hk:HaskCoercionKind Γ) := forall TV CV (ite:@Ins
 Inductive  LeveledHaskType (Γ:TypeEnv) κ := mkLeveledHaskType : HaskType Γ κ -> HaskLevel Γ -> LeveledHaskType Γ κ.
 
 Definition FreshHaskTyVar {Γ}(κ:Kind) : HaskTyVar (κ::Γ) κ := fun TV env => ilist_head env.
+
 Definition HaskTAll {Γ}(κ:Kind)(σ:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV ★) : HaskType Γ ★
   := fun TV env => TAll κ (σ TV env).
 Definition HaskTApp {Γ}{κ}(σ:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV ★)
@@ -350,43 +351,14 @@ Definition addCoercionToInstantiatedCoercionEnv {Γ}{Δ}{κ}{TV CV}(ice:Instanti
   unfold InstantiatedCoercionEnv; simpl. 
   apply vec_cons; auto.
   Defined.
+
 (* the various "weak" functions turn a HaskXX-in-Γ into a HaskXX-in-(κ::Γ) *)
-Definition weakITE  {Γ:TypeEnv}{κ}{TV}(ite:InstantiatedTypeEnv TV (κ::Γ)) : InstantiatedTypeEnv TV Γ
-  := ilist_tail ite.
-Definition weakITE' {Γ:TypeEnv}{κ}{TV}(ite:InstantiatedTypeEnv TV (app κ Γ)) : InstantiatedTypeEnv TV Γ.
-  induction κ; auto. apply IHκ. inversion ite; subst. apply X0. Defined.
-Definition weakCE   {Γ:TypeEnv}{κ}(Δ:CoercionEnv Γ) : CoercionEnv (κ::Γ)
-  := map (fun x => (fun tv ite => x tv (weakITE ite))) Δ.
-Definition weakV  {Γ:TypeEnv}{κ}{κv}(cv':HaskTyVar Γ κv) : HaskTyVar (κ::Γ) κv
-  := fun TV ite => (cv' TV (weakITE ite)).
-Definition weakV' {Γ:TypeEnv}{κ}{κv}(cv':HaskTyVar Γ κv) : HaskTyVar (app κ Γ) κv.
-  induction κ; auto. apply weakV; auto. Defined.
-Definition weakT {Γ:TypeEnv}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (κ::Γ) κ₂
-  := fun TV ite => lt TV (weakITE ite).
-Definition weakL  {Γ}{κ}(lt:HaskLevel Γ) : HaskLevel (κ::Γ)
-  := map weakV lt.
-Definition weakT' {Γ}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (app κ Γ) κ₂.
-  induction κ; auto. apply weakT; auto. Defined.
-Definition weakT'' {Γ}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (app Γ κ) κ₂.
-  unfold HaskType in *.
-  unfold InstantiatedTypeEnv in *.
-  intros.
-  apply ilist_chop in X.
-  apply lt.
-  apply X.
-  Defined.
-Definition lamer {a}{b}{c}{κ}(lt:HaskType (app (app a  b) c) κ) : HaskType (app a (app b c)) κ.
-  rewrite <- ass_app in lt.
-  exact lt.
-  Defined.
-Definition weakL' {Γ}{κ}(lev:HaskLevel Γ) : HaskLevel (app κ Γ).
-  induction κ; auto. apply weakL; auto. Defined.
-Definition weakLT {Γ}{κ}{κ₂}(lt:LeveledHaskType Γ κ₂) : LeveledHaskType (κ::Γ) κ₂
-  := match lt with t @@ l => weakT t @@ weakL l end.
-Definition weakLT' {Γ}{κ}{κ₂}(lt:LeveledHaskType Γ κ₂) : LeveledHaskType (app κ Γ) κ₂
-  := match lt with t @@ l => weakT' t @@ weakL' l end.
-Definition weakCE' {Γ:TypeEnv}{κ}(Δ:CoercionEnv Γ) : CoercionEnv (app κ Γ).
-  induction κ; auto. apply weakCE; auto. Defined.
+Definition weakITE  {Γ:TypeEnv}{κ}{TV}(ite:InstantiatedTypeEnv TV (κ::Γ)) : InstantiatedTypeEnv TV Γ := ilist_tail ite.
+Definition weakCE   {Γ:TypeEnv}{κ}(Δ:CoercionEnv Γ) : CoercionEnv (κ::Γ) := map (fun x => (fun tv ite => x tv (weakITE ite))) Δ.
+Definition weakV  {Γ:TypeEnv}{κ}{κv}(cv':HaskTyVar Γ κv) : HaskTyVar (κ::Γ) κv := fun TV ite => (cv' TV (weakITE ite)).
+Definition weakT {Γ:TypeEnv}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (κ::Γ) κ₂ := fun TV ite => lt TV (weakITE ite).
+Definition weakL  {Γ}{κ}(lt:HaskLevel Γ) : HaskLevel (κ::Γ) := map weakV lt.
+Definition weakLT {Γ}{κ}{κ₂}(lt:LeveledHaskType Γ κ₂) : LeveledHaskType (κ::Γ) κ₂ := match lt with t @@ l => weakT t @@ weakL l end.
 Definition weakICE  {Γ:TypeEnv}{κ}{Δ:CoercionEnv Γ}{TV}{CV}(ice:InstantiatedCoercionEnv TV CV (κ::Γ) (weakCE Δ))
   : InstantiatedCoercionEnv TV CV Γ Δ.
   intros.
@@ -403,6 +375,33 @@ Definition weakCK {Γ}{κ}(hck:HaskCoercionKind Γ) : HaskCoercionKind (κ::Γ).
   apply hck; clear hck.
   inversion X; subst; auto.
   Defined.
+Definition weakCV {Γ}{Δ}{κ}(cv':HaskCoVar Γ Δ) : HaskCoVar (κ::Γ) (weakCE Δ) :=
+  fun TV CV ite ice => (cv' TV CV (weakITE ite) (weakICE ice)).
+Definition weakF {Γ:TypeEnv}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV κ₂) : 
+  forall TV (env:@InstantiatedTypeEnv TV (κ::Γ)), TV κ -> RawHaskType TV κ₂
+  := fun TV ite tv => (f TV (weakITE ite) tv).
+
+
+Definition weakITE' {Γ:TypeEnv}{κ}{TV}(ite:InstantiatedTypeEnv TV (app κ Γ)) : InstantiatedTypeEnv TV Γ.
+  induction κ; auto. apply IHκ. inversion ite; subst. apply X0. Defined.
+Definition weakV' {Γ:TypeEnv}{κ}{κv}(cv':HaskTyVar Γ κv) : HaskTyVar (app κ Γ) κv.
+  induction κ; auto. apply weakV; auto. Defined.
+Definition weakT' {Γ}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (app κ Γ) κ₂.
+  induction κ; auto. apply weakT; auto. Defined.
+Definition weakT'' {Γ}{κ}{κ₂}(lt:HaskType Γ κ₂) : HaskType (app Γ κ) κ₂.
+  unfold HaskType in *.
+  unfold InstantiatedTypeEnv in *.
+  intros.
+  apply ilist_chop in X.
+  apply lt.
+  apply X.
+  Defined.
+Definition weakL' {Γ}{κ}(lev:HaskLevel Γ) : HaskLevel (app κ Γ).
+  induction κ; auto. apply weakL; auto. Defined.
+Definition weakLT' {Γ}{κ}{κ₂}(lt:LeveledHaskType Γ κ₂) : LeveledHaskType (app κ Γ) κ₂
+  := match lt with t @@ l => weakT' t @@ weakL' l end.
+Definition weakCE' {Γ:TypeEnv}{κ}(Δ:CoercionEnv Γ) : CoercionEnv (app κ Γ).
+  induction κ; auto. apply weakCE; auto. Defined.
 Definition weakCK' {Γ}{κ}(hck:HaskCoercionKind Γ) : HaskCoercionKind (app κ Γ).
   induction κ; auto.
   apply weakCK.
@@ -410,11 +409,80 @@ Definition weakCK' {Γ}{κ}(hck:HaskCoercionKind Γ) : HaskCoercionKind (app κ 
   Defined.
 Definition weakCK'' {Γ}{κ}(hck:list (HaskCoercionKind Γ)) : list (HaskCoercionKind (app κ Γ)) :=
   map weakCK' hck.
-Definition weakCV {Γ}{Δ}{κ}(cv':HaskCoVar Γ Δ) : HaskCoVar (κ::Γ) (weakCE Δ) :=
-  fun TV CV ite ice => (cv' TV CV (weakITE ite) (weakICE ice)).
-Definition weakF {Γ:TypeEnv}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV κ₂) : 
-  forall TV (env:@InstantiatedTypeEnv TV (κ::Γ)), TV κ -> RawHaskType TV κ₂
-  := fun TV ite tv => (f TV (weakITE ite) tv).
+
+Definition weakITE_ {Γ:TypeEnv}{κ}{n}{TV}(ite:InstantiatedTypeEnv TV (list_ins n κ Γ)) : InstantiatedTypeEnv TV Γ.
+  rewrite list_ins_app in ite.
+  set (weakITE' ite) as ite'.
+  set (ilist_chop ite) as a.
+  rewrite <- (list_take_drop _ Γ n).
+  apply ilist_app; auto.
+  inversion ite'; auto.
+  Defined.
+
+Definition weakV_ {Γ:TypeEnv}{κ}{n}{κv}(cv':HaskTyVar Γ κv) : HaskTyVar (list_ins n κ Γ) κv.
+  unfold HaskTyVar; intros.
+  unfold HaskTyVar in cv'.
+  apply (cv' TV).
+  apply weakITE_ in env.
+  apply env.
+  Defined.
+
+Definition weakT_ {Γ}{κ}{n}{κ₂}(lt:HaskType Γ κ₂) : HaskType (list_ins n κ Γ) κ₂.
+  unfold HaskType; intros.
+  apply lt.
+  apply weakITE_ in X.
+  apply X.
+  Defined.
+Definition weakL_ {Γ}{κ}{n}(lev:HaskLevel Γ) : HaskLevel (list_ins n κ Γ).
+  unfold HaskLevel; intros.
+  unfold HaskLevel in lev.
+  eapply map.
+  apply weakV_.
+  apply lev.
+  Defined.
+Definition weakLT_ {Γ}{κ}{n}{κ₂}(lt:LeveledHaskType Γ κ₂) : LeveledHaskType (list_ins n κ Γ) κ₂ :=
+  match lt with t@@l => weakT_ t @@ weakL_ l end.
+Definition weakCK_ {Γ}{κ}{n}(hck:HaskCoercionKind Γ) : HaskCoercionKind (list_ins n κ Γ).
+  unfold HaskCoercionKind; intros.
+  unfold HaskCoercionKind in hck.
+  apply hck.
+  apply weakITE_ in X.
+  apply X.
+  Defined.
+Definition weakCE_ {Γ:TypeEnv}{κ}{n}(Δ:CoercionEnv Γ) : CoercionEnv (list_ins n κ Γ) := map weakCK_ Δ.
+Definition weakF_ {Γ:TypeEnv}{n}{κ}{κ₂}(f:forall TV (env:@InstantiatedTypeEnv TV Γ), TV κ -> RawHaskType TV κ₂) : 
+  forall TV (env:@InstantiatedTypeEnv TV (list_ins n κ Γ)), TV κ -> RawHaskType TV κ₂.
+  intros.
+  apply f.
+  apply weakITE_ in env.
+  apply env.
+  apply X.
+  Defined.
+Definition weakCV_ {Γ}{Δ}{κ}{n}(cv':HaskCoVar Γ Δ) : HaskCoVar (list_ins n κ Γ) (weakCE_ Δ).
+  unfold HaskCoVar; intros.
+  unfold HaskCoVar in cv'.  
+  apply (cv' TV).
+  apply weakITE_ in env.
+  apply env.
+  unfold InstantiatedCoercionEnv.
+  unfold InstantiatedCoercionEnv in cenv.
+  replace (length (@weakCE_ _ κ n Δ)) with (length Δ) in cenv.
+  apply cenv.
+  unfold weakCE_.
+  rewrite <- map_preserves_length.
+  reflexivity.
+  Defined.
+
+Definition FreshHaskTyVar_ {Γ}(κ:Kind) : forall {n}, HaskTyVar (list_ins n κ Γ) κ.
+  intros.
+  unfold HaskTyVar.
+  intros.
+  rewrite list_ins_app in env.
+  apply weakITE' in env.
+  inversion env; subst; auto.
+  Defined.
+
+
 
 Fixpoint caseType0 {Γ}(lk:list Kind) :
   IList _ (HaskType Γ) lk ->

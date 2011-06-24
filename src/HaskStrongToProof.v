@@ -520,7 +520,7 @@ Fixpoint expr2antecedent {Γ'}{Δ'}{ξ'}{τ'}{l'}(exp:Expr Γ' Δ' ξ' τ' l') :
   | EBrak    Γ Δ ξ ec t lev e                     => expr2antecedent e
   | ECast    Γ Δ ξ γ t1 t2 lev      e             => expr2antecedent e
   | ENote    Γ Δ ξ t l n e                        => expr2antecedent e
-  | ETyLam   Γ Δ ξ κ σ l e                        => expr2antecedent e
+  | ETyLam   Γ Δ ξ κ σ l n e                      => expr2antecedent e
   | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => expr2antecedent e
   | ECoApp   Γ Δ κ γ σ₁ σ₂ σ ξ l      e           => expr2antecedent e
   | ETyApp   Γ Δ κ σ τ ξ  l    e                  => expr2antecedent e
@@ -1117,7 +1117,7 @@ Definition expr2proof  :
     | EBrak    Γ Δ ξ ec t lev e                     => let case_EBrak   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ECast    Γ Δ ξ γ t1 t2 lev      e             => let case_ECast   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ENote    Γ Δ ξ t _ n e                        => let case_ENote   := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
-    | ETyLam   Γ Δ ξ κ σ l e                        => let case_ETyLam  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
+    | ETyLam   Γ Δ ξ κ σ l n e                      => let case_ETyLam  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ECoLam   Γ Δ κ σ σ₁ σ₂ ξ l             e      => let case_ECoLam  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ECoApp   Γ Δ κ σ₁ σ₂ σ γ ξ l      e           => let case_ECoApp  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)
     | ETyApp   Γ Δ κ σ τ ξ  l    e                  => let case_ETyApp  := tt in (fun e' => _) (expr2proof _ _ _ _ _ e)

@@ -760,7 +760,7 @@ Section HaskProofToStrong.
       | RGlobal Γ Δ σ l wev           => let case_RGlobal := tt       in _
       | RLam    Γ Δ Σ tx te     x     => let case_RLam := tt          in _
       | RCast   Γ Δ Σ σ τ γ     x     => let case_RCast := tt         in _
-      | RAbsT   Γ Δ Σ κ σ a           => let case_RAbsT := tt         in _
+      | RAbsT   Γ Δ Σ κ σ a n         => let case_RAbsT := tt         in _
       | RAppT   Γ Δ Σ κ σ τ     y     => let case_RAppT := tt         in _
       | RAppCo  Γ Δ Σ κ σ₁ σ₂ γ σ l   => let case_RAppCo := tt        in _
       | RAbsCo  Γ Δ Σ κ σ  σ₁ σ₂  y   => let case_RAbsCo := tt        in _
@@ -940,12 +940,12 @@ Section HaskProofToStrong.
     apply (ileaf X).
 
   destruct case_RAbsT.
-    apply ILeaf; simpl; intros; refine (X_ (weakLT ○ ξ) vars _ >>>= fun X => return ILeaf _ _). apply FreshMon.
+    apply ILeaf; simpl; intros; refine (X_ (weakLT_ ○ ξ) vars _ >>>= fun X => return ILeaf _ _). apply FreshMon.
     rewrite mapOptionTree_compose.
     rewrite <- H.
     reflexivity.
     apply ileaf in X. simpl in *.
-    apply ETyLam.
+    apply (ETyLam _ _ _ _ _ _ n).
     apply X.
 
   destruct case_RAppCo.

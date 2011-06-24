@@ -74,8 +74,8 @@ Inductive Rule : Tree ??Judg -> Tree ??Judg -> Type :=
 | RVoid    : ∀ Γ Δ l,               Rule [] [Γ > Δ > [] |- [] @l ]
 
 | RAppT   : forall Γ Δ Σ κ σ (τ:HaskType Γ κ) l,      Rule [Γ>Δ> Σ   |- [HaskTAll κ σ]@l]      [Γ>Δ>    Σ     |- [substT σ τ]@l]
-| RAbsT   : ∀ Γ Δ Σ κ σ   l,
-  Rule [(κ::Γ)> (weakCE Δ)    >   mapOptionTree weakLT Σ |- [ HaskTApp (weakF σ) (FreshHaskTyVar _) ]@(weakL l)]
+| RAbsT   : ∀ Γ Δ Σ κ σ l n,
+  Rule [(list_ins n κ Γ)> (weakCE_ Δ) >  mapOptionTree weakLT_ Σ |- [ HaskTApp (weakF_ σ) (FreshHaskTyVar_ _) ]@(weakL_ l)]
        [Γ>Δ            >    Σ     |- [HaskTAll κ σ   ]@l]
 
 | RAppCo  : forall Γ Δ Σ κ (σ₁ σ₂:HaskType Γ κ) (γ:HaskCoercion Γ Δ (σ₁∼∼∼σ₂)) σ l,
@@ -131,7 +131,7 @@ Inductive Rule_Flat : forall {h}{c}, Rule h c -> Prop :=
 | Flat_RVar             : ∀ Γ Δ  σ               l,  Rule_Flat (RVar Γ Δ  σ         l)
 | Flat_RLam             : ∀ Γ Δ  Σ tx te    q    ,  Rule_Flat (RLam Γ Δ  Σ tx te      q )
 | Flat_RCast            : ∀ Γ Δ  Σ σ τ γ    q     ,  Rule_Flat (RCast Γ Δ  Σ σ τ γ    q )
-| Flat_RAbsT            : ∀ Γ   Σ κ σ a    q    ,  Rule_Flat (RAbsT Γ   Σ κ σ a    q )
+| Flat_RAbsT            : ∀ Γ   Σ κ σ a    q n   ,  Rule_Flat (RAbsT Γ   Σ κ σ a    q n)
 | Flat_RAppT            : ∀ Γ Δ  Σ κ σ τ    q    ,  Rule_Flat (RAppT Γ Δ  Σ κ σ τ    q )
 | Flat_RAppCo           : ∀ Γ Δ  Σ σ₁ σ₂ σ γ q l,  Rule_Flat (RAppCo Γ Δ  Σ  σ₁ σ₂ σ γ  q l)
 | Flat_RAbsCo           : ∀ Γ   Σ κ σ  σ₁ σ₂ q1 q2   , Rule_Flat (RAbsCo Γ   Σ κ σ  σ₁ σ₂  q1 q2   )
