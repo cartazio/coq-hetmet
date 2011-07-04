@@ -29,4 +29,6 @@ Instance TyFunToLatex    : ToLatex  TyCon := { toLatex  := fun x => toLatex (toS
 Variable ModalBoxTyCon   : TyCon.        Extract Inlined Constant ModalBoxTyCon => "TysWiredIn.hetMetCodeTypeTyCon".
 Variable PairTyCon       : TyFun.        Extract Inlined Constant PairTyCon     => "TysWiredIn.pairTyCon".
 Variable UnitTyCon       : TyFun.        Extract Inlined Constant UnitTyCon     => "TysWiredIn.unitTyCon".
+Variable IntTyCon        : TyFun.        Extract Inlined Constant IntTyCon      => "TysWiredIn.intTyCon".
+Variable BoolTyCon       : TyFun.        Extract Inlined Constant BoolTyCon     => "TysWiredIn.boolTyCon".
 Variable ArrowTyCon      : TyCon.        Extract Constant ArrowTyCon    => "Type.funTyCon".
