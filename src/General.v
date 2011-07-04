@@ -1024,7 +1024,7 @@ Definition orErrorBindWithMessage {T:Type} (oe:OrError T) {Q:Type} (f:T -> OrErr
 Notation "a >>=[ S ] b" := (@orErrorBindWithMessage _ a _ b S) (at level 20).
 
 Definition addErrorMessage s {T} (x:OrError T) :=
-  x >>=[ s ] (fun y => OK y).
+  x >>=[ eol +++ eol +++ s ] (fun y => OK y).
 
 Inductive Indexed {T:Type}(f:T -> Type) : ???T -> Type :=
 | Indexed_Error : forall error_message:string, Indexed f (Error error_message)
