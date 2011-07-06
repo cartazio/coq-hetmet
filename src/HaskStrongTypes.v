@@ -755,3 +755,6 @@ Definition typeToString {Γ}{κ}(ht:HaskType Γ κ) : string :=
 
 Instance TypeToStringInstance {Γ} {κ} : ToString (HaskType Γ κ) :=
   { toString := typeToString }.
+
+Definition TBool {Γ} : HaskType Γ ★ := fun TV ite => TyFunApp BoolTyCon _ _ TyFunApp_nil.
+Definition TInt  {Γ} : HaskType Γ ★ := fun TV ite => TyFunApp IntTyCon  _ _ TyFunApp_nil.
