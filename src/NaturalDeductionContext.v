@@ -245,11 +245,189 @@ Section NaturalDeductionContext.
 
       Defined.
 
+  Lemma arrangePullback' {T Q}{f:T->Q}
+    : forall (Σ₁:Tree ??Q)(Σ₂:Tree ??Q), Arrange Σ₁ Σ₂ ->
+      forall Σ₂', Σ₂ = (mapOptionTree f Σ₂') ->
+      { Σ₁' : Tree ??T & prod (Σ₁ = (mapOptionTree f Σ₁')) (Arrange Σ₁' Σ₂') }
+      .
+
+    refine ((fix arrangePullback Σ₁ Σ₂ (arr:Arrange Σ₁ Σ₂) {struct arr} :
+      forall Σ₂', Σ₂ = (mapOptionTree f Σ₂') ->
+      { Σ₁' : Tree ??T & prod (Σ₁ = (mapOptionTree f Σ₁')) (Arrange Σ₁' Σ₂') }
+      :=
+      match arr as R in Arrange A B return
+        forall Σ₂', B = (mapOptionTree f Σ₂') ->
+        { Σ₁' : Tree ??T & prod (A = (mapOptionTree f Σ₁')) (Arrange Σ₁' Σ₂') }
+        with
+        | AId  a               => let case_AId := tt     in _
+        | ACanL  a             => let case_ACanL := tt   in _
+        | ACanR  a             => let case_ACanR := tt   in _
+        | AuCanL a             => let case_AuCanL := tt  in _
+        | AuCanR a             => let case_AuCanR := tt  in _
+        | AAssoc a b c         => let case_AAssoc := tt  in _
+        | AuAssoc a b c        => let case_AuAssoc := tt in _
+        | AExch  a b           => let case_AExch := tt   in _
+        | AWeak  a             => let case_AWeak := tt   in _
+        | ACont  a             => let case_ACont := tt   in _
+        | ALeft  a b c r'      => let case_ALeft := tt   in (fun rec       => _) (arrangePullback _ _ r')
+        | ARight a b c r'      => let case_ARight := tt  in (fun rec       => _) (arrangePullback _ _ r')
+        | AComp  a b c r1 r2   => let case_AComp := tt   in (fun rec1 rec2 => _) (arrangePullback _ _ r1) (arrangePullback _ _ r2)
+      end)); clear arrangePullback; intros.
+
+    destruct case_AId.
+      exists Σ₂'; split.
+      subst.
+      reflexivity.
+      apply AId.
+
+    destruct case_ACanL.
+      exists ([],,Σ₂'); split.
+      subst.
+      simpl.
+      reflexivity.
+      apply ACanL.
+
+    destruct case_ACanR.
+      exists (Σ₂',,[]); split.
+      subst.
+      simpl.
+      reflexivity.
+      apply ACanR.
+
+    destruct case_AuCanL.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      eexists; split.
+      reflexivity.
+      simpl in H.
+      inversion H.
+      destruct Σ₂'1; try destruct o; inversion H2.
+      apply AuCanL.
+
+    destruct case_AuCanR.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      eexists; split.
+      reflexivity.
+      simpl in H.
+      inversion H.
+      destruct Σ₂'2; try destruct o; inversion H2.
+      apply AuCanR.
+
+    destruct case_AAssoc.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      destruct Σ₂'1; try destruct o; inversion H; subst.
+      rewrite <- mapOptionTree_distributes.
+      rewrite <- mapOptionTree_distributes.
+      eexists; split.
+      reflexivity.
+      apply AAssoc.
+      
+    destruct case_AuAssoc.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      destruct Σ₂'2; try destruct o; inversion H; subst.
+      rewrite <- mapOptionTree_distributes.
+      rewrite <- mapOptionTree_distributes.
+      eexists; split.
+      reflexivity.
+      apply AuAssoc.
+      
+    destruct case_AExch.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      rewrite <- mapOptionTree_distributes.
+      eexists; split.
+      reflexivity.
+      apply AExch.
+
+    destruct case_AWeak.
+      exists []; split.
+      reflexivity.
+      apply AWeak.
+
+    destruct case_ACont.
+      exists (Σ₂',,Σ₂').
+      subst; split.
+      reflexivity.
+      apply ACont.
+
+    destruct case_ALeft.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      destruct (rec _ (refl_equal _)).
+      destruct p.
+      rewrite e.
+      rewrite <- mapOptionTree_distributes.
+      eexists; split.
+      reflexivity.
+      apply ALeft.
+      apply a0.
+
+    destruct case_ARight.
+      destruct Σ₂'; try destruct o; inversion H; subst.
+      destruct (rec _ (refl_equal _)).
+      destruct p.
+      rewrite e.
+      rewrite <- mapOptionTree_distributes.
+      eexists; split.
+      reflexivity.
+      apply ARight.
+      apply a0.
+
+    destruct case_AComp.
+      destruct (rec2 _ H).
+      destruct p.
+      destruct (rec1 _ e).
+      destruct p.
+      rewrite e0.
+      eexists; split.
+      reflexivity.
+      eapply AComp.
+        apply a1.
+        apply a0.
+        Defined.
+
+  Lemma arrangePullback {T Q}{f:T->Q}
+    : forall (Σ₁:Tree ??Q)(Σ₂:Tree ??T), Arrange Σ₁ (mapOptionTree f Σ₂) ->
+      { Σ₁' : Tree ??T & prod (Σ₁ = (mapOptionTree f Σ₁')) (Arrange Σ₁' Σ₂) }.
+    intros.
+    eapply arrangePullback'.
+    apply X.
+    reflexivity.
+    Defined.
+
   (* given an Arrange from Σ₁ to Σ₂ and any predicate on tree nodes, we can construct an Arrange from (takeT Σ₁) to (takeT Σ₂) *)
   (*
-  Lemma arrangeTake {T} pred
+  Lemma arrangePullback {T} pred
     : forall (Σ₁ Σ₂: Tree ??T), Arrange Σ₁ Σ₂ -> Arrange (takeT' (mkFlags pred Σ₁)) (takeT' (mkFlags pred Σ₂)).
     unfold takeT'.
     *)
+
+  (*
+  (* like Arrange, but without weakening or contraction *)
+  Inductive Permutation {T} : Tree ??T -> Tree ??T -> Type :=
+  | PId     : forall a        ,                    Permutation           a                  a
+  | PCanL   : forall a        ,                    Permutation  (    [],,a   )      (       a   )
+  | PCanR   : forall a        ,                    Permutation  (    a,,[]   )      (       a   )
+  | PuCanL  : forall a        ,                    Permutation  (       a    )      (  [],,a    )
+  | PuCanR  : forall a        ,                    Permutation  (       a    )      (  a,,[]    )
+  | PAssoc  : forall a b c    ,                    Permutation  (a,,(b,,c)   )      ((a,,b),,c  )
+  | PuAssoc : forall a b c    ,                    Permutation  ((a,,b),,c   )      ( a,,(b,,c) )
+  | PExch   : forall a b      ,                    Permutation  (   (b,,a)   )      (  (a,,b)   )
+  | PLeft   : forall {h}{c} x , Permutation h c -> Permutation  (    x,,h    )      (       x,,c)
+  | PRight  : forall {h}{c} x , Permutation h c -> Permutation  (    h,,x    )      (       c,,x)
+  | PComp   : forall {a}{b}{c}, Permutation a b -> Permutation b c -> Permutation a c
+  .
+  Notation "a ≈ b" := (@Permutation _ a b) (at level 30).
+
+  Definition permutationToArrangement {T}{a b:Tree ??T} : a ≈ b -> a ⊆ b.
+    admit.
+    Defined.
+  
+  Definition invertPermutation {T}{a b:Tree ??T} : a ≈ b -> b ≈ a.
+    admit.
+    Defined.
+
+  Definition partition {Γ}{ec:HaskEC Γ} Σ :
+     Σ ≈ ((dropEC ec Σ),, (takeEC ec Σ +@@@+ ec)).
+     admit.
+     Defined.
+  *)
 
 End NaturalDeductionContext.
