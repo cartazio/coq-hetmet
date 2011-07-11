@@ -912,6 +912,19 @@ Lemma ilist_app {T}{F}{l1:list T}(v1:IList T F l1) : forall {l2:list T}(v2:IList
   apply IHl1; auto.
   Defined.
 
+Definition ilist_ins {T}{F}{l:list T} z (fz:F z) : forall n (il:IList T F l), IList T F (list_ins n z l).
+  induction l; simpl.
+  intros.
+  destruct n; simpl.
+  apply ICons; [ apply fz | apply INil ].
+  apply ICons; [ apply fz | apply INil ].
+  intros.
+  destruct n; simpl.
+  apply ICons; auto.
+  inversion il; subst.
+  apply ICons; auto.
+  Defined.
+
 Fixpoint ilist_to_list {T}{Z}{l:list T}(il:IList T (fun _ => Z) l) : list Z :=
   match il with
   | INil   => nil
