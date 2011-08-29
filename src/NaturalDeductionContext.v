@@ -399,7 +399,6 @@ Section NaturalDeductionContext.
     unfold takeT'.
     *)
 
-  (*
   (* like Arrange, but without weakening or contraction *)
   Inductive Permutation {T} : Tree ??T -> Tree ??T -> Type :=
   | PId     : forall a        ,                    Permutation           a                  a
@@ -415,19 +414,179 @@ Section NaturalDeductionContext.
   | PComp   : forall {a}{b}{c}, Permutation a b -> Permutation b c -> Permutation a c
   .
   Notation "a ≈ b" := (@Permutation _ a b) (at level 30).
+  Notation "a ⊆ b" := (@Arrange _ a b) (at level 30).
+
+  Definition permuteSwapMiddle {T} (a b c d:Tree ??T) :
+    ((a,,b),,(c,,d)) ≈ ((a,,c),,(b,,d)).
+    eapply PComp.
+    apply  PuAssoc.
+    eapply PComp.
+    eapply PLeft.
+    eapply PComp.
+    eapply PAssoc.
+    eapply PRight.
+    apply  PExch.
+    eapply PComp.
+    eapply PLeft.
+    eapply PuAssoc.
+    eapply PAssoc.
+    Defined.
+
+  Definition permuteMap :
+    forall {T} (Σ₁ Σ₂:Tree ??T) {R} (f:T -> R),
+      Σ₁ ≈ Σ₂ ->
+      (mapOptionTree f Σ₁) ≈ (mapOptionTree f Σ₂).
+    intros.
+    induction X; simpl.
+    apply PId.
+    apply PCanL.
+    apply PCanR.
+    apply PuCanL.
+    apply PuCanR.
+    apply PAssoc.
+    apply PuAssoc.
+    apply PExch.
+    apply  PLeft; auto.
+    apply  PRight; auto.
+    eapply PComp; [ apply IHX1 | apply IHX2 ].
+    Defined.
+
+  (* given any set of TreeFlags on a tree, we can Arrange all of the flagged nodes into the left subtree *)
+  Definition partitionPermutation :
+    forall {T} (Σ:Tree ??T) (f:T -> bool),
+      Σ ≈ (dropT (mkFlags (liftBoolFunc false f) Σ),,( (dropT (mkFlags (liftBoolFunc false (bnot ○ f)) Σ)))).
+    intros.
+    induction Σ.
+      simpl.
+      destruct a.
+      simpl.
+      destruct (f t); simpl.
+      apply PuCanL.
+      apply PuCanR.
+      simpl.
+      apply PuCanL.
+      simpl in *.
+      eapply PComp; [ idtac | apply permuteSwapMiddle ].
+      eapply PComp.
+      eapply PLeft.
+      apply IHΣ2.
+      eapply PRight.
+      apply IHΣ1.
+      Defined.
 
   Definition permutationToArrangement {T}{a b:Tree ??T} : a ≈ b -> a ⊆ b.
-    admit.
-    Defined.
-  
-  Definition invertPermutation {T}{a b:Tree ??T} : a ≈ b -> b ≈ a.
-    admit.
-    Defined.
+    intro arr.
+    induction arr.
+    apply AId.
+    apply ACanL.
+    apply ACanR.
+    apply AuCanL.
+    apply AuCanR.
+    apply AAssoc.
+    apply AuAssoc.
+    apply AExch.
+    apply ALeft; apply IHarr.
+    apply ARight; apply IHarr.
+    eapply AComp.
+      apply IHarr1.
+      apply IHarr2.
+      Defined.
 
-  Definition partition {Γ}{ec:HaskEC Γ} Σ :
-     Σ ≈ ((dropEC ec Σ),, (takeEC ec Σ +@@@+ ec)).
-     admit.
-     Defined.
+  Definition invertPermutation {T}{a b:Tree ??T} : a ≈ b -> b ≈ a.
+    intro perm.
+    induction perm.
+    apply PId.
+    apply PuCanL.
+    apply PuCanR.
+    apply PCanL.
+    apply PCanR.
+    apply PuAssoc.
+    apply PAssoc.
+    apply PExch.
+    eapply PLeft; apply IHperm.
+    eapply PRight; apply IHperm.
+    eapply PComp.
+      apply IHperm2.
+      apply IHperm1.
+      Defined.
+
+  (*
+  Definition factorArrangementAsPermutation {T} : forall (a b:Tree ??T), a ⊆ b -> { c : _ & (c,,a) ≈ b }.
+
+    refine ((fix factor a b (arr:Arrange a b) :=
+      match arr as R in Arrange A B return
+        { c : _ & (c,,A) ≈ B }
+        with
+        | AId  a               => let case_AId := tt    in _
+        | ACanL  a             => let case_ACanL := tt  in _
+        | ACanR  a             => let case_ACanR := tt  in _
+        | AuCanL a             => let case_AuCanL := tt in _
+        | AuCanR a             => let case_AuCanR := tt in _
+        | AAssoc a b c         => let case_AAssoc := tt in _
+        | AuAssoc a b c         => let case_AuAssoc := tt in _
+        | AExch  a b           => let case_AExch := tt  in _
+        | AWeak  a             => let case_AWeak := tt  in _
+        | ACont  a             => let case_ACont := tt  in _
+        | ALeft  a b c r'      => let case_ALeft := tt  in (fun r'' => _) (factor _ _ r')
+        | ARight a b c r'      => let case_ARight := tt in (fun r'' => _) (factor _ _ r')
+        | AComp  a b c r1 r2   => let case_AComp := tt  in (fun r1' r2' => _) (factor _ _ r1) (factor _ _ r2)
+      end)); clear factor; intros.
+
+    destruct case_AId.
+      exists []. apply PCanL.
+
+    destruct case_ACanL.
+      exists [].
+      eapply PComp.
+      apply PCanL.
+      apply PCanL.
+
+    destruct case_ACanR.
+      exists [].
+      eapply PComp.
+      apply PCanL.
+      apply PCanR.
+
+    destruct case_AuCanL.
+      exists [].
+      apply PRight.
+      apply PId.
+
+    destruct case_AuCanR.
+      exists [].
+      apply PExch.
+
+    destruct case_AAssoc.
+      exists [].
+      eapply PComp.
+        eapply PCanL.
+        apply PAssoc.
+
+    destruct case_AuAssoc.
+      exists [].
+      eapply PComp.
+        eapply PCanL.
+        apply PuAssoc.
+
+    destruct case_AExch.
+      exists [].
+      eapply PComp.
+        eapply PCanL.
+        apply PExch.
+
+    destruct case_AWeak.
+      exists a0.
+      eapply PCanR.
+
+    destruct case_ACont.
+      exists [].
+      eapply PComp.
+      eapply PCanL.
+      eapply PComp.
+      eapply PLeft.
+      eapply  
+
+  Defined.
   *)
 
 End NaturalDeductionContext.
