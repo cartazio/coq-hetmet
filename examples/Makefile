@@ -5,6 +5,7 @@ open:
 	open .build/test.pdf
 
 #sanity += BiGArrow.hs
+sanity += KappaDemo.hs
 sanity += CircuitExample.hs
 sanity += CommandSyntaxExample.hs
 sanity += DotProduct.hs
