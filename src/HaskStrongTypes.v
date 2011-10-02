@@ -66,6 +66,9 @@ Section Raw.
   | TVar           : ∀ κ, TV κ                                              -> RawHaskType κ                     (* a        *)
   | TCon           : ∀ tc,                                                     RawHaskType (tyConKind' tc)       (* T        *)
   | TArrow         :                                                           RawHaskType (★ ⇛★ ⇛★ )            (* (->)     *)
+  (*
+  | TKappa         :                                                           RawHaskType (★ ⇛★ ⇛★ )            (* (~~>)    *)
+  *)
   | TCoerc         : ∀ κ, RawHaskType κ -> RawHaskType κ -> RawHaskType ★   -> RawHaskType ★                     (* (+>)     *)
   | TApp           : ∀ κ₁ κ₂, RawHaskType (κ₂⇛κ₁)        -> RawHaskType κ₂  -> RawHaskType κ₁                    (* φ φ      *)
   | TAll           : ∀ κ,                          (TV κ -> RawHaskType ★)  -> RawHaskType ★                     (* ∀a:κ.φ   *)
@@ -111,6 +114,7 @@ Implicit Arguments TApp   [ [TV] [κ₁] [κ₂] ].
 Implicit Arguments TAll   [ [TV] ].
 
 Notation "t1 ---> t2"        := (fun TV env => (TApp (TApp TArrow (t1 TV env)) (t2 TV env))).
+(*Notation "t1 ~~~> t2"        := (fun TV env => (TApp (TApp TKappa (t1 TV env)) (t2 TV env))).*)
 Notation "φ₁ ∼∼ φ₂ ⇒ φ₃"     := (fun TV env => TCoerc (φ₁ TV env) (φ₂ TV env) (φ₃ TV env)).
 
 (* Kind and Coercion Environments *)

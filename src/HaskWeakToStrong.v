@@ -489,6 +489,10 @@ Fixpoint doesWeakVarOccur (wev:WeakExprVar)(me:WeakExpr) : bool :=
     | WELet    cv e1 e2 => doesWeakVarOccur wev e1 || (if eqd_dec (wev:CoreVar) (cv:CoreVar)then false else doesWeakVarOccur wev e2)
     | WEApp    e1 e2    => doesWeakVarOccur wev e1 || doesWeakVarOccur wev e2
     | WELam    cv e     => if eqd_dec (wev:CoreVar) (cv:CoreVar) then false else doesWeakVarOccur wev e
+(*
+    | WEKappaApp  e1 e2 => doesWeakVarOccur wev e1 || doesWeakVarOccur wev e2
+    | WEKappa  cv e     => if eqd_dec (wev:CoreVar) (cv:CoreVar) then false else doesWeakVarOccur wev e
+*)
     | WETyLam  cv e     => doesWeakVarOccur wev e
     | WECoLam  cv e     => doesWeakVarOccur wev e
     | WECase vscrut escrut tbranches tc avars alts =>

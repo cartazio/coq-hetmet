@@ -31,6 +31,10 @@ Inductive WeakExpr :=
 | WETyApp     : WeakExpr                        -> WeakType                  -> WeakExpr
 | WECoApp     : WeakExpr                        -> WeakCoercion              -> WeakExpr
 | WELam       : WeakExprVar                     -> WeakExpr                  -> WeakExpr
+(*
+| WEKappa     : WeakExprVar                     -> WeakExpr                  -> WeakExpr
+| WEKappaApp  : WeakExpr                        -> WeakExpr                  -> WeakExpr
+*)
 | WETyLam     : WeakTypeVar                     -> WeakExpr                  -> WeakExpr
 | WECoLam     : WeakCoerVar                     -> WeakExpr                  -> WeakExpr
 
