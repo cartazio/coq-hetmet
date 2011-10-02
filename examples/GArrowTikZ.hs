@@ -204,7 +204,10 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                                                       drawWires tp x1 x x2 x "black" ++
                                                       drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "gray!50" "dashed"
                              ; return $ DiagramBox 2 top x r (TT x y) bot  }
- mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp ; simpleDiag      "drop" top x x bot [] }
+ mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp
+                             ; (_,      y   ,_)   <- alloc outp
+                             ; constrainEq x y
+                             ; simpleDiag   "drop" top x y bot [] }
  mkdiag' (GAS_const i)  = do { (top,    x   ,bot) <- alloc inp
                              ; (_,      y   ,_)   <- alloc outp
                              ; constrainEq x y
