@@ -1,17 +1,17 @@
 {-# OPTIONS_GHC -XModalTypes -dcore-lint -XScopedTypeVariables -ddump-types -XTypeFamilies -XNoMonomorphismRestriction #-}
 module Demo (demo, demo2) where
 
-demo  z   = <{ \y -> ~~z }>
+demo  z   = <[ \y -> ~~z ]>
 
 demo2 :: <[ (a,b) ~~> c ]>@d -> <[ () ~~> a ]>@d -> <[ b ~~>c ]>@d
-demo2 x y = <{ ~~x ~~y }>
+demo2 x y = <[ ~~x ~~y ]>
 
 swap :: <[ (a,(b,c)) ~~> d ]>@e -> <[ (b,(a,c)) ~~> d ]>@e
-swap f = <{ \x -> \y -> ~~f y x }>
+swap f = <[ \x -> \y -> ~~f y x ]>
 
--- bad = <{ \f -> \x -> f x }>
+-- bad = <[ \f -> \x -> f x ]>
 
-demo3 x y z q = <{ ~~q (~~x ~~y ~~z) }>
+demo3 x y z q = <[ ~~q (~~x ~~y ~~z) ]>
 
 
 
@@ -37,28 +37,28 @@ class BitSerialHardwarePrimitives g where
   <[ oracle ]> :: Int -> <[                Wire ]>@g
 
 xor3 :: forall g . BitSerialHardwarePrimitives g => <[ (Wire,(Wire,(Wire,()))) ~~> Wire ]>@g
-xor3 = <{ \x -> \y -> \z -> xor (xor x y) z }>
+xor3 = <[ \x -> \y -> \z -> xor (xor x y) z ]>
 
 adder =
-   <{ \in1 ->
+   <[ \in1 ->
       \in2 ->
       let firstBitMarker = ~~(loop [ i/=0 | i <- [0..31] ])
           carry_out      = reg (mux2 firstBitMarker zero carry_in)
           carry_in       = maj3 carry_out in1 in2
       in  ~~xor3 carry_out in1 in2
-    }>
+    ]>
 
 
 rotRight n =
-  <{ \input ->
+  <[ \input ->
      let sel   = ~~(loop [ i >= 32-n | i<-[0..31] ])
          fifo1 = ~~(fifo (32-n)) input
          fifo2 = ~~(fifo  32   ) fifo1
      in  mux2 sel fifo1 fifo2
-   }>
+   ]>
 
 sha256round =
-  <{ \load ->
+  <[ \load ->
      \input ->
      \k_plus_w ->
      let a    = ~~(fifo 32) (mux2 load a_in input)
@@ -85,4 +85,4 @@ sha256round =
                           k_plus_w)
          t2   = adder s0 (maj3 a b c)
      in h
-   }>
+   ]>
