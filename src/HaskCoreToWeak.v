@@ -28,6 +28,9 @@ Variable coreVarCoreName    : CoreVar -> CoreName.   Extract Inlined Constant co
 Variable hetmet_brak_name   : CoreName.              Extract Inlined Constant hetmet_brak_name => "PrelNames.hetmet_brak_name".
 Variable hetmet_esc_name    : CoreName.              Extract Inlined Constant hetmet_esc_name  => "PrelNames.hetmet_esc_name".
 Variable hetmet_csp_name    : CoreName.              Extract Inlined Constant hetmet_csp_name  => "PrelNames.hetmet_csp_name".
+Variable hetmet_kappa_name  : CoreName.              Extract Inlined Constant hetmet_kappa_name => "PrelNames.hetmet_kappa_name".
+Variable hetmet_kappa_app_name: CoreName.
+Extract Inlined Constant hetmet_kappa_app_name => "PrelNames.hetmet_kappa_app_name".
 
 Definition mkTyFunApplication (tf:TyFun)(lwt:list WeakType) : ???WeakType :=
   split_list lwt (length (fst (tyFunKind tf))) >>=
@@ -146,6 +149,32 @@ match ce with
   | _ => None
 end.
 
+Definition isKappa (ce:@CoreExpr CoreVar) : bool :=
+match ce with
+  | (CoreEApp
+    (CoreEApp
+    (CoreEApp
+      (CoreEVar v)
+      (CoreEType t1))
+      (CoreEType t2))
+      (CoreEType t3))
+    => if coreName_eq hetmet_kappa_name (coreVarCoreName v) then true else false
+  | _ => false
+end.
+
+Definition isKappaApp (ce:@CoreExpr CoreVar) : bool :=
+match ce with
+  | (CoreEApp (CoreEApp
+    (CoreEApp
+    (CoreEApp
+      (CoreEVar v)
+      (CoreEType t1))
+      (CoreEType t2))
+      (CoreEType t3)) _)
+    => if coreName_eq hetmet_kappa_app_name (coreVarCoreName v) then true else false
+  | _ => false
+end.
+
 Definition isCSP (ce:@CoreExpr CoreVar) : ??(WeakExprVar * WeakTypeVar * CoreType) :=
 match ce with
   | (CoreEApp (CoreEApp (CoreEVar v) (CoreEType (TyVarTy ec))) (CoreEType tbody))
@@ -216,16 +245,38 @@ Fixpoint coreExprToWeakExpr (ce:@CoreExpr CoreVar) : ???WeakExpr :=
                                                             coreExprToWeakExpr e2 >>= fun e' =>
                                                               coreTypeToWeakType t >>= fun t' =>
                                                                 OK (WECSP v tv e' t')
-                                                          | None    => coreExprToWeakExpr e1 >>= fun e1' =>
-                                                            match e2 with
-                                                              | CoreEType t => 
-                                                                coreTypeToWeakType t >>= fun t' =>
-                                                                  OK (WETyApp e1' t')
-                                                              | _           => coreExprToWeakExpr e2
-                                                                >>= fun e2' => OK (WEApp e1' e2')
-                                                            end
-                                                        end
-                                         end
+                                           | None    =>
+                                             (*
+                                             if isKappa e1
+                                             then match e2 with
+                                                    | CoreELam v e => match coreVarToWeakVar' v with
+                                                                        | OK (WExprVar ev) => 
+                                                                          coreExprToWeakExpr e >>= fun e' =>
+                                                                            OK (WEKappa ev e')
+                                                                        | _ => Error "bogus"
+                                                                      end
+                                                    | _ => Error "bogus"
+                                                  end
+                                             else if isKappaApp e1
+                                             then match e1 with
+                                                    | (CoreEApp (CoreEApp (CoreEApp (CoreEApp _ _) _) _) e1') =>
+                                                      coreExprToWeakExpr e1' >>= fun e1'' =>
+                                                      coreExprToWeakExpr e2  >>= fun e2'' =>
+                                                        OK (WEKappaApp e1'' e2'')
+                                                    | _ => Error "bogus"
+                                                  end
+                                               else
+                                               *)
+                                                 coreExprToWeakExpr e1 >>= fun e1' =>
+                                                   match e2 with
+                                                     | CoreEType t => 
+                                                       coreTypeToWeakType t >>= fun t' =>
+                                                         OK (WETyApp e1' t')
+                                                     | _           => coreExprToWeakExpr e2
+                                                       >>= fun e2' => OK (WEApp e1' e2')
+                                                   end
+                          end
+                          end
                           end
 
     | CoreELam   v e => coreVarToWeakVar' v >>= fun v' => match v' with

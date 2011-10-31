@@ -179,9 +179,11 @@ Section core2proof.
     Definition mkWeakExprVar (u:Unique)(t:WeakType)             : WeakExprVar :=
       weakExprVar (mkExVar (mkSystemName u "ev" O) (weakTypeToCoreType t)) t.
 
-    Context (hetmet_brak    : WeakExprVar).
-    Context (hetmet_esc     : WeakExprVar).
-    Context (uniqueSupply   : UniqSupply).
+    Context (hetmet_brak      : WeakExprVar).
+    Context (hetmet_esc       : WeakExprVar).
+    Context (hetmet_kappa     : WeakExprVar).
+    Context (hetmet_kappa_app : WeakExprVar).
+    Context (uniqueSupply     : UniqSupply).
 
     Definition useUniqueSupply {T}(ut:UniqM T) : ???T :=
       match ut with
@@ -311,6 +313,8 @@ Section core2proof.
     (do_skolemize : bool)
     (hetmet_brak  : CoreVar)
     (hetmet_esc   : CoreVar)
+    (hetmet_kappa     : WeakExprVar)
+    (hetmet_kappa_app : WeakExprVar)
     (uniqueSupply : UniqSupply)
     (lbinds:list (@CoreBind CoreVar))
     (hetmet_PGArrowTyCon : TyFun)
@@ -451,6 +455,8 @@ Section core2proof.
 
     Definition hetmet_brak' := coreVarToWeakExprVarOrError hetmet_brak.
     Definition hetmet_esc'  := coreVarToWeakExprVarOrError hetmet_esc.
+    Definition hetmet_kappa'  := coreVarToWeakExprVarOrError hetmet_kappa.
+    Definition hetmet_kappa_app'  := coreVarToWeakExprVarOrError hetmet_kappa_app.
 
     Definition coreToCoreExpr' (cex:@CoreExpr CoreVar) : ???(@CoreExpr CoreVar) :=
       addErrorMessage ("input CoreSyn: " +++ toString cex)
@@ -472,7 +478,7 @@ Section core2proof.
                               OK ((@proof2expr nat _ FreshNat _ _ (flatten_type τ) nil _
                                 (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                               >>= fun e' => (snd e') >>= fun e'' =>
-                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc' (*hetmet_kappa' hetmet_kappa_app'*)
                                 mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
                                 (projT2 e'') INil
                               >>= fun q => OK (weakExprToCoreExpr q))
@@ -483,7 +489,7 @@ Section core2proof.
                               OK ((@proof2expr nat _ FreshNat _ _ τ nil _
                                 (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                               >>= fun e' => (snd e') >>= fun e'' =>
-                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc' (*hetmet_kappa' hetmet_kappa_app'*)
                                 mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
                                 (projT2 e'') INil
                               >>= fun q => OK (weakExprToCoreExpr q))
@@ -493,7 +499,7 @@ Section core2proof.
                               OK ((@proof2expr nat _ FreshNat _ _ τ nil _
                                 (fun _ => Prelude_error "unbound unique") _ haskProof) O)
                               >>= fun e' => (snd e') >>= fun e'' =>
-                              strongExprToWeakExpr hetmet_brak' hetmet_esc'
+                              strongExprToWeakExpr hetmet_brak' hetmet_esc' (*hetmet_kappa' hetmet_kappa_app'*)
                                 mkWeakTypeVar mkWeakCoerVar mkWeakExprVar uniqueSupply
                                 (projT2 e'') INil
                               >>= fun q => OK (weakExprToCoreExpr q))))
@@ -538,6 +544,8 @@ Section core2proof.
     : CoreM (list (@CoreBind CoreVar)) :=
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_brak" >>= fun hetmet_brak =>
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_esc" >>= fun hetmet_esc =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_kappa" >>= fun hetmet_kappa =>
+      dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_kappa_app" >>= fun hetmet_kappa_app =>
       dsLookupTyc "GHC.HetMet.Private" "PGArrow" >>= fun hetmet_PGArrow =>
       dsLookupTyc "GHC.HetMet.GArrow" "GArrowUnit" >>= fun hetmet_PGArrow_unit =>
       dsLookupTyc "GHC.HetMet.GArrow" "GArrowTensor" >>= fun hetmet_PGArrow_tensor =>
@@ -569,6 +577,10 @@ Section core2proof.
        do_skolemize
        hetmet_brak  
        hetmet_esc   
+       (*
+       hetmet_kappa
+       hetmet_kappa_app
+       *)
        uniqueSupply 
        hetmet_PGArrow
        hetmet_PGArrow_unit

@@ -84,6 +84,10 @@ Fixpoint weakExprToCoreExpr (me:WeakExpr) : @CoreExpr CoreVar :=
                                                      (weakExprToCoreExpr e)::
                                                      nil)
                                                    (CoreEVar v)
+  (*
+  | WEKappa     v e      => Prelude_error "FIXME: weakExprToCoreExpr case for WEKappa"
+  | WEKappaApp  e1 e2    => Prelude_error "FIXME: weakExprToCoreExpr case for WEKappaApp"
+  *)
   | WELet   (weakExprVar v _) ve e       => mkCoreLet      (CoreNonRec v (weakExprToCoreExpr ve))  (weakExprToCoreExpr e)
   | WECase  vscrut escrut tbranches tc types alts  =>
                                             CoreECase (weakExprToCoreExpr escrut) vscrut (weakTypeToCoreType tbranches)
