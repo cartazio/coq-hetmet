@@ -4,3 +4,7 @@ examples/tutorial.pdf
 build/
 build/**
 examples/.build
+examples/*.o
+examples/*.hi
+
+
