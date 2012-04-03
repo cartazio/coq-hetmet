@@ -31,4 +31,4 @@ demo:
 	../../../inplace/bin/ghc-stage2 $(ghc_opt) --show-iface .build/Demo.hi
 	../../../inplace/bin/ghc-stage2 $(ghc_opt) GArrowTikZ.hs Demo.hs DemoMain.hs Unify.hs -o .build/demo
 	./.build/demo > .build/test.tex
-	cd .build; pdflatex test.tex
+	cd .build; TEXINPUTS=../tex-bits/:$TEXINPUTS: pdflatex test.tex
