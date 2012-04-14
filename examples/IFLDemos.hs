@@ -1,6 +1,14 @@
 {-# OPTIONS_GHC -XModalTypes -dcore-lint -XScopedTypeVariables -ddump-types -XTypeFamilies -XNoMonomorphismRestriction #-}
 module Demo (demo, demo2) where
 
+{-
+demo :: 
+  <[ \input ->
+        let delayed = ~~reg output
+            output  = ~~xor input delayed
+        in output ]>
+-}
+
 demo  z   = <[ \y -> ~~z ]>
 
 demo2 :: <[ (a,b) ~~> c ]>@d -> <[ () ~~> a ]>@d -> <[ b ~~>c ]>@d
