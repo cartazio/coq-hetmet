@@ -18,8 +18,10 @@
 -- behavior below -- you'd get (GAS_comp f GAS_id) instead of f.  In
 -- practice this means that the user must be prepared for the skeleton
 -- TikZ diagram to be a nondeterministically-chosen boxes-and-wires
--- diagram which ks *equivalent to* the term, rather than structurally
+-- diagram which is *equivalent to* the term, rather than structurally
 -- exactly equal to it.
+--
+-- A normal form theorem and normalization algorithm are being prepared.
 --
 module GArrowSkeleton (GArrowSkeleton(..), optimize, beautify)
 where
