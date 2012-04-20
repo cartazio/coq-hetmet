@@ -19,11 +19,11 @@
 -- information for certain nodes (the inference mechanism below adds
 -- it on every node).
 --
-module GArrowPortShape (GArrowPortShape(..), PortShape(..), detectShape)
+module GArrowPortShape (GArrowPortShape(..), PortShape(..), detectShape, Detect(..), DetectM, freshM)
 where
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
-import GHC.HetMet.GArrow
+import Control.GArrow
 import Unify
 import GArrowSkeleton
 import Control.Monad.State
@@ -128,16 +128,19 @@ resolveG u (GASPortShapeWrapper x y g) = GASPortShapeWrapper (getU' u x) (getU' 
   resolveG' (GAS_loopr f)       = GAS_loopr (resolveG' f)
   resolveG' (GAS_misc g )       = GAS_misc $ resolveG u g
 
-detectShape :: GArrowSkeleton m a b -> GArrowPortShape m () a b
+detectShape :: Detect m => GArrowSkeleton m a b -> GArrowPortShape m () a b
 detectShape g = runM (detect g)
 
-runM :: DetectM (GArrowPortShape m UVar a b) -> GArrowPortShape m () a b
+runM :: Detect m => DetectM (GArrowPortShape m UVar a b) -> GArrowPortShape m () a b
 runM f = let s     = (emptyUnifier,uvarSupply)
              g     = evalState f s
              (u,_) = execState f s
           in resolveG u g
 
-detect :: GArrowSkeleton m a b -> DetectM (GArrowPortShape m UVar a b)
+class Detect m where
+  detect' :: m x y -> DetectM (GArrowPortShape m UVar x y)
+
+detect :: Detect m => GArrowSkeleton m a b -> DetectM (GArrowPortShape m UVar a b)
 detect (GAS_id      ) = do { x <- freshM ; return $ GASPortShapeWrapper (PortFree x) (PortFree x) GAS_id }
 detect (GAS_comp f g) = do { f' <- detect f
                            ; g' <- detect g
@@ -211,5 +214,5 @@ detect (GAS_loopr f)  = do { x <- freshM
                            ; return $ GASPortShapeWrapper (PortFree x) (PortFree y) (GAS_loopr (GAS_misc f'))
                            }
 
-detect (GAS_misc f)   = error "GAS_misc: not implemented"
+detect (GAS_misc f)   = detect' f
 

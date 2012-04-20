@@ -3,7 +3,7 @@ module GArrowTutorial
 where
 import Data.Bits
 import Data.Bool (not)
-import GHC.HetMet.GArrow
+import Control.GArrow
 import GHC.HetMet.GuestLanguage hiding ( (-) )
 import Control.Category
 import Control.Arrow

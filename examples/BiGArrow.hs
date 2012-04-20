@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -XModalTypes -XMultiParamTypeClasses -ddump-types -XNoMonoPatBinds -XFlexibleInstances -XGADTs -XUndecidableInstances -XDatatypeContexts #-}
 module BiGArrow
 where
-import GHC.HetMet.GArrow
+import Control.GArrow
 import Control.Category
 import Control.Arrow
 import Prelude hiding ( id, (.) )

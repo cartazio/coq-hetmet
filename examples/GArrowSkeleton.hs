@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, GADTs, FlexibleContexts, FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses, GADTs, FlexibleContexts, FlexibleInstances, TypeFamilies, RankNTypes #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  GArrowSkeleton
@@ -23,13 +23,14 @@
 --
 -- A normal form theorem and normalization algorithm are being prepared.
 --
-module GArrowSkeleton (GArrowSkeleton(..), optimize, beautify)
+module GArrowSkeleton (GArrowSkeleton(..), mkSkeleton, OptimizeFlag(..), optimize, beautify)
 where
 import Prelude hiding ( id, (.), lookup, repeat )
 import Control.Category
-import GHC.HetMet.GArrow
+import Control.GArrow
 import Unify
 import Control.Monad.State
+import GArrowInclusion
 
 data GArrowSkeleton m :: * -> * -> *
  where
@@ -83,7 +84,10 @@ type instance GArrowTensor      (GArrowSkeleton m) = (,)
 type instance GArrowUnit        (GArrowSkeleton m) = ()
 type instance GArrowExponent    (GArrowSkeleton m) = (->)
 
-instance GArrowSTKCL (GArrowSkeleton m)
+instance GArrowCopyDropSwapLoop (GArrowSkeleton m)
+
+instance GArrowInclusion (GArrowSkeleton m) (,) () m where
+  ga_inc = GAS_misc
 
 --
 -- | Simple structural equality on skeletons.  NOTE: two skeletons
@@ -112,8 +116,25 @@ instance Eq ((GArrowSkeleton m) a b)
     GAS_unassoc         === GAS_unassoc         = True
     (GAS_loopl f)       === (GAS_loopl f')      = f === f'
     (GAS_loopr f)       === (GAS_loopr f')      = f === f'
+    (GAS_misc _)        === (GAS_misc _)        = True      -- FIXME
     _ === _                                     = False
-    -- FIXME: GAS_misc's are never equal!!!
+
+data OptimizeFlag = DoOptimize | NoOptimize
+
+mkSkeleton :: OptimizeFlag ->
+               (forall g .
+                        (GArrow          g (,) ()
+                        ,GArrowCopy      g (,) ()
+                        ,GArrowDrop      g (,) ()
+                        ,GArrowSwap      g (,) ()
+                        ,GArrowLoop      g (,) ()
+                        ,GArrowInclusion g (,) () m) =>
+                 g x y)
+                -> GArrowSkeleton m x y
+mkSkeleton DoOptimize = \g -> (beautify . optimize) g
+mkSkeleton NoOptimize = \g ->                       g
+
+                       
 
 --
 -- | Performs some very simple-minded optimizations on a

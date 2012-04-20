@@ -18,7 +18,7 @@ import System.Process
 import Prelude hiding ( id, (.), lookup )
 import Control.Category
 import Control.Monad.State
-import GHC.HetMet.GArrow
+import Control.GArrow
 import Data.List hiding (lookup, insert)
 import Data.Map hiding (map, (!))
 import Data.Maybe (catMaybes)
@@ -70,6 +70,28 @@ lowermost (TU x)    = x
 lowermost (TT x y) = lowermost y
 
 
+class ToDiagram g where
+  toDiagram :: GArrowPortShape g () x y -> ConstraintM Diagram
+
+instance (Detect m, ToDiagram m) => ToDiagram (GArrowSkeleton m) where
+  toDiagram s = mkdiag s
+
+data Opaque x y where
+  MkOpaque :: String -> DetectM (GArrowPortShape Opaque UVar x y) -> Opaque x y
+
+instance Detect Opaque where
+  detect' (MkOpaque _ dm) = dm
+
+instance ToDiagram Opaque where
+  toDiagram (GASPortPassthrough  inp outp (MkOpaque s _)) =
+    do { (top,    x   ,bot) <- alloc inp
+       ; (_,      y   ,_)   <- alloc outp
+       --; constrainEq x y
+       ; simpleDiag   s top x y bot [] }
+  toDiagram q = mkdiag q
+
+--    do (top,    x   ,bot) <- alloc inp
+--       simpleDiag' s top x x bot        [(x,x)]  "gray!50"
 
 
 ------------------------------------------------------------------------------
@@ -171,11 +193,11 @@ alloc1 = do { (t,c) <- get
             ; return (T t)
             }
 
-mkdiag :: GArrowPortShape m () a b -> ConstraintM Diagram
-mkdiag (GASPortPassthrough  inp outp m) = error "not supported"
+mkdiag :: ToDiagram m => GArrowPortShape m () a b -> ConstraintM Diagram
+mkdiag (GASPortPassthrough  inp outp m) = toDiagram (GASPortPassthrough  inp outp m)
 mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
  where
- mkdiag' :: GArrowSkeleton (GArrowPortShape m ()) a b -> ConstraintM Diagram
+ mkdiag' :: ToDiagram m => GArrowSkeleton (GArrowPortShape m ()) a b -> ConstraintM Diagram
  
  mkdiag' (GAS_comp f g) = do { f' <- mkdiag' f; g' <- mkdiag' g
                              ; constrainEq (getOut f') (getIn g') ; return $ DiagramComp f' g' }
@@ -284,26 +306,26 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                              ; return $ DiagramLoopBot f' l  }
  mkdiag' (GAS_misc f )  = mkdiag f
 
- diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
- diagramBox ptop pin r pout pbot = do { constrain ptop LT (uppermost pin)  (-1)
+diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
+diagramBox ptop pin r pout pbot = do { constrain ptop LT (uppermost pin)  (-1)
                                       ; constrain pbot GT (lowermost pin)  1
                                       ; constrain ptop LT (uppermost pout) (-1)
                                       ; constrain pbot GT (lowermost pout) 1
                                       ; constrain ptop LT pbot (-1)
                                       ; return $ DiagramBox 2 ptop pin r pout pbot
                                       }
- simpleDiag  text ptop pin pout pbot conn = simpleDiag' text ptop pin pout pbot conn "black"
- simpleDiag' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
+simpleDiag  text ptop pin pout pbot conn = simpleDiag' text ptop pin pout pbot conn "black"
+simpleDiag' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
   where
    defren tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 color text ++
                            concat (map (\(x,y) -> drawWires tp x1 x x2 y "black") conn)
    --    ++ wires (x-1) p1  x    "green"
    --    ++ wires  (x+w) p2 (x+w+1) "red"
 
---draw_assoc = False
---draw_first_second = False
-draw_assoc = True
-draw_first_second = True
+draw_assoc = False
+draw_first_second = False
+--draw_assoc = True
+--draw_first_second = True
 
 -- constrain that Ports is at least Int units above the topmost portion of Diagram
 constrainTop :: TrackIdentifier -> Float -> Diagram -> ConstraintM ()
@@ -487,7 +509,7 @@ lp_solve_to_trackpos s = toTrackPos $ map parse $ catMaybes $ map grab $ lines s
    toTrackPos []           tr = 0 -- error $ "could not find track "++show tr
    toTrackPos ((i,f):rest) tr = if (i==tr) then f else toTrackPos rest tr
 
-toTikZ :: GArrowSkeleton m a b -> IO String
+toTikZ :: (ToDiagram m, Detect m) => GArrowSkeleton m a b -> IO String
 toTikZ g = 
     let cm = do { let g' = detectShape g
                 ; g'' <- mkdiag g'
@@ -509,7 +531,18 @@ tikz :: forall c .
              (PGArrow g (GArrowTensor g c c) c) ->
              PGArrow g c c)
      -> IO ()
-tikz x = tikz' $ beautify $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_const c }) (PGArrowD { unG = GAS_merge }))
+tikz x = tikz' $ beautify $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_misc (oconst c) })
+                                                        (PGArrowD { unG = GAS_misc omult }))
+
+oconst :: Int -> Opaque () a
+oconst c = MkOpaque ("const "++(show c)) $
+           do x <- freshM
+              return $ GASPortPassthrough PortUnit (PortFree x) (oconst c)
+
+omult :: Opaque (a,a) a
+omult = MkOpaque "mult" $
+           do x <- freshM
+              return $ GASPortPassthrough (PortTensor (PortFree x) (PortFree x)) (PortFree x) omult
 
 tikz' example
      = do putStrLn "\\documentclass{article}"

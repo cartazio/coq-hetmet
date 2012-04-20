@@ -2,7 +2,7 @@
 module Unflattening
 where
 import GHC.HetMet.CodeTypes hiding ((-))
-import GHC.HetMet.GArrow
+import Control.GArrow
 import Control.Category
 import Control.Arrow
 import Prelude hiding ( id, (.) )

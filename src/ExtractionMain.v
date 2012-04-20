@@ -547,9 +547,9 @@ Section core2proof.
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_kappa" >>= fun hetmet_kappa =>
       dsLookupVar "GHC.HetMet.CodeTypes" "hetmet_kappa_app" >>= fun hetmet_kappa_app =>
       dsLookupTyc "GHC.HetMet.Private" "PGArrow" >>= fun hetmet_PGArrow =>
-      dsLookupTyc "GHC.HetMet.GArrow" "GArrowUnit" >>= fun hetmet_PGArrow_unit =>
-      dsLookupTyc "GHC.HetMet.GArrow" "GArrowTensor" >>= fun hetmet_PGArrow_tensor =>
-      dsLookupTyc "GHC.HetMet.GArrow" "GArrowExponent" >>= fun hetmet_PGArrow_exponent =>
+      dsLookupTyc "Control.GArrow" "GArrowUnit" >>= fun hetmet_PGArrow_unit =>
+      dsLookupTyc "Control.GArrow" "GArrowTensor" >>= fun hetmet_PGArrow_tensor =>
+      dsLookupTyc "Control.GArrow" "GArrowExponent" >>= fun hetmet_PGArrow_exponent =>
       dsLookupVar "GHC.HetMet.Private" "pga_id" >>= fun hetmet_pga_id =>
       dsLookupVar "GHC.HetMet.Private" "pga_comp" >>= fun hetmet_pga_comp =>
       dsLookupVar "GHC.HetMet.Private" "pga_first" >>= fun hetmet_pga_first =>

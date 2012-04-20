@@ -1,11 +1,18 @@
 {-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint -XScopedTypeVariables -fsimpleopt-before-flatten #-}
 module Demo (demo) where
 
+
+demo const mult =
+ <{ \y ->
+    let   foo  = ~~mult (~~mult foo (~~mult y foo)) (~~mult y ~~(const 3))
+    in    foo }>
+
+
 {-
 demo const mult =
   <{ \y ->
      ~~mult
-       (~~mult y y)
+       (~~(const 1))
        (~~mult y y)
    }>
 -}
@@ -52,12 +59,6 @@ demo const mult =
 
 
 
-
-
-demo const mult =
- <{ \y ->
-    let   foo  = ~~mult (~~mult foo (~~mult y foo)) y
-    in    foo }>
 
 
 

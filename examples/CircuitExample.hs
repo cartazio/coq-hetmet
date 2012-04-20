@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -XModalTypes -ddump-types -XNoMonoPatBinds -XMultiParamTypeClasses -XTypeOperators #-}
 module CircuitExample
 where
-import GHC.HetMet.GArrow
+import Control.GArrow
 import GHC.HetMet.GuestLanguage hiding ((-))
 import Control.Category
 import Prelude hiding ( id, (.) )
