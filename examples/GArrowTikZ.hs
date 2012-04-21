@@ -230,10 +230,6 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                              ; (_,      y   ,_)   <- alloc outp
                              ; constrainEq x y
                              ; simpleDiag   "drop" top x y bot [] }
- mkdiag' (GAS_const i)  = do { (top,    x   ,bot) <- alloc inp
-                             ; (_,      y   ,_)   <- alloc outp
-                             ; constrainEq x y
-                             ; simpleDiag   ("const " ++ show i) top x y bot [] }
  mkdiag' GAS_copy       = do { (top,(TT y z),bot) <- alloc outp
                              ; (_  ,      x ,_)   <- alloc inp
                              ; constrainEqualSpace (lowermost y) (uppermost x) (lowermost x) (uppermost z)
@@ -243,8 +239,6 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                                                       drawWires tp ((x1+x2)/2) x x2 z "black"
                              ; return $ DiagramBox 2 top x r (TT y z) bot
                              }
- mkdiag' GAS_merge      = do { (top,(TT x y),bot) <- alloc inp 
-                             ; simpleDiag     "times" top (TT x y) x bot [] }
  mkdiag' GAS_swap       = do { (top,(TT x y),bot) <- alloc inp
                              ; (top,(TT x' y'),bot) <- alloc outp
                              ; constrainEq (T (lowermost x)) (T (lowermost x'))

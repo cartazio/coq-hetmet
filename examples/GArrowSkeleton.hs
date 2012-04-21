@@ -34,7 +34,6 @@ import GArrowInclusion
 
 data GArrowSkeleton m :: * -> * -> *
  where
-  GAS_const     ::                                          Int -> GArrowSkeleton m () Int
   GAS_id        ::                                                 GArrowSkeleton m x x
   GAS_comp      :: GArrowSkeleton m x y -> GArrowSkeleton m y z -> GArrowSkeleton m x z
   GAS_first     :: GArrowSkeleton m x y                         -> GArrowSkeleton m (x,z)  (y,z)
@@ -48,7 +47,6 @@ data GArrowSkeleton m :: * -> * -> *
   GAS_drop      ::                                                 GArrowSkeleton m x         ()
   GAS_copy      ::                                                 GArrowSkeleton m x         (x,x)
   GAS_swap      ::                                                 GArrowSkeleton m (x,y)     (y,x)
-  GAS_merge     ::                                                 GArrowSkeleton m (x,y)     z
   GAS_loopl     ::                 GArrowSkeleton m (z,x) (z,y) -> GArrowSkeleton m x y
   GAS_loopr     ::                 GArrowSkeleton m (x,z) (y,z) -> GArrowSkeleton m x y
   GAS_misc      ::                                        m x y -> GArrowSkeleton m x y
@@ -108,9 +106,7 @@ instance Eq ((GArrowSkeleton m) a b)
     GAS_uncancell       === GAS_uncancell       = True
     GAS_uncancelr       === GAS_uncancelr       = True
     GAS_drop            === GAS_drop            = True
-    (GAS_const i)       === (GAS_const i')      = i==i'
     GAS_copy            === GAS_copy            = True
-    GAS_merge           === GAS_merge           = True
     GAS_swap            === GAS_swap            = True
     GAS_assoc           === GAS_assoc           = True
     GAS_unassoc         === GAS_unassoc         = True
@@ -254,7 +250,6 @@ beautify = repeat beautify'
 
 
 gas2gasl :: GArrowSkeleton m x y -> GArrowSkeletonL m x y
-gas2gasl (GAS_const k    ) = GASL_Y $ GASY_X $ GASX_const k
 gas2gasl (GAS_id         ) = GASL_id
 gas2gasl (GAS_comp    f g) = gaslcat (gas2gasl f) (gas2gasl g)
 gas2gasl (GAS_first     f) = gasl_firstify  $ gas2gasl f
@@ -268,7 +263,6 @@ gas2gasl (GAS_unassoc    ) = GASL_Y $ GASY_X $ GASX_unassoc
 gas2gasl (GAS_drop       ) = GASL_Y $ GASY_X $ GASX_drop
 gas2gasl (GAS_copy       ) = GASL_Y $ GASY_X $ GASX_copy
 gas2gasl (GAS_swap       ) = GASL_Y $ GASY_X $ GASX_swap
-gas2gasl (GAS_merge      ) = GASL_Y $ GASY_X $ GASX_merge
 gas2gasl (GAS_loopl     f) = GASL_Y $ GASY_X $ GASX_loopl $ gas2gasl f
 gas2gasl (GAS_loopr     f) = GASL_Y $ GASY_X $ GASX_loopr $ gas2gasl f
 gas2gasl (GAS_misc      m) = GASL_Y $ GASY_X $ GASX_misc m
@@ -307,7 +301,6 @@ data GArrowSkeletonY m :: * -> * -> *
 
 data GArrowSkeletonX m :: * -> * -> *
  where
-  GASX_const     ::                                          Int -> GArrowSkeletonX m () Int
   GASX_cancell   ::                                                 GArrowSkeletonX m ((),x) x
   GASX_cancelr   ::                                                 GArrowSkeletonX m (x,()) x
   GASX_uncancell ::                                                 GArrowSkeletonX m x ((),x)
@@ -317,7 +310,6 @@ data GArrowSkeletonX m :: * -> * -> *
   GASX_drop      ::                                                 GArrowSkeletonX m x         ()
   GASX_copy      ::                                                 GArrowSkeletonX m x         (x,x)
   GASX_swap      ::                                                 GArrowSkeletonX m (x,y)     (y,x)
-  GASX_merge     ::                                                 GArrowSkeletonX m (x,y)     z
   GASX_misc      ::                                        m x y -> GArrowSkeletonX m x y
   GASX_loopl     ::                GArrowSkeletonL m (z,x) (z,y) -> GArrowSkeletonX m x y
   GASX_loopr     ::                GArrowSkeletonL m (x,z) (y,z) -> GArrowSkeletonX m x y
@@ -336,7 +328,6 @@ gasy2gas (GASY_atomicl gy) = GAS_comp GAS_uncancell (GAS_first  $ gasy2gas gy)
 gasy2gas (GASY_atomicr gy) = GAS_comp GAS_uncancelr (GAS_second $ gasy2gas gy)
 
 gasx2gas :: GArrowSkeletonX m x y -> GArrowSkeleton m x y
-gasx2gas (GASX_const k)    = GAS_const k
 gasx2gas (GASX_cancell)    = GAS_cancell
 gasx2gas (GASX_cancelr)    = GAS_cancelr
 gasx2gas (GASX_uncancell)  = GAS_uncancell
@@ -346,7 +337,6 @@ gasx2gas (GASX_unassoc)    = GAS_unassoc
 gasx2gas (GASX_drop)       = GAS_drop
 gasx2gas (GASX_copy)       = GAS_copy
 gasx2gas (GASX_swap)       = GAS_swap
-gasx2gas (GASX_merge)      = GAS_merge
 gasx2gas (GASX_misc m)     = GAS_misc m
 gasx2gas (GASX_loopl gl)   = GAS_loopl $ gasl2gas gl
 gasx2gas (GASX_loopr gl)   = GAS_loopr $ gasl2gas gl
@@ -426,9 +416,6 @@ optpair (GASY_X GASX_uncancell) (GASY_X (GASX_loopr gl)) =
 optpair q (GASY_X (GASX_loopl gl)) | pushin q = Just $ GASL_Y $ (GASY_X $ GASX_loopl $ GASL_comp (GASY_second $ q) gl)
 optpair q (GASY_X (GASX_loopr gl)) | pushin q = Just $ GASL_Y $ (GASY_X $ GASX_loopr $ GASL_comp (GASY_first $ q) gl)
 
-optpair a@(GASY_X GASX_uncancell) (GASY_first  b@(GASY_X (GASX_const c))) = Just $ GASL_Y $ GASY_atomicl b
-optpair a@(GASY_X GASX_uncancelr) (GASY_second b@(GASY_X (GASX_const c))) = Just $ GASL_Y $ GASY_atomicr b
-
 optpair (GASY_first  gy1) (GASY_second  gy2) | pushleft gy2, not (pushleft gy1)
                                                  = Just $ GASL_comp (GASY_second gy2) $ GASL_Y $ GASY_first  gy1
 optpair (GASY_second gy1) (GASY_first   gy2) | pushleft gy2, not (pushleft gy1)
@@ -496,7 +483,6 @@ optimizey (GASY_atomicl gy) = GASY_atomicl $ optimizey gy
 optimizey (GASY_atomicr gy) = GASY_atomicr $ optimizey gy
 
 optimizex :: GArrowSkeletonX m x y -> GArrowSkeletonX m x y
-optimizex (GASX_const k)    = GASX_const k
 optimizex (GASX_cancell)    = GASX_cancell
 optimizex (GASX_cancelr)    = GASX_cancelr
 optimizex (GASX_uncancell)  = GASX_uncancell
@@ -506,7 +492,6 @@ optimizex (GASX_unassoc)    = GASX_unassoc
 optimizex (GASX_drop)       = GASX_drop
 optimizex (GASX_copy)       = GASX_copy
 optimizex (GASX_swap)       = GASX_swap
-optimizex (GASX_merge)      = GASX_merge
 optimizex (GASX_misc m)     = GASX_misc m
 optimizex (GASX_loopl (GASL_comp (GASY_first gy) gl))| pushleft gy  = GASX_loopl $ gaslcat gl (GASL_Y $ GASY_first gy)
 optimizex (GASX_loopr (GASL_comp (GASY_second gy) gl))| pushleft gy  = GASX_loopr $ gaslcat gl (GASL_Y $ GASY_second gy)

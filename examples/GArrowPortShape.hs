@@ -118,9 +118,7 @@ resolveG u (GASPortShapeWrapper x y g) = GASPortShapeWrapper (getU' u x) (getU' 
   resolveG' GAS_uncancell       = GAS_uncancell
   resolveG' GAS_uncancelr       = GAS_uncancelr
   resolveG' GAS_drop            = GAS_drop
-  resolveG' (GAS_const i)       = GAS_const i
   resolveG' GAS_copy            = GAS_copy
-  resolveG' GAS_merge           = GAS_merge
   resolveG' GAS_swap            = GAS_swap
   resolveG' GAS_assoc           = GAS_assoc
   resolveG' GAS_unassoc         = GAS_unassoc
@@ -192,11 +190,6 @@ detect GAS_unassoc    = do { x <- freshM; y <- freshM; z <- freshM
                                         (PortTensor (PortTensor x' y') z')
                                         GAS_unassoc
                            }
-detect (GAS_const i)  = do { x <- freshM; return $ GASPortShapeWrapper PortUnit (PortFree x) (GAS_const i) }
-
-detect GAS_merge      = do { x <- freshM
-                           ; return $ GASPortShapeWrapper (PortTensor (PortFree x) (PortFree x)) (PortFree x) GAS_merge }
-
 detect (GAS_loopl f)  = do { x <- freshM
                            ; y <- freshM
                            ; z <- freshM
