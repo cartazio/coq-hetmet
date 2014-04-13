@@ -12,7 +12,7 @@
 -- You must have lp_solve installed in order for this to work.
 --
 
-module GArrowTikZ (tikz)
+module GArrowTikZ (tikz,Opaque(..),toTikZ,tikz_header,tikz_footer,skelify',skelify'')
 where
 import System.Process
 import Prelude hiding ( id, (.), lookup )
@@ -26,6 +26,13 @@ import Unify
 import GArrowSkeleton
 import GArrowPortShape
 import GHC.HetMet.Private
+
+skelify' :: (forall g . (GArrowCopy g (,) (), GArrowDrop g (,) (), GArrowSwap g (,) (), GArrowLoop g (,) ()) => g x y) ->
+            GArrowSkeleton Opaque x y
+skelify' = \g -> g
+
+skelify'' :: GArrowSkeleton Opaque x y -> GArrowSkeleton Opaque x y
+skelify'' = \g -> g
 
 ------------------------------------------------------------------------------
 -- Tracks
@@ -87,7 +94,7 @@ instance ToDiagram Opaque where
     do { (top,    x   ,bot) <- alloc inp
        ; (_,      y   ,_)   <- alloc outp
        --; constrainEq x y
-       ; simpleDiag   s top x y bot [] }
+       ; simpleDiag''   s top x y bot [] "black" }
   toDiagram q = mkdiag q
 
 --    do (top,    x   ,bot) <- alloc inp
@@ -210,22 +217,22 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
                                                       drawLine  x1 (tp!lowermost x)  ((x1+x2)/2) (tp!uppermost y) "gray!50" "dashed"
-                             ; return $ DiagramBox 2 top (TT x y) r y bot  }
+                             ; return $ DiagramBox 2.4 top (TT x y) r y bot  }
  mkdiag' GAS_cancelr    = do { (top,(TT x y),bot) <- alloc inp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "cancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
                                                       drawLine  x1 (tp!uppermost y) ((x1+x2)/2) (tp!lowermost x) "gray!50" "dashed"
-                             ; return $ DiagramBox 2 top (TT x y) r x bot  }
+                             ; return $ DiagramBox 2.4 top (TT x y) r x bot  }
  mkdiag' GAS_uncancell  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancell" ++
                                                       drawWires tp x1 y x2 y "black" ++
                                                       drawLine  ((x1+x2)/2) (tp!uppermost y) x2 (tp!lowermost x) "gray!50" "dashed"
-                             ; return $ DiagramBox 2 top y r (TT x y) bot  }
+                             ; return $ DiagramBox 2.8 top y r (TT x y) bot  }
  mkdiag' GAS_uncancelr  = do { (top,(TT x y),bot) <- alloc outp
                              ; let r tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 "gray!50" "uncancelr" ++
                                                       drawWires tp x1 x x2 x "black" ++
                                                       drawLine  ((x1+x2)/2) (tp!lowermost x) x2 (tp!uppermost y) "gray!50" "dashed"
-                             ; return $ DiagramBox 2 top x r (TT x y) bot  }
+                             ; return $ DiagramBox 2.8 top x r (TT x y) bot  }
  mkdiag' GAS_drop       = do { (top,    x   ,bot) <- alloc inp
                              ; (_,      y   ,_)   <- alloc outp
                              ; constrainEq x y
@@ -237,7 +244,7 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                                                       drawWires tp x1 x ((x1+x2)/2) x "black" ++
                                                       drawWires tp ((x1+x2)/2) x x2 y "black" ++
                                                       drawWires tp ((x1+x2)/2) x x2 z "black"
-                             ; return $ DiagramBox 2 top x r (TT y z) bot
+                             ; return $ DiagramBox defaultWidth top x r (TT y z) bot
                              }
  mkdiag' GAS_swap       = do { (top,(TT x y),bot) <- alloc inp
                              ; (top,(TT x' y'),bot) <- alloc outp
@@ -265,7 +272,7 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 z x2 z "black"
         ; let pin = (TT (TT x y) z)
         ; let pout = (TT x (TT y z))
-        ; return $ if draw_assoc then DiagramBox 2 top pin r pout bot else DiagramBox 0 top pin noRender pout bot
+        ; return $ if draw_assoc then DiagramBox defaultWidth top pin r pout bot else DiagramBox 0 top pin noRender pout bot
         }
  mkdiag' GAS_unassoc    =
      do { (top,(TT x (TT y z)),bot) <- alloc inp
@@ -288,7 +295,7 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                     drawWires tp x1 z x2 z "black"
         ; let pin = (TT x (TT y z))
         ; let pout = (TT (TT x y) z)
-        ; return $ if draw_assoc then DiagramBox 2 top pin r pout bot else DiagramBox 0 top pin noRender pout bot
+        ; return $ if draw_assoc then DiagramBox defaultWidth top pin r pout bot else DiagramBox 0 top pin noRender pout bot
         }
  mkdiag' (GAS_loopl  f) = do { f' <- mkdiag' f
                              ; l <- allocLoop (case (getIn f') of (TT z _) -> z ; _ -> error "GAS_loopl: mismatch")
@@ -300,18 +307,26 @@ mkdiag (GASPortShapeWrapper inp outp x) = mkdiag' x
                              ; return $ DiagramLoopBot f' l  }
  mkdiag' (GAS_misc f )  = mkdiag f
 
+defaultWidth = 2
+
 diagramBox :: TrackIdentifier -> Tracks -> BoxRenderer -> Tracks -> TrackIdentifier -> ConstraintM Diagram
 diagramBox ptop pin r pout pbot = do { constrain ptop LT (uppermost pin)  (-1)
                                       ; constrain pbot GT (lowermost pin)  1
                                       ; constrain ptop LT (uppermost pout) (-1)
                                       ; constrain pbot GT (lowermost pout) 1
                                       ; constrain ptop LT pbot (-1)
-                                      ; return $ DiagramBox 2 ptop pin r pout pbot
+                                      ; return $ DiagramBox defaultWidth ptop pin r pout pbot
                                       }
 simpleDiag  text ptop pin pout pbot conn = simpleDiag' text ptop pin pout pbot conn "black"
 simpleDiag' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
   where
    defren tp x1 y1 x2 y2 = drawBox x1 y1 x2 y2 color text ++
+                           concat (map (\(x,y) -> drawWires tp x1 x x2 y "black") conn)
+   --    ++ wires (x-1) p1  x    "green"
+   --    ++ wires  (x+w) p2 (x+w+1) "red"
+simpleDiag'' text ptop pin pout pbot conn color = diagramBox ptop pin defren pout pbot
+  where
+   defren tp x1 y1 x2 y2 = drawBoxC x1 y1 x2 y2 color text ++
                            concat (map (\(x,y) -> drawWires tp x1 x x2 y "black") conn)
    --    ++ wires (x-1) p1  x    "green"
    --    ++ wires  (x+w) p2 (x+w+1) "red"
@@ -476,7 +491,7 @@ allocLoop (TT t1 t2)   = do { x1 <- allocLoop t2
 
 do_lp_solve :: [Constraint] -> IO String
 do_lp_solve c = do { let stdin = "min: x1;\n" ++ (foldl (++) "" (map show c)) ++ "\n"
-                   ; putStrLn stdin
+--                   ; putStrLn stdin
                    ; stdout <- readProcess "lp_solve" [] stdin
                    ; return stdout
                    }
@@ -503,6 +518,7 @@ lp_solve_to_trackpos s = toTrackPos $ map parse $ catMaybes $ map grab $ lines s
    toTrackPos []           tr = 0 -- error $ "could not find track "++show tr
    toTrackPos ((i,f):rest) tr = if (i==tr) then f else toTrackPos rest tr
 
+    
 toTikZ :: (ToDiagram m, Detect m) => GArrowSkeleton m a b -> IO String
 toTikZ g = 
     let cm = do { let g' = detectShape g
@@ -517,46 +533,28 @@ toTikZ g =
            ; return (t ++ drawWires m 0             (getIn  d) 1             (getIn  d) "black"
                        ++ drawWires m (width m d+1) (getOut d) (width m d+2) (getOut d) "black")
            }
-     
 
-tikz :: forall c .
-    (forall g .
-             (Int -> PGArrow g (GArrowUnit g) Int) ->
-             (PGArrow g (GArrowTensor g c c) c) ->
-             PGArrow g c c)
-     -> IO ()
-tikz x = tikz' $ beautify $ optimize $ unG (x (\c -> PGArrowD { unG = GAS_misc (oconst c) })
-                                                        (PGArrowD { unG = GAS_misc omult }))
+tikz_header =
+  "\\documentclass{article}\n" ++
+  "\\usepackage[paperwidth=\\maxdimen,paperheight=\\maxdimen]{geometry}\n" ++
+  "\\usepackage{tikz}\n" ++
+  "\\usepackage{amsmath}\n" ++
+  "\\usepackage[tightpage,active]{preview}\n" ++
+  "\\begin{document}\n" ++
+  "\\setlength\\PreviewBorder{5pt}\n" ++
+  "\\begin{preview}\n" ++
+  "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]\n"
 
-oconst :: Int -> Opaque () a
-oconst c = MkOpaque ("const "++(show c)) $
-           do x <- freshM
-              return $ GASPortPassthrough PortUnit (PortFree x) (oconst c)
+tikz_footer =
+  "\\end{tikzpicture}\n" ++
+  "\\end{preview}\n" ++
+  "\\end{document}\n"
 
-omult :: Opaque (a,a) a
-omult = MkOpaque "mult" $
-           do x <- freshM
-              return $ GASPortPassthrough (PortTensor (PortFree x) (PortFree x)) (PortFree x) omult
-
-tikz' example
-     = do putStrLn "\\documentclass{article}"
-          putStrLn "\\usepackage[paperwidth=\\maxdimen,paperheight=\\maxdimen]{geometry}"
-          putStrLn "\\usepackage{tikz}"
-          putStrLn "\\usepackage{amsmath}"
-          putStrLn "\\usepackage[tightpage,active]{preview}"
-          putStrLn "\\begin{document}"
-          putStrLn "\\setlength\\PreviewBorder{5pt}"
-          putStrLn "\\begin{preview}"
-          putStrLn $ "\\begin{tikzpicture}[every on chain/.style={join=by ->},yscale=-1]"
-          tikz <- toTikZ example
-          putStrLn tikz
-          putStrLn "\\end{tikzpicture}"
-          putStrLn "\\end{preview}"
-          --putStrLn "\\pagebreak"
-          --putStrLn "\\begin{align*}"
-          --putStr   (toTikZ' example)
-          --putStrLn "\\end{align*}"
-          putStrLn "\\end{document}"
+tikz example =
+   do putStrLn tikz_header
+      tikz <- toTikZ example
+      putStrLn tikz
+      putStrLn tikz_footer
 
 -- Random TikZ routines
 textc x y text color = 
@@ -565,6 +563,14 @@ textc x y text color =
 
 drawBox x1 y1 x2 y2 color text =
     "\\node[anchor=north west] at ("++show (x1*xscale)++"cm,"++show (y1*yscale)++"cm) "++
+    "{{\\tt{"++text++"}}};\n"
+    ++
+    "\\path[draw,color="++color++"]"++
+       " ("++show (x1*xscale)++","++show (y1*yscale)++") rectangle ("++
+           show (x2*xscale)++","++show (y2*yscale)++");\n"
+
+drawBoxC x1 y1 x2 y2 color text =
+    "\\node[anchor=center] at ("++show ((x1+x2)*xscale/2)++"cm,"++show ((y1+y2)*yscale/2)++"cm) "++
     "{{\\tt{"++text++"}}};\n"
     ++
     "\\path[draw,color="++color++"]"++

@@ -1,21 +1,33 @@
 {-# OPTIONS_GHC -XModalTypes -fflatten -funsafe-skolemize -dcore-lint -XScopedTypeVariables -fsimpleopt-before-flatten #-}
-module Demo (demo) where
+module Demo ({-sample1,sample2,-}sample5,sample6) where
 
-
-demo const mult =
+sample5 :: forall c . (Int -> <{Int}>@c) ->  <{Int -> Int -> Int}>@c -> <{Int -> Int}>@c
+sample5 const <[ (*) ]> =
  <{ \y ->
-    let   foo  = ~~mult (~~mult foo (~~mult y foo)) (~~mult y ~~(const 3))
+    let   foo  = (~~(const 3) * foo) * y
     in    foo }>
 
+sample6 :: forall c . (Int -> <{Int}>@c) -> <{Int -> Int -> Int}>@c -> <{Int -> Int}>@c
+sample6 const <{ (*) }> = pow 6
+   where
+     --pow :: Int -> <{ Int -> Int }>@a
+     pow 0 = <{ \x -> ~~(const 1) }>
+     pow 1 = <{ \x -> x }>
+     pow n = <{ \x -> x * ~~(pow (n - 1)) x }>
 
-{-
-demo const mult =
+demo2 ::
+    forall c . 
+         (Int -> <{Int}>@c) -> 
+        <{Int -> Int -> Int}>@c ->
+        <{Int -> Int}>@c
+
+demo2 const mult =
   <{ \y ->
      ~~mult
        (~~(const 1))
        (~~mult y y)
    }>
--}
+
 
 
 
@@ -144,11 +156,6 @@ demo const mult =
       in  four
     }>
 -}
-demo ::
-    forall c . 
-         (Int -> <{Int}>@c) -> 
-        <{Int -> Int -> Int}>@c ->
-        <{Int -> Int}>@c
 
 {-
 demo const mult =

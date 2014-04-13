@@ -23,7 +23,7 @@
 --
 -- A normal form theorem and normalization algorithm are being prepared.
 --
-module GArrowSkeleton (GArrowSkeleton(..), mkSkeleton, OptimizeFlag(..), optimize, beautify)
+module GArrowSkeleton (GArrowSkeleton(..), mkSkeleton, OptimizeFlag(..), optimize, beautify, skelify)
 where
 import Prelude hiding ( id, (.), lookup, repeat )
 import Control.Category
@@ -86,6 +86,9 @@ instance GArrowCopyDropSwapLoop (GArrowSkeleton m)
 
 instance GArrowInclusion (GArrowSkeleton m) (,) () m where
   ga_inc = GAS_misc
+
+skelify :: (forall g . (GArrowCopyDropSwapLoop g, GArrowInclusion g (,) () m) => g x y) -> GArrowSkeleton m x y
+skelify = \g -> g
 
 --
 -- | Simple structural equality on skeletons.  NOTE: two skeletons
@@ -344,6 +347,8 @@ gasx2gas (GASX_loopr gl)   = GAS_loopr $ gasl2gas gl
 
 
 optimizel :: GArrowSkeletonL m x y -> GArrowSkeletonL m x y
+--optimizel (GASL_comp (GASL_Y (GASY_X GAS_uncancelr)) (GASL_Y (GASY_X      GASX_copy))) =
+--  (GASL_comp (GASL_Y (GASY_X GAS_uncancelr)) (GASL_Y (GASY_X      GASX_copy)))
 optimizel (GASL_id        )                                                                                = GASL_id
 optimizel (GASL_Y    gy   )                                                                                = GASL_Y $ optimizey gy
 optimizel (GASL_comp gy (GASL_comp gy' gl)) | Just x <- optpair gy gy'                                     = optimizel $ gaslcat x gl
